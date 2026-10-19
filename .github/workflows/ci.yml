@@ -1,0 +1,122 @@
+# Continuous integration: runs every check on GitHub's servers for every push
+# and pull request. Third-party actions are pinned to exact commit IDs (with
+# the version in a comment) so their code cannot change underneath us.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Read-only: the workflow can read the repository and nothing else.
+permissions:
+  contents: read
+
+# Cancel an older run on the same branch when a newer commit arrives.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    # A throwaway PostgreSQL 16 server that exists only for this job.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only-throwaway-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Superuser connection for setup steps only. The app and tests connect as
+    # sms_app / sms_migrator with passwords generated during the run.
+    env:
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGPASSWORD: ci-only-throwaway-password
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          pip check
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Create database users and databases
+        run: psql -v ON_ERROR_STOP=1 -d postgres < scripts/create_local_database.sql
+
+      - name: Set database passwords
+        run: |
+          cp .env.example .env
+          python scripts/set_local_db_passwords.py | psql -v ON_ERROR_STOP=1 -d postgres
+
+      - name: Run tests
+        run: pytest -v
+
+  frontend:
+    name: Frontend (lint, build, types, audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (exact, from lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # The build generates the route types that the type check needs.
+      - name: Production build
+        run: npm run build
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # Production dependencies only: the known dev-only `braces` advisory is
+      # documented in docs/security-notes.md.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

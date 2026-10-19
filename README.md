@@ -1,5 +1,7 @@
 # School Management System
 
+[![CI](https://github.com/Griffinsshem/school-management-system/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Griffinsshem/school-management-system/actions/workflows/ci.yml)
+
 A multi-school School Management System for administrators, teachers,
 finance staff, parents and students, built with strict school-level data
 isolation and security as first priorities.
@@ -43,6 +45,12 @@ The frontend and backend run independently. Follow each guide:
 Database setup and migrations are described in
 [docs/database.md](docs/database.md). Security decisions and known findings
 are recorded in [docs/security-notes.md](docs/security-notes.md).
+
+## Continuous integration
+
+Every push and pull request runs [GitHub Actions](.github/workflows/ci.yml):
+backend lint and tests against a throwaway PostgreSQL 16 database, and
+frontend lint, production build, type check and production dependency audit.
 
 ## License
 

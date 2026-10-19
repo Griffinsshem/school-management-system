@@ -31,6 +31,11 @@ statement.
   testing mode unless every database name ends in `_test`.
 - **The readiness check reveals nothing internal.** It returns only
   `{"status": "ok"}` or `{"status": "unavailable"}`; details go to the log.
+- **CI runs with read-only permissions and no secrets.** Third-party GitHub
+  Actions are pinned to exact commit IDs, so their code cannot change without
+  a reviewed commit here. Checkout does not keep Git credentials.
+- **CI blocks known high-severity vulnerabilities in production
+  dependencies** (`npm audit --omit=dev`).
 - **Commits use a GitHub no-reply email** so personal email addresses are not
   published in this public repository.
 
