@@ -1,0 +1,43 @@
+# ---- Secrets & environment (never commit) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+instance/
+
+# ---- Node / frontend ----
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.vercel/
+
+# ---- Local databases & dumps ----
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- OS & editor files ----
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
