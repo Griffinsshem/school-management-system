@@ -4,12 +4,13 @@ from app import create_app
 
 VALID_KEY = "x" * 48
 VALID_DB_URL = "postgresql+psycopg://user:pass@localhost:5432/example"
+NON_TEST_DB_URL = "postgresql+psycopg://user:pass@localhost:5432/sms_dev"
 
 
 @pytest.fixture
 def env(monkeypatch):
     """Start each test with none of the app's variables set."""
-    for name in ("SECRET_KEY", "DATABASE_URL", "APP_ENV"):
+    for name in ("SECRET_KEY", "DATABASE_URL", "MIGRATION_DATABASE_URL", "APP_ENV"):
         monkeypatch.delenv(name, raising=False)
     return monkeypatch
 
@@ -55,3 +56,16 @@ def test_valid_configuration_starts(env):
 
     assert app.config["TESTING"] is False
     assert app.config["SECRET_KEY"] == VALID_KEY
+
+
+def test_tests_require_a_test_database_url(monkeypatch):
+    monkeypatch.delenv("TEST_DATABASE_URL", raising=False)
+
+    with pytest.raises(RuntimeError, match="TEST_DATABASE_URL"):
+        create_app("testing")
+
+
+@pytest.mark.parametrize("setting", ["SQLALCHEMY_DATABASE_URI", "MIGRATION_DATABASE_URI"])
+def test_tests_refuse_a_database_not_named_test(setting):
+    with pytest.raises(RuntimeError, match="Refusing to run tests"):
+        create_app("testing", overrides={setting: NON_TEST_DB_URL})

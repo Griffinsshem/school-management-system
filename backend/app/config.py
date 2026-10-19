@@ -7,14 +7,26 @@ development, or from the host's settings in production.
 
 import os
 
+from sqlalchemy.engine import make_url
+
 MIN_SECRET_KEY_LENGTH = 32
+TEST_DATABASE_SUFFIX = "_test"
 
 
 class BaseConfig:
     TESTING = False
     SECRET_KEY: str | None = None
+    # Runtime connection (sms_app: reads and writes rows only).
     SQLALCHEMY_DATABASE_URI: str | None = None
+    # Migration connection (sms_migrator: owns the schema). Used only by `flask db`.
+    MIGRATION_DATABASE_URI: str | None = None
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        # Check a pooled connection is alive before using it.
+        "pool_pre_ping": True,
+        # Fail fast (seconds) instead of hanging when the database is unreachable.
+        "connect_args": {"connect_timeout": 5},
+    }
     # Reject request bodies larger than 1 MB (responds with 413).
     MAX_CONTENT_LENGTH = 1 * 1024 * 1024
 
@@ -31,9 +43,6 @@ class TestingConfig(BaseConfig):
     TESTING = True
     # A fixed, clearly fake key used only by the automated tests.
     SECRET_KEY = "testing-only-key-never-use-outside-tests"  # noqa: S105
-    # Placeholder: no current test opens a database connection. Database-backed
-    # tests will use an isolated PostgreSQL test database in a later feature.
-    SQLALCHEMY_DATABASE_URI = "sqlite://"
 
 
 CONFIGS: dict[str, type[BaseConfig]] = {
@@ -52,16 +61,20 @@ def get_config(name: str) -> type[BaseConfig]:
 
 
 def load_from_environment(config: dict) -> None:
-    """Read secrets from environment variables (skipped for tests)."""
+    """Read secrets and connection strings from environment variables."""
     if config.get("TESTING"):
+        config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("TEST_DATABASE_URL")
+        config["MIGRATION_DATABASE_URI"] = os.environ.get("TEST_MIGRATION_DATABASE_URL")
         return
     config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+    config["MIGRATION_DATABASE_URI"] = os.environ.get("MIGRATION_DATABASE_URL")
 
 
 def validate_config(config: dict) -> None:
     """Stop the app from starting with missing or unsafe settings."""
     if config.get("TESTING"):
+        _validate_test_databases(config)
         return
 
     secret_key = config.get("SECRET_KEY")
@@ -73,3 +86,17 @@ def validate_config(config: dict) -> None:
 
     if not config.get("SQLALCHEMY_DATABASE_URI"):
         raise RuntimeError("DATABASE_URL must be set. See backend/.env.example.")
+
+
+def _validate_test_databases(config: dict) -> None:
+    """Tests may only ever touch a database whose name ends in `_test`."""
+    if not config.get("SQLALCHEMY_DATABASE_URI"):
+        raise RuntimeError("TEST_DATABASE_URL must be set to run tests. See backend/.env.example.")
+
+    for setting in ("SQLALCHEMY_DATABASE_URI", "MIGRATION_DATABASE_URI"):
+        url = config.get(setting)
+        if url and not (make_url(url).database or "").endswith(TEST_DATABASE_SUFFIX):
+            raise RuntimeError(
+                f"Refusing to run tests: the database for {setting} must have a name "
+                f"ending in '{TEST_DATABASE_SUFFIX}'."
+            )

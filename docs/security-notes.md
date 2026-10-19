@@ -18,6 +18,19 @@ statement.
   `{"status": "ok"}`.
 - **Dev servers listen on 127.0.0.1 only.** They are not reachable from other
   devices on the network unless explicitly overridden for one session.
+- **Least-privilege database users.** The API connects as `sms_app`, which can
+  only read and write rows. Only `sms_migrator` can change the schema, and it
+  is used only by migrations. Neither is a superuser. Tests verify that
+  `sms_app` is refused when it tries to create a table.
+- **Database access is restricted to the project's users.** Other users on
+  the PostgreSQL server cannot connect to `sms_dev` or `sms_test`.
+- **Database passwords are never displayed or typed.** They are generated
+  into `backend/.env` (mode 600) and PostgreSQL receives only SCRAM-SHA-256
+  hashes.
+- **Tests cannot touch a non-test database.** The app refuses to start in
+  testing mode unless every database name ends in `_test`.
+- **The readiness check reveals nothing internal.** It returns only
+  `{"status": "ok"}` or `{"status": "unavailable"}`; details go to the log.
 - **Commits use a GitHub no-reply email** so personal email addresses are not
   published in this public repository.
 
@@ -47,6 +60,18 @@ statement.
 
 The Next.js 16.4.2 template installs ESLint 9. It is kept until Next.js's
 template and plugins support ESLint 10. No vulnerability is reported for it.
+
+### Local database users share passwords across dev and test
+
+`sms_app` and `sms_migrator` each use one password for both `sms_dev` and
+`sms_test`. This is acceptable on a single developer machine. Production will
+use separate users and credentials, set up with deployment.
+
+### `sms_app` can write to `alembic_version`
+
+Default privileges give `sms_app` row access to every table `sms_migrator`
+creates, including Alembic's `alembic_version` bookkeeping table. The API
+never touches it. To be tightened if a later review finds it worthwhile.
 
 ### `psycopg[binary]` in production
 
