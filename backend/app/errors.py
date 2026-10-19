@@ -1,11 +1,17 @@
-"""JSON error responses that never expose stack traces or internal details."""
+"""JSON error responses that never expose stack traces or internal details.
+
+Every error body includes the request ID, so a user can quote it and the
+matching server log lines can be found.
+"""
 
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
+from app.observability import get_request_id
+
 
 def _error_body(code: str, message: str) -> dict:
-    return {"error": {"code": code, "message": message}}
+    return {"error": {"code": code, "message": message, "request_id": get_request_id()}}
 
 
 def register_error_handlers(app: Flask) -> None:

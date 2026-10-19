@@ -11,6 +11,7 @@ from sqlalchemy.engine import make_url
 
 MIN_SECRET_KEY_LENGTH = 32
 TEST_DATABASE_SUFFIX = "_test"
+LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 
 
 class BaseConfig:
@@ -29,10 +30,13 @@ class BaseConfig:
     }
     # Reject request bodies larger than 1 MB (responds with 413).
     MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+    LOG_LEVEL = "INFO"
+    # "json" (one object per line, for log collectors) or "text" (for people).
+    LOG_FORMAT = "json"
 
 
 class DevelopmentConfig(BaseConfig):
-    pass
+    LOG_FORMAT = "text"
 
 
 class ProductionConfig(BaseConfig):
@@ -69,10 +73,14 @@ def load_from_environment(config: dict) -> None:
     config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
     config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
     config["MIGRATION_DATABASE_URI"] = os.environ.get("MIGRATION_DATABASE_URL")
+    config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", config["LOG_LEVEL"]).upper()
 
 
 def validate_config(config: dict) -> None:
     """Stop the app from starting with missing or unsafe settings."""
+    if config.get("LOG_LEVEL") not in LOG_LEVELS:
+        raise RuntimeError(f"LOG_LEVEL must be one of: {', '.join(LOG_LEVELS)}.")
+
     if config.get("TESTING"):
         _validate_test_databases(config)
         return

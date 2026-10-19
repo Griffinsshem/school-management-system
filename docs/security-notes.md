@@ -31,6 +31,13 @@ statement.
   testing mode unless every database name ends in `_test`.
 - **The readiness check reveals nothing internal.** It returns only
   `{"status": "ok"}` or `{"status": "unavailable"}`; details go to the log.
+- **Every request has an ID, and logs leave out personal data.** The ID is
+  returned in `X-Request-ID`, included in error bodies and stamped on every
+  log line. An incoming ID is reused only if it is 8 to 64 letters, digits,
+  `-` or `_`, so it cannot forge log lines or tamper with headers. The
+  per-request summary records method, path, status and duration only: never
+  query strings, bodies, headers, cookies or IP addresses. Control characters
+  in the path are escaped so a crafted URL cannot fake a log line.
 - **CI runs with read-only permissions and no secrets.** Third-party GitHub
   Actions are pinned to exact commit IDs, so their code cannot change without
   a reviewed commit here. Checkout does not keep Git credentials.
@@ -77,6 +84,18 @@ use separate users and credentials, set up with deployment.
 Default privileges give `sms_app` row access to every table `sms_migrator`
 creates, including Alembic's `alembic_version` bookkeeping table. The API
 never touches it. To be tightened if a later review finds it worthwhile.
+
+### The development server logs query strings and IPs
+
+Flask's built-in development server prints its own access line for each
+request, including the query string and client IP. It is used only locally.
+The production web server (set up with deployment) must have its access log
+disabled or configured to the same rules as the app's summary line.
+
+### IP addresses are not logged yet
+
+Login rate limiting (Phase B) may need client IPs. Whether and how long to
+keep them will be decided then, with Kenya's Data Protection Act in mind.
 
 ### `psycopg[binary]` in production
 

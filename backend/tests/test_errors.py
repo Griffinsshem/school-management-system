@@ -26,6 +26,7 @@ def test_unexpected_error_returns_generic_500_without_details():
         "error": {
             "code": "internal_server_error",
             "message": "An unexpected error occurred.",
+            "request_id": response.headers["X-Request-ID"],
         }
     }
     assert "secret internal detail" not in body

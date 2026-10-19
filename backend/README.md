@@ -60,6 +60,7 @@ end in `_test`.
 |-------------------------------|-----------------------------------------------------------------|
 | `APP_ENV`                     | `development` or `production`. If unset, production checks apply. |
 | `SECRET_KEY`                  | At least 32 random characters. The app refuses to start otherwise. |
+| `LOG_LEVEL`                   | `DEBUG`, `INFO` (default), `WARNING` or `ERROR`. Invalid values stop startup. |
 | `DATABASE_URL`                | API connection as `sms_app` (rows only).                        |
 | `MIGRATION_DATABASE_URL`      | Migration connection as `sms_migrator` (schema owner).          |
 | `TEST_DATABASE_URL`           | Test connection as `sms_app` to `sms_test`.                     |
@@ -76,7 +77,23 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/health/ready` | `200 {"status":"ok"}` or `503 {"status":"unavailable"}` |
 
 Errors are always JSON in the form
-`{"error": {"code": "...", "message": "..."}}` and never include stack traces.
+`{"error": {"code": "...", "message": "...", "request_id": "..."}}` and never
+include stack traces.
+
+## Logging and request IDs
+
+Every response carries an `X-Request-ID` header. A client may send its own
+`X-Request-ID` (8 to 64 letters, digits, `-` or `_`); anything else is
+replaced with a new random ID. The same ID appears in error bodies and on
+every log line for that request, so a reported error can be traced.
+
+Logs go to standard output: readable text in development, one JSON object
+per line in production. Each request produces one summary line with the
+method, path, status and duration. Query strings, request bodies, headers,
+cookies and IP addresses are never logged by the app.
+
+The Flask development server prints its own access lines as well, which do
+include the query string and client IP. It is for local use only.
 
 ## Dependencies
 
