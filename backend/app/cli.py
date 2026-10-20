@@ -1,0 +1,57 @@
+"""Terminal commands. Run them with `flask --app app <command>`."""
+
+import click
+from flask import Flask, current_app
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+
+from app.auth.passwords import PasswordPolicyError, hash_password
+from app.extensions import db
+from app.models import User
+from app.models.user import MAX_NAME_LENGTH, EmailFormatError, normalize_email, validate_email
+
+
+def register_cli(app: Flask) -> None:
+    @app.cli.command("create-platform-admin")
+    @click.option("--email", prompt="Email", help="The administrator's email address.")
+    @click.option("--name", "full_name", prompt="Full name", help="The administrator's name.")
+    def create_platform_admin(email: str, full_name: str) -> None:
+        """Create a platform administrator.
+
+        The password is always typed at a hidden prompt, never passed as an
+        option, so it cannot end up in shell history.
+        """
+        email = normalize_email(email)
+        try:
+            validate_email(email)
+        except EmailFormatError as error:
+            raise click.ClickException(str(error)) from None
+
+        full_name = full_name.strip()
+        if not full_name or len(full_name) > MAX_NAME_LENGTH:
+            raise click.ClickException(f"Full name must be 1 to {MAX_NAME_LENGTH} characters.")
+
+        if db.session.scalar(select(User.id).where(User.email == email)) is not None:
+            raise click.ClickException("A user with that email already exists.")
+
+        password = click.prompt("Password", hide_input=True, confirmation_prompt=True)
+        try:
+            password_hash = hash_password(password)
+        except PasswordPolicyError as error:
+            raise click.ClickException(str(error)) from None
+
+        user = User(
+            email=email,
+            full_name=full_name,
+            password_hash=password_hash,
+            is_platform_admin=True,
+        )
+        db.session.add(user)
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            raise click.ClickException("A user with that email already exists.") from None
+
+        current_app.logger.info("Platform administrator created: user_id=%s", user.id)
+        click.echo(f"Platform administrator created: {email}")

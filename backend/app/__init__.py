@@ -38,9 +38,13 @@ def create_app(config_name: str | None = None, overrides: dict | None = None) ->
     db.init_app(app)
     migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))
 
+    # Importing the models registers their tables with SQLAlchemy and migrations.
+    from app import models  # noqa: F401
     from app.api.v1 import api_v1
+    from app.cli import register_cli
 
     app.register_blueprint(api_v1)
     register_error_handlers(app)
+    register_cli(app)
 
     return app

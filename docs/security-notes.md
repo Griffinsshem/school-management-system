@@ -38,6 +38,16 @@ statement.
   per-request summary records method, path, status and duration only: never
   query strings, bodies, headers, cookies or IP addresses. Control characters
   in the path are escaped so a crafted URL cannot fake a log line.
+- **Passwords are stored only as Argon2id hashes** (19 MiB memory,
+  2 iterations, 1 thread: one of OWASP's recommended configurations, chosen
+  to fit a 512 MB server). Passwords must be 12 to 128 characters; there are
+  no composition rules. Hash parameters can be raised later, and old hashes
+  are detected for upgrade.
+- **Platform administrators can only be created from the terminal.** No API
+  endpoint can grant the role, and the command never accepts the password as
+  an argument or prints it.
+- **Emails are unique regardless of letter case**, enforced by a database
+  check constraint as well as application code.
 - **CI runs with read-only permissions and no secrets.** Third-party GitHub
   Actions are pinned to exact commit IDs, so their code cannot change without
   a reviewed commit here. Checkout does not keep Git credentials.
@@ -96,6 +106,12 @@ disabled or configured to the same rules as the app's summary line.
 
 Login rate limiting (Phase B) may need client IPs. Whether and how long to
 keep them will be decided then, with Kenya's Data Protection Act in mind.
+
+### No breached-password check yet
+
+Passwords are not yet checked against lists of known breached passwords, as
+NIST recommends. This needs either an external service or a bundled list and
+will be considered with the login feature.
 
 ### `psycopg[binary]` in production
 

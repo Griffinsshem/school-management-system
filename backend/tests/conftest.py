@@ -3,12 +3,16 @@ from pathlib import Path
 
 import pytest
 from dotenv import dotenv_values
+from flask_migrate import upgrade
+from sqlalchemy import text
 
 from app import create_app
 from app.extensions import db
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
+# Emptied after every test that uses the `db_app` fixture, children first.
+TABLES_TO_CLEAN = ("users",)
 
 
 def pytest_configure(config):
@@ -37,3 +41,23 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture(scope="session")
+def migrated_database():
+    """Bring the test database to the latest migration once per test run."""
+    app = create_app("testing")
+    with app.app_context():
+        upgrade()
+        db.engine.dispose()
+
+
+@pytest.fixture
+def db_app(migrated_database, app):
+    """An app whose test database has every table, emptied again after the test."""
+    yield app
+    with app.app_context():
+        db.session.remove()
+        for table in TABLES_TO_CLEAN:
+            db.session.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
+        db.session.commit()

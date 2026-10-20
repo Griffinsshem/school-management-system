@@ -95,6 +95,18 @@ cookies and IP addresses are never logged by the app.
 The Flask development server prints its own access lines as well, which do
 include the query string and client IP. It is for local use only.
 
+## Users and administrators
+
+There is no public sign-up. The first platform administrator is created from
+the terminal (run from `backend/` with the virtual environment active):
+
+    flask --app app create-platform-admin
+
+It asks for an email address, a name and a password (typed twice, hidden).
+The password is never accepted as a command-line option, so it cannot end up
+in shell history. Passwords must be 12 to 128 characters and are stored only
+as Argon2id hashes.
+
 ## Dependencies
 
 - `requirements.txt`: runtime packages, pinned to exact versions. Production
