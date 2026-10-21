@@ -25,6 +25,11 @@ class UserSession(db.Model):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     # Fixed at login: the absolute timeout.
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # The school this session is working in. Set only after the server has
+    # checked an active membership; never taken from the request on its own.
+    active_school_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("schools.id", ondelete="SET NULL")
+    )
 
     def __repr__(self) -> str:
         return f"<UserSession {self.id}>"

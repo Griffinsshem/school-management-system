@@ -68,6 +68,20 @@ statement.
 - **Request bodies are validated with Pydantic.** Unknown fields are refused,
   and validation errors name the field without repeating the submitted value,
   so passwords are never echoed or logged.
+- **A request's school comes only from the server-side session.** The
+  active school is set only after checking for an active membership in an
+  active school, and that check is repeated on every request, so revoking a
+  membership or deactivating a school takes effect immediately. Every
+  inaccessible school gets the same `403`, so other schools' IDs cannot be
+  probed. Code that touches school data must use `current_school()` or
+  `school_required`, never an ID from the request.
+- **Platform administrators have no automatic access to school data.** They
+  can create and list schools, but reading a school's records needs a
+  membership in that school. This limits the damage if an administrator
+  account is compromised.
+- **Schools and memberships are deactivated, never deleted.** The database
+  refuses to delete a user or school that has memberships, so records cannot
+  be lost by accident.
 - **Forwarded client IPs are trusted only from configured proxies.**
   `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
   clients cannot fake their IP to dodge rate limits.
@@ -149,6 +163,20 @@ Passwords are not yet checked against lists of known breached passwords, as
 NIST recommends. This needs either an external service or a bundled list and
 will be reconsidered when users can choose or change their own passwords
 (invitations, B5).
+
+### Administrative changes are logged, not yet audited
+
+Creating a school, adding a membership and switching schools are written to
+the application log with IDs only (no names or emails). Logs are not a
+tamper-resistant audit trail. Refused attempts to switch into another school
+appear only as `403` lines in the request log, without a dedicated warning.
+A proper audit table, recording who changed what and when (and refused
+attempts), is planned with roles and permissions (B4).
+
+### The school list is not paginated
+
+`GET /api/v1/platform/schools` returns every school. This is fine for
+hundreds of schools; pagination will be added before it could grow large.
 
 ### `psycopg[binary]` in production
 

@@ -7,6 +7,7 @@ enough randomness (256 bits) that a fast hash is safe here, unlike passwords.
 
 import hashlib
 import secrets
+import uuid
 from datetime import UTC, datetime
 from functools import wraps
 
@@ -39,10 +40,11 @@ def cookie_name() -> str:
     return "__Host-sms_session" if current_app.config["AUTH_COOKIE_SECURE"] else "sms_session"
 
 
-def start_session(user: User) -> str:
+def start_session(user: User, active_school_id: uuid.UUID | None = None) -> str:
     """Create a brand-new session for `user` and return its token.
 
-    A new token on every login defeats session fixation. The caller commits.
+    A new token on every login defeats session fixation. The caller commits,
+    and is responsible for having checked `active_school_id`.
     """
     token = new_token()
     now = utcnow()
@@ -52,6 +54,7 @@ def start_session(user: User) -> str:
             token_hash=hash_token(token),
             last_seen_at=now,
             expires_at=now + current_app.config["SESSION_ABSOLUTE_TIMEOUT"],
+            active_school_id=active_school_id,
         )
     )
     return token
@@ -136,6 +139,21 @@ def login_required(view):
     def wrapped(*args, **kwargs):
         if current_user() is None:
             raise ApiError(401, "unauthorized", "You need to log in to do that.")
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def platform_admin_required(view):
+    """Allow only logged-in platform administrators (401 or 403 otherwise)."""
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            raise ApiError(401, "unauthorized", "You need to log in to do that.")
+        if not user.is_platform_admin:
+            raise ApiError(403, "forbidden", "You do not have permission to do that.")
         return view(*args, **kwargs)
 
     return wrapped

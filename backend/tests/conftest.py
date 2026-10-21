@@ -9,12 +9,12 @@ from sqlalchemy import text
 from app import create_app
 from app.auth.passwords import hash_password
 from app.extensions import db
-from app.models import User
+from app.models import Membership, School, User
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 # Emptied after every test that uses the `db_app` fixture, children first.
-TABLES_TO_CLEAN = ("login_attempts", "sessions", "users")
+TABLES_TO_CLEAN = ("login_attempts", "sessions", "memberships", "schools", "users")
 
 
 def pytest_configure(config):
@@ -82,3 +82,31 @@ def make_user(db_app):
             return user.id
 
     return _make
+
+
+@pytest.fixture
+def make_school(db_app):
+    """Create a school in the test database and return its ID."""
+
+    def _make(code="greenfield-academy", name="Greenfield Academy", county_code=47, **fields):
+        with db_app.app_context():
+            school = School(code=code, name=name, county_code=county_code, **fields)
+            db.session.add(school)
+            db.session.commit()
+            return school.id
+
+    return _make
+
+
+@pytest.fixture
+def add_member(db_app):
+    """Give a user a role in a school and return the membership ID."""
+
+    def _add(user_id, school_id, role="teacher", **fields):
+        with db_app.app_context():
+            membership = Membership(user_id=user_id, school_id=school_id, role=role, **fields)
+            db.session.add(membership)
+            db.session.commit()
+            return membership.id
+
+    return _add

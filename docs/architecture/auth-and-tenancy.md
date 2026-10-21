@@ -16,13 +16,16 @@ Status: approved design (Phase B). Sections are marked **Implemented** or
 | Table         | Purpose                                                   | Status      |
 |---------------|-----------------------------------------------------------|-------------|
 | `users`       | One login identity per person                             | Implemented |
-| `schools`     | Each school on the platform                               | Planned (B3) |
-| `memberships` | Links a user to a school with a role; one person can belong to several schools | Planned (B3) |
-| `sessions`    | Hashed session tokens and expiry (active school added in B3) | Implemented |
+| `schools`     | Each school on the platform, with its county (1 to 47, Constitution order) | Implemented |
+| `memberships` | Links a user to a school with a role; one person can belong to several schools and hold several roles in one | Implemented |
+| `sessions`    | Hashed session tokens, expiry and the active school       | Implemented |
 | `login_attempts` | Recent failed logins, keyed by hashed account and IP | Implemented |
 
 `users.is_platform_admin` can only be set by the `flask create-platform-admin`
-terminal command. No API endpoint can grant it. **Implemented.**
+terminal command. No API endpoint can grant it. Platform administrators
+manage schools but have no automatic access to any school's data; that needs
+a membership. Schools and memberships are deactivated, never deleted.
+**Implemented.**
 
 ## Passwords
 
@@ -58,8 +61,6 @@ upgraded at login. **Implemented.**
   message, and unknown emails still run a password check so timing does not
   reveal which accounts exist.
 
-**Planned:** storing the active school in the session (B3).
-
 ## Same-domain API access (planned, B6)
 
 The browser only talks to the frontend's domain; Next.js forwards `/api/...`
@@ -67,16 +68,26 @@ to the Flask API. The session cookie stays first-party, so browsers that
 block cross-site cookies do not break login. To be verified on the hosting
 platforms before relying on it.
 
-## School isolation (planned, B3 and B4)
+## School isolation
 
 Every school-owned row has a `school_id`. The current school always comes
 from the logged-in user's membership, never from the request.
 
-1. **Application layer:** every school-owned query goes through one shared
-   helper that requires the current school.
-2. **Database layer:** PostgreSQL Row-Level Security policies restrict rows
-   to the current school, set per request. The API connects as `sms_app`,
-   which does not own the tables, so the policies cannot be bypassed by it.
+**Implemented** (B3): the session stores an active school, set only by
+`POST /api/v1/auth/active-school` after checking for an active membership in
+an active school (or automatically at login when the user has exactly one
+school). `current_school()` repeats the check on every request and clears the
+active school if access has ended. Inaccessible schools all get the same
+`403`. Tests cover a School A user trying to switch to School B, to an
+unknown ID, to an inactive school and to a school whose membership ended.
+
+1. **Application layer** (B3 helper in place; used by school features from
+   B4): every school-owned query goes through `current_school()` or the
+   `school_required` decorator.
+2. **Database layer** (planned, B4): PostgreSQL Row-Level Security policies
+   restrict rows to the current school, set per request. The API connects as
+   `sms_app`, which does not own the tables, so the policies cannot be
+   bypassed by it.
 
 Every feature that touches school data includes tests in which a School A
 user tries to read and change School B data and is refused.

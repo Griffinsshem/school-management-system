@@ -79,7 +79,10 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/health/ready` | `200 {"status":"ok"}` or `503 {"status":"unavailable"}` |
 | POST   | `/api/v1/auth/login`   | `200 {"user": {...}}` and a session cookie; `401`, `422` or `429` |
 | POST   | `/api/v1/auth/logout`  | `204`; ends the session and clears the cookie     |
-| GET    | `/api/v1/auth/me`      | `200 {"user": {...}}` or `401`                    |
+| GET    | `/api/v1/auth/me`      | `200` with the user, their memberships and active school; or `401` |
+| POST   | `/api/v1/auth/active-school` | `200` (same body as `/me`), `403`, `401` or `422` |
+| POST   | `/api/v1/platform/schools` | Platform admin only: `201 {"school": {...}}`, `409` (code taken), `422`, `401` or `403` |
+| GET    | `/api/v1/platform/schools` | Platform admin only: `200 {"schools": [...]}`, `401` or `403` |
 
 Errors are always JSON in the form
 `{"error": {"code": "...", "message": "...", "request_id": "..."}}` and never
@@ -115,6 +118,37 @@ It asks for an email address, a name and a password (typed twice, hidden).
 The password is never accepted as a command-line option, so it cannot end up
 in shell history. Passwords must be 12 to 128 characters and are stored only
 as Argon2id hashes.
+
+## Schools and memberships
+
+A platform administrator creates schools with `POST /api/v1/platform/schools`
+and a body such as
+`{"name": "Greenfield Academy", "code": "greenfield-academy", "county_code": 32}`.
+
+- `code` is a short unique identifier: 3 to 50 lowercase letters or digits,
+  optionally joined by single hyphens. It is lowercased automatically.
+- `county_code` is the county's number in the First Schedule of the
+  Constitution, from 1 (Mombasa) to 47 (Nairobi City). Responses include the
+  county's name. The full list is in `app/models/school.py`.
+- Schools are deactivated, never deleted.
+
+Being a platform administrator does not give access to any school's data.
+Access comes only from a membership: a user's role in a school
+(`school_admin`, `principal`, `teacher`, `finance_officer`, `registrar`,
+`guardian` or `student`). One person can hold several roles in a school.
+Until invitations exist, memberships are added from the terminal:
+
+    flask --app app add-membership --email ada@example.com --school-code greenfield-academy --role school_admin
+
+### The active school
+
+Each session works in one school at a time. A user with exactly one school
+starts in it at login; otherwise they choose with
+`POST /api/v1/auth/active-school` and `{"school_id": "..."}`. The server
+checks for an active membership in an active school first, and gives the
+same `403` for a school that does not exist, is inactive or is someone
+else's. The check is repeated on every request, so deactivating a membership
+or a school removes access immediately.
 
 ## Login sessions
 
