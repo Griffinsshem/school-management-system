@@ -61,7 +61,7 @@ upgraded at login. **Implemented.**
   message, and unknown emails still run a password check so timing does not
   reveal which accounts exist.
 
-## Same-domain API access (planned, B6)
+## Same-domain API access (planned, B7)
 
 The browser only talks to the frontend's domain; Next.js forwards `/api/...`
 to the Flask API. The session cookie stays first-party, so browsers that
@@ -81,10 +81,10 @@ active school if access has ended. Inaccessible schools all get the same
 `403`. Tests cover a School A user trying to switch to School B, to an
 unknown ID, to an inactive school and to a school whose membership ended.
 
-1. **Application layer** (B3 helper in place; used by school features from
-   B4): every school-owned query goes through `current_school()` or the
-   `school_required` decorator.
-2. **Database layer** (planned, B4): PostgreSQL Row-Level Security policies
+1. **Application layer** (implemented): every school-owned query goes
+   through `current_school()`, `school_required` or `permission_required`.
+   The member endpoints (B4) look up IDs only within the active school.
+2. **Database layer** (planned, B5): PostgreSQL Row-Level Security policies
    restrict rows to the current school, set per request. The API connects as
    `sms_app`, which does not own the tables, so the policies cannot be
    bypassed by it.
@@ -92,21 +92,33 @@ unknown ID, to an inactive school and to a school whose membership ended.
 Every feature that touches school data includes tests in which a School A
 user tries to read and change School B data and is refused.
 
-## Roles and permissions (planned, B4)
+## Roles and permissions
 
-The roles (platform administrator, school administrator, principal, teacher,
-finance officer, registrar, parent or guardian, student) map to explicit
-permissions in code, such as `students.read`. Each endpoint declares the
-permission it requires and the server checks it. Roles have nothing by
-default.
+**Implemented** (B4). The school roles (school administrator, principal,
+teacher, finance officer, registrar, parent or guardian, student) map to
+explicit permissions in `app/auth/permissions.py`, such as `members.read`.
+Roles have nothing by default; features add the permissions they need. A
+user's permissions are the union of their active roles in the active school.
+Each endpoint declares the permission it requires with
+`permission_required`, and the server checks it. Platform administrators are
+separate: they manage schools but hold no school permissions unless they
+are also given a membership.
 
-## Sign-up (planned, B5)
+## Audit trail
+
+**Implemented** (B4). `audit_events` records who did what, in which school,
+to what, the outcome (`success` or `denied`) and the request ID, with IDs
+only. The API's database user can only add and read events. Successful
+changes are recorded in the same transaction as the change; refusals are
+recorded separately.
+
+## Sign-up (planned, B6)
 
 There is no public sign-up. A platform administrator creates a school and
 invites its first school administrator, who invites staff, parents and
 students. Invitations are single-use and expire.
 
-## Password reset (planned, B7)
+## Password reset (planned, B8)
 
 Self-service reset by email requires an email provider, still to be chosen.
 Until then a school administrator can reset a user's password.

@@ -10,6 +10,7 @@ from app.auth.passwords import (
     needs_rehash,
     verify_password,
 )
+from app.auth.permissions import current_permissions
 from app.auth.schools import active_memberships, current_school, only_school_id, set_active_school
 from app.auth.sessions import (
     clear_session_cookie,
@@ -52,6 +53,9 @@ def _context_json(user: User) -> dict:
         "active_school": (
             SchoolOut.model_validate(school).model_dump(mode="json") if school else None
         ),
+        # For showing or hiding parts of the interface only: every endpoint
+        # checks its own permission on the server.
+        "permissions": sorted(current_permissions()),
     }
 
 

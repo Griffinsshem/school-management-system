@@ -16,6 +16,7 @@ from functools import wraps
 from flask import g
 from sqlalchemy import select
 
+from app import audit
 from app.auth.sessions import current_user
 from app.errors import ApiError
 from app.extensions import db
@@ -92,11 +93,14 @@ def set_active_school(user: User, school_id: uuid.UUID) -> School:
     """Make `school_id` this session's active school, or raise 403. Commits."""
     school = accessible_school(user, school_id)
     if school is None:
+        # Recorded, because it may be someone probing other schools.
+        audit.record_denied("school.selected", target_type="school", target_id=school_id)
         # The same answer whether the school does not exist, is inactive or
         # belongs to someone else, so other schools' IDs cannot be probed.
         raise ApiError(403, "school_not_available", SCHOOL_NOT_AVAILABLE)
 
     g.current_session.active_school_id = school.id
+    audit.record("school.selected", school_id=school.id, target_type="school", target_id=school.id)
     db.session.commit()
     g.current_school = school
     return school

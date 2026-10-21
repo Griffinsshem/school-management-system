@@ -5,6 +5,7 @@ from flask import Flask, current_app
 from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 
+from app import audit
 from app.auth import rate_limit
 from app.auth.passwords import PasswordPolicyError, hash_password
 from app.auth.sessions import utcnow
@@ -93,6 +94,13 @@ def register_cli(app: Flask) -> None:
             membership = Membership(user_id=user.id, school_id=school.id, role=role)
             db.session.add(membership)
         try:
+            db.session.flush()  # Assigns the ID for the audit event.
+            audit.record(
+                "membership.added",
+                school_id=school.id,
+                target_type="membership",
+                target_id=membership.id,
+            )
             db.session.commit()
         except IntegrityError:
             db.session.rollback()

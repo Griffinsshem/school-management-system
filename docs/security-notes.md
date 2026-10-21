@@ -82,6 +82,22 @@ statement.
 - **Schools and memberships are deactivated, never deleted.** The database
   refuses to delete a user or school that has memberships, so records cannot
   be lost by accident.
+- **Permissions are explicit and checked on the server.** Each role maps to
+  a list of permissions in code, with nothing granted by default, and every
+  school endpoint declares the permission it needs. An unknown permission
+  name stops the app from starting. The permissions sent to the browser in
+  `/me` are for display only.
+- **IDs in URLs are looked up only inside the active school.** A record from
+  another school gets the same `404` as one that does not exist.
+- **A school cannot lose its last school admin.** Membership changes in a
+  school are serialized by locking the school's row, so two simultaneous
+  requests cannot remove each other.
+- **The audit trail is append-only for the API.** The migration removes
+  `sms_app`'s UPDATE, DELETE and TRUNCATE rights on `audit_events`, and tests
+  prove the database refuses them. Successful changes are recorded in the
+  same transaction as the change; refusals (wrong school, missing
+  permission, platform access) are recorded on their own. Events hold IDs
+  only, never names or emails.
 - **Forwarded client IPs are trusted only from configured proxies.**
   `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
   clients cannot fake their IP to dodge rate limits.
@@ -162,16 +178,21 @@ possible later if monitoring shows a need.
 Passwords are not yet checked against lists of known breached passwords, as
 NIST recommends. This needs either an external service or a bundled list and
 will be reconsidered when users can choose or change their own passwords
-(invitations, B5).
+(invitations, B6).
 
-### Administrative changes are logged, not yet audited
+### Audit trail limits
 
-Creating a school, adding a membership and switching schools are written to
-the application log with IDs only (no names or emails). Logs are not a
-tamper-resistant audit trail. Refused attempts to switch into another school
-appear only as `403` lines in the request log, without a dedicated warning.
-A proper audit table, recording who changed what and when (and refused
-attempts), is planned with roles and permissions (B4).
+- The audit table cannot be changed through the API, but the schema owner
+  (`sms_migrator`) and the database superuser can still alter it. Shipping
+  events to separate storage is a later step.
+- How long audit events are kept has not been decided. They contain IDs,
+  which are still personal data under Kenya's Data Protection Act; a
+  retention period is to be set before real schools use the system.
+- Logins, logouts and the automatic choice of school at login are not
+  audited; only explicit school switches are. Failed logins are counted for
+  rate limiting but not audited.
+- The migration names the runtime user `sms_app`. A production database
+  must use the same name, or the REVOKE must be adjusted.
 
 ### The school list is not paginated
 

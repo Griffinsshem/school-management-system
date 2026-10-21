@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from dotenv import dotenv_values
 from flask_migrate import upgrade
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 
 from app import create_app
 from app.auth.passwords import hash_password
@@ -54,8 +54,21 @@ def migrated_database():
         db.engine.dispose()
 
 
+@pytest.fixture(scope="session")
+def schema_owner_engine(migrated_database):
+    """A connection as the schema owner (sms_migrator), for test clean-up only.
+
+    The API's user cannot delete audit events, by design, so tests empty that
+    table through the owner instead.
+    """
+    app = create_app("testing")
+    engine = create_engine(app.config["MIGRATION_DATABASE_URI"])
+    yield engine
+    engine.dispose()
+
+
 @pytest.fixture
-def db_app(migrated_database, app):
+def db_app(migrated_database, schema_owner_engine, app):
     """An app whose test database has every table, emptied again after the test."""
     yield app
     with app.app_context():
@@ -63,6 +76,8 @@ def db_app(migrated_database, app):
         for table in TABLES_TO_CLEAN:
             db.session.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
         db.session.commit()
+    with schema_owner_engine.begin() as connection:
+        connection.execute(text("DELETE FROM audit_events"))
 
 
 @pytest.fixture

@@ -14,6 +14,7 @@ from functools import wraps
 from flask import Response, current_app, g, request
 from sqlalchemy import delete, select
 
+from app import audit
 from app.errors import ApiError
 from app.extensions import db
 from app.models import User, UserSession
@@ -153,6 +154,7 @@ def platform_admin_required(view):
         if user is None:
             raise ApiError(401, "unauthorized", "You need to log in to do that.")
         if not user.is_platform_admin:
+            audit.record_denied("platform.access")
             raise ApiError(403, "forbidden", "You do not have permission to do that.")
         return view(*args, **kwargs)
 

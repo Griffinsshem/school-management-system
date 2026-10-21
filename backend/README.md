@@ -83,6 +83,8 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | POST   | `/api/v1/auth/active-school` | `200` (same body as `/me`), `403`, `401` or `422` |
 | POST   | `/api/v1/platform/schools` | Platform admin only: `201 {"school": {...}}`, `409` (code taken), `422`, `401` or `403` |
 | GET    | `/api/v1/platform/schools` | Platform admin only: `200 {"schools": [...]}`, `401` or `403` |
+| GET    | `/api/v1/school/members` | Needs `members.read`: `200 {"members": [...]}` for the active school; `401` or `403` |
+| POST   | `/api/v1/school/members/{id}/deactivate` | Needs `members.manage`: `200 {"member": {...}}`, `404`, `409` (last school admin), `401` or `403` |
 
 Errors are always JSON in the form
 `{"error": {"code": "...", "message": "...", "request_id": "..."}}` and never
@@ -149,6 +151,42 @@ checks for an active membership in an active school first, and gives the
 same `403` for a school that does not exist, is inactive or is someone
 else's. The check is repeated on every request, so deactivating a membership
 or a school removes access immediately.
+
+### Roles and permissions
+
+Each role grants an explicit list of permissions, defined in
+`app/auth/permissions.py`; nothing is granted by default. A user's
+permissions are those of all their active roles in the active school, and
+`GET /api/v1/auth/me` lists them as `permissions` (for the interface only:
+every endpoint checks on the server).
+
+| Permission       | Roles                       | Allows |
+|------------------|-----------------------------|--------|
+| `members.read`   | `school_admin`, `principal` | Listing the school's members |
+| `members.manage` | `school_admin`              | Deactivating a member |
+
+A school always keeps at least one active `school_admin`: deactivating the
+last one is refused with `409`.
+
+### Audit trail
+
+Security-relevant actions are recorded in the `audit_events` table: who did
+what, in which school, to what, whether it succeeded or was refused, and the
+request ID. Events hold IDs only. The API's database user can add and read
+events but cannot change or delete them. Recorded actions:
+
+| Action                   | When |
+|--------------------------|------|
+| `school.created`         | A platform admin creates a school |
+| `membership.added`       | `flask add-membership` adds or reactivates a role (no actor: terminal) |
+| `membership.deactivated` | A member is deactivated, or a deactivation is refused (`404`) |
+| `school.selected`        | A user switches school, or is refused (`403`) |
+| `platform.access`        | A non-admin is refused a platform endpoint |
+| A permission name        | A user is refused for lacking that permission, for example `members.manage` |
+
+To read the trail during development:
+
+    sudo -u postgres psql -d sms_dev -c "SELECT occurred_at, action, outcome, target_type FROM audit_events ORDER BY occurred_at"
 
 ## Login sessions
 

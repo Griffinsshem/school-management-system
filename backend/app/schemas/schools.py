@@ -57,3 +57,20 @@ class SelectSchoolRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     school_id: uuid.UUID
+
+
+class MemberUserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    full_name: str
+    email: str
+
+
+class SchoolMemberOut(BaseModel):
+    """One membership in the current school, as shown to its administrators."""
+
+    id: uuid.UUID
+    role: str
+    is_active: bool
+    user: MemberUserOut

@@ -9,6 +9,7 @@ from flask import Blueprint, current_app, g, jsonify
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app import audit
 from app.auth.sessions import platform_admin_required
 from app.errors import ApiError
 from app.extensions import db
@@ -35,6 +36,10 @@ def create_school():
     school = School(name=data.name, code=data.code, county_code=data.county_code)
     db.session.add(school)
     try:
+        db.session.flush()  # Assigns the ID for the audit event.
+        audit.record(
+            "school.created", school_id=school.id, target_type="school", target_id=school.id
+        )
         db.session.commit()
     except IntegrityError:
         # Another request created the same code at the same moment.
