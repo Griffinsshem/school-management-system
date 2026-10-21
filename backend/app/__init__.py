@@ -4,7 +4,9 @@ import os
 from pathlib import Path
 
 from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
 
+from app.auth.csrf import register_csrf_protection
 from app.config import get_config, load_from_environment, validate_config
 from app.errors import register_error_handlers
 from app.extensions import db, migrate
@@ -34,6 +36,12 @@ def create_app(config_name: str | None = None, overrides: dict | None = None) ->
 
     configure_logging(app)
     register_request_hooks(app)
+    register_csrf_protection(app)
+
+    proxy_count = app.config["TRUSTED_PROXY_COUNT"]
+    if proxy_count:
+        # Trust X-Forwarded-For from exactly this many proxies (for example Render's).
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_count, x_proto=proxy_count)
 
     db.init_app(app)
     migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))

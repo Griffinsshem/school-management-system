@@ -6,12 +6,15 @@ development, or from the host's settings in production.
 """
 
 import os
+from datetime import timedelta
+from urllib.parse import urlsplit
 
 from sqlalchemy.engine import make_url
 
 MIN_SECRET_KEY_LENGTH = 32
 TEST_DATABASE_SUFFIX = "_test"
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
+MAX_TRUSTED_PROXY_COUNT = 5
 
 
 class BaseConfig:
@@ -34,9 +37,31 @@ class BaseConfig:
     # "json" (one object per line, for log collectors) or "text" (for people).
     LOG_FORMAT = "json"
 
+    # The only origin allowed to send state-changing requests (CSRF protection).
+    FRONTEND_ORIGIN: str | None = None
+    # Number of reverse proxies in front of the API whose X-Forwarded-For header
+    # is trusted. 0 means the header is ignored, so clients cannot fake their IP.
+    TRUSTED_PROXY_COUNT = 0
+
+    # Login session cookie. Secure cookies are named with the __Host- prefix,
+    # which makes browsers enforce Secure, Path=/ and no Domain.
+    AUTH_COOKIE_SECURE = True
+    SESSION_IDLE_TIMEOUT = timedelta(minutes=30)
+    SESSION_ABSOLUTE_TIMEOUT = timedelta(hours=8)
+    # Activity extends the idle timer, written to the database at most this often.
+    SESSION_TOUCH_INTERVAL = timedelta(minutes=1)
+
+    # Failed-login limits within a sliding window.
+    LOGIN_WINDOW = timedelta(minutes=15)
+    LOGIN_MAX_FAILURES_PER_ACCOUNT = 10
+    LOGIN_MAX_FAILURES_PER_IP = 50
+
 
 class DevelopmentConfig(BaseConfig):
     LOG_FORMAT = "text"
+    # Local development runs on plain http, where Secure cookies are not sent.
+    AUTH_COOKIE_SECURE = False
+    FRONTEND_ORIGIN = "http://127.0.0.1:3000"
 
 
 class ProductionConfig(BaseConfig):
@@ -47,6 +72,8 @@ class TestingConfig(BaseConfig):
     TESTING = True
     # A fixed, clearly fake key used only by the automated tests.
     SECRET_KEY = "testing-only-key-never-use-outside-tests"  # noqa: S105
+    AUTH_COOKIE_SECURE = False
+    FRONTEND_ORIGIN = "http://localhost:3000"
 
 
 CONFIGS: dict[str, type[BaseConfig]] = {
@@ -74,6 +101,13 @@ def load_from_environment(config: dict) -> None:
     config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
     config["MIGRATION_DATABASE_URI"] = os.environ.get("MIGRATION_DATABASE_URL")
     config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", config["LOG_LEVEL"]).upper()
+    config["FRONTEND_ORIGIN"] = os.environ.get("FRONTEND_ORIGIN", config["FRONTEND_ORIGIN"])
+    proxy_count = os.environ.get("TRUSTED_PROXY_COUNT")
+    if proxy_count is not None:
+        try:
+            config["TRUSTED_PROXY_COUNT"] = int(proxy_count)
+        except ValueError:
+            raise RuntimeError("TRUSTED_PROXY_COUNT must be a whole number.") from None
 
 
 def validate_config(config: dict) -> None:
@@ -83,17 +117,21 @@ def validate_config(config: dict) -> None:
 
     if config.get("TESTING"):
         _validate_test_databases(config)
-        return
+    else:
+        secret_key = config.get("SECRET_KEY")
+        if not secret_key or len(secret_key) < MIN_SECRET_KEY_LENGTH:
+            raise RuntimeError(
+                f"SECRET_KEY must be set and at least {MIN_SECRET_KEY_LENGTH} characters long. "
+                "See backend/.env.example."
+            )
+        if not config.get("SQLALCHEMY_DATABASE_URI"):
+            raise RuntimeError("DATABASE_URL must be set. See backend/.env.example.")
 
-    secret_key = config.get("SECRET_KEY")
-    if not secret_key or len(secret_key) < MIN_SECRET_KEY_LENGTH:
-        raise RuntimeError(
-            f"SECRET_KEY must be set and at least {MIN_SECRET_KEY_LENGTH} characters long. "
-            "See backend/.env.example."
-        )
+    proxy_count = config.get("TRUSTED_PROXY_COUNT")
+    if not isinstance(proxy_count, int) or not 0 <= proxy_count <= MAX_TRUSTED_PROXY_COUNT:
+        raise RuntimeError(f"TRUSTED_PROXY_COUNT must be between 0 and {MAX_TRUSTED_PROXY_COUNT}.")
 
-    if not config.get("SQLALCHEMY_DATABASE_URI"):
-        raise RuntimeError("DATABASE_URL must be set. See backend/.env.example.")
+    _validate_frontend_origin(config)
 
 
 def _validate_test_databases(config: dict) -> None:
@@ -108,3 +146,25 @@ def _validate_test_databases(config: dict) -> None:
                 f"Refusing to run tests: the database for {setting} must have a name "
                 f"ending in '{TEST_DATABASE_SUFFIX}'."
             )
+
+
+def _validate_frontend_origin(config: dict) -> None:
+    """FRONTEND_ORIGIN must be a bare origin such as https://app.example.com."""
+    origin = config.get("FRONTEND_ORIGIN")
+    if not origin:
+        raise RuntimeError("FRONTEND_ORIGIN must be set. See backend/.env.example.")
+
+    parts = urlsplit(origin)
+    is_bare_origin = (
+        parts.scheme in ("http", "https")
+        and parts.netloc
+        and not parts.path
+        and not parts.query
+        and not parts.fragment
+    )
+    if not is_bare_origin:
+        raise RuntimeError(
+            "FRONTEND_ORIGIN must look like https://app.example.com (no path or trailing slash)."
+        )
+    if config.get("AUTH_COOKIE_SECURE") and parts.scheme != "https":
+        raise RuntimeError("FRONTEND_ORIGIN must use https when secure cookies are enabled.")

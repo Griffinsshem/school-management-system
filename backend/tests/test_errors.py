@@ -43,8 +43,9 @@ def test_oversized_request_body_is_rejected():
         return {"size": len(request.get_data())}
 
     client = app.test_client()
-    small = client.post("/echo-size", data=b"x" * 10)
-    too_big = client.post("/echo-size", data=b"x" * (1024 * 1024 + 1))
+    json_type = "application/json"  # Non-JSON bodies are refused earlier (CSRF protection).
+    small = client.post("/echo-size", data=b"x" * 10, content_type=json_type)
+    too_big = client.post("/echo-size", data=b"x" * (1024 * 1024 + 1), content_type=json_type)
 
     assert small.status_code == 200
     assert too_big.status_code == 413

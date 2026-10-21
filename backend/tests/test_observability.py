@@ -143,6 +143,7 @@ def test_invalid_log_level_is_rejected():
 def test_log_level_is_read_from_the_environment(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "x" * 48)
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/example")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://app.example.com")
     monkeypatch.setenv("LOG_LEVEL", "warning")
 
     app = create_app("production")

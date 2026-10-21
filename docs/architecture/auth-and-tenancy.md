@@ -18,7 +18,8 @@ Status: approved design (Phase B). Sections are marked **Implemented** or
 | `users`       | One login identity per person                             | Implemented |
 | `schools`     | Each school on the platform                               | Planned (B3) |
 | `memberships` | Links a user to a school with a role; one person can belong to several schools | Planned (B3) |
-| `sessions`    | Hashed session tokens, expiry and the active school       | Planned (B2) |
+| `sessions`    | Hashed session tokens and expiry (active school added in B3) | Implemented |
+| `login_attempts` | Recent failed logins, keyed by hashed account and IP | Implemented |
 
 `users.is_platform_admin` can only be set by the `flask create-platform-admin`
 terminal command. No API endpoint can grant it. **Implemented.**
@@ -31,17 +32,33 @@ characters with no composition rules (NIST guidance). Parameters are stored
 in each hash; hashes made with older parameters are detected so they can be
 upgraded at login. **Implemented.**
 
-## Sessions (planned, B2)
+## Sessions
 
-- On login the server creates a random token and stores only its hash.
-- The browser receives the token in a cookie marked `HttpOnly`, `Secure`
-  and `SameSite=Lax`. JavaScript cannot read it.
-- Logging out, or deactivating a user, deletes their sessions immediately.
+**Implemented** (B2):
+
+- On login the server creates a random 256-bit token and stores only its
+  SHA-256 hash. Every login issues a new token.
+- The browser receives the token in a cookie marked `HttpOnly` and
+  `SameSite=Lax`, plus `Secure` with the `__Host-` prefix in production.
+  JavaScript cannot read it.
+- A session ends after 30 minutes without activity or 8 hours after login.
+  Activity is written to the database at most once a minute.
+- Logging out deletes the session. A deactivated user's sessions are deleted
+  on their next request.
+- Endpoints: `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`,
+  `GET /api/v1/auth/me`.
 - JWTs were rejected: they are hard to revoke before expiry, and tokens kept
   in browser storage can be stolen through cross-site scripting.
-- State-changing requests are protected against cross-site request forgery.
-- Login attempts are rate-limited per account and per IP, with counters in
-  PostgreSQL (no Redis on the free tier).
+- CSRF protection: `SameSite=Lax`, JSON-only bodies, and an `Origin` check
+  against `FRONTEND_ORIGIN` on state-changing requests.
+- Failed logins are rate-limited (10 per account, 50 per IP, in 15 minutes)
+  with counters in PostgreSQL (no Redis on the free tier). Emails and IPs
+  are stored only as HMAC hashes; records older than 15 minutes are ignored
+  and deleted by `flask prune-sessions`. Every failure returns the same
+  message, and unknown emails still run a password check so timing does not
+  reveal which accounts exist.
+
+**Planned:** storing the active school in the session (B3).
 
 ## Same-domain API access (planned, B6)
 

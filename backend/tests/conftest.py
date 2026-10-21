@@ -7,12 +7,14 @@ from flask_migrate import upgrade
 from sqlalchemy import text
 
 from app import create_app
+from app.auth.passwords import hash_password
 from app.extensions import db
+from app.models import User
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 # Emptied after every test that uses the `db_app` fixture, children first.
-TABLES_TO_CLEAN = ("users",)
+TABLES_TO_CLEAN = ("login_attempts", "sessions", "users")
 
 
 def pytest_configure(config):
@@ -61,3 +63,22 @@ def db_app(migrated_database, app):
         for table in TABLES_TO_CLEAN:
             db.session.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
         db.session.commit()
+
+
+@pytest.fixture
+def make_user(db_app):
+    """Create a user in the test database and return its ID."""
+
+    def _make(email="ada@example.com", password="correct horse battery", **fields):
+        with db_app.app_context():
+            user = User(
+                email=email,
+                full_name="Ada Example",
+                password_hash=hash_password(password),
+                **fields,
+            )
+            db.session.add(user)
+            db.session.commit()
+            return user.id
+
+    return _make

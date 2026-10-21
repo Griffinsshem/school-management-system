@@ -10,7 +10,7 @@ select = ["E", "W", "F", "I", "B", "UP", "N", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 # `assert` is how pytest tests check results; tests use fake passwords as data.
-"tests/**" = ["S101", "S105", "S106"]
+"tests/**" = ["S101", "S105", "S106", "S107"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

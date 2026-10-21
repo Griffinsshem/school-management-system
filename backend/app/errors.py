@@ -10,11 +10,41 @@ from werkzeug.exceptions import HTTPException
 from app.observability import get_request_id
 
 
-def _error_body(code: str, message: str) -> dict:
-    return {"error": {"code": code, "message": message, "request_id": get_request_id()}}
+class ApiError(Exception):
+    """An expected error with a status, a stable code and a user-safe message."""
+
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        *,
+        details: list[dict] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+        self.details = details
+        self.headers = headers or {}
+
+
+def _error_body(code: str, message: str, details: list[dict] | None = None) -> dict:
+    error = {"code": code, "message": message, "request_id": get_request_id()}
+    if details is not None:
+        error["details"] = details
+    return {"error": error}
 
 
 def register_error_handlers(app: Flask) -> None:
+    @app.errorhandler(ApiError)
+    def handle_api_error(error: ApiError):
+        response = jsonify(_error_body(error.code, error.message, error.details))
+        response.status_code = error.status
+        response.headers.update(error.headers)
+        return response
+
     @app.errorhandler(HTTPException)
     def handle_http_exception(error: HTTPException):
         # Start from Werkzeug's response so headers such as `Allow` (on 405) are kept.

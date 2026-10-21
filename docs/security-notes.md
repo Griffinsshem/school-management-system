@@ -48,6 +48,29 @@ statement.
   an argument or prints it.
 - **Emails are unique regardless of letter case**, enforced by a database
   check constraint as well as application code.
+- **Login sessions are server-side and revocable.** The browser holds a
+  random 256-bit token in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` with
+  the `__Host-` prefix in production); the database holds only its SHA-256
+  hash, so a leaked database cannot be turned into working cookies. Every
+  login issues a new token (no session fixation). Sessions end after
+  30 minutes idle or 8 hours in total; logout deletes the session, and a
+  deactivated user's sessions are deleted on their next request.
+- **Failed logins reveal nothing.** Wrong password, unknown email and
+  deactivated account all return the same `401` message, and an unknown
+  email still runs a full Argon2id check so response times match.
+- **Login attempts are rate-limited** to 10 failures per account and 50 per
+  IP address within 15 minutes (`429` with `Retry-After`). There is no
+  permanent lockout, so an attacker cannot lock a real user out for long.
+- **Cross-site request forgery (CSRF) is blocked in three layers**, following
+  OWASP: `SameSite=Lax` cookies, JSON-only request bodies (an HTML form on
+  another site cannot send JSON), and a check that any `Origin` header on a
+  state-changing request matches `FRONTEND_ORIGIN`.
+- **Request bodies are validated with Pydantic.** Unknown fields are refused,
+  and validation errors name the field without repeating the submitted value,
+  so passwords are never echoed or logged.
+- **Forwarded client IPs are trusted only from configured proxies.**
+  `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
+  clients cannot fake their IP to dodge rate limits.
 - **CI runs with read-only permissions and no secrets.** Third-party GitHub
   Actions are pinned to exact commit IDs, so their code cannot change without
   a reviewed commit here. Checkout does not keep Git credentials.
@@ -102,16 +125,30 @@ request, including the query string and client IP. It is used only locally.
 The production web server (set up with deployment) must have its access log
 disabled or configured to the same rules as the app's summary line.
 
-### IP addresses are not logged yet
+### Rate limiting stores only hashed emails and IPs
 
-Login rate limiting (Phase B) may need client IPs. Whether and how long to
-keep them will be decided then, with Kenya's Data Protection Act in mind.
+Failed logins are counted per account and per IP address. Neither the email
+nor the IP is stored: each is replaced by an HMAC keyed with `SECRET_KEY`,
+and only the last 15 minutes count. A successful login deletes that
+account's records; older records are deleted by `flask prune-sessions`, which
+must be scheduled when the app is deployed (until then they accumulate as
+meaningless hashes). This is data minimisation with Kenya's Data Protection
+Act in mind, not a legal review. Changing `SECRET_KEY` simply resets the
+counters.
+
+### Rate limiting can let a few extra attempts through
+
+Counting and recording failures are separate database steps, so many
+simultaneous requests can exceed the limits by a small number. This does not
+meaningfully help a password-guessing attacker. A stricter version is
+possible later if monitoring shows a need.
 
 ### No breached-password check yet
 
 Passwords are not yet checked against lists of known breached passwords, as
 NIST recommends. This needs either an external service or a bundled list and
-will be considered with the login feature.
+will be reconsidered when users can choose or change their own passwords
+(invitations, B5).
 
 ### `psycopg[binary]` in production
 

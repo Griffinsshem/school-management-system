@@ -65,6 +65,8 @@ end in `_test`.
 | `MIGRATION_DATABASE_URL`      | Migration connection as `sms_migrator` (schema owner).          |
 | `TEST_DATABASE_URL`           | Test connection as `sms_app` to `sms_test`.                     |
 | `TEST_MIGRATION_DATABASE_URL` | Test migration connection as `sms_migrator` to `sms_test`.      |
+| `FRONTEND_ORIGIN`             | The frontend's origin, e.g. `https://app.example.com`. Required in production (https); defaults to `http://127.0.0.1:3000` in development. |
+| `TRUSTED_PROXY_COUNT`         | Reverse proxies whose `X-Forwarded-For` is trusted (0 to 5, default 0). |
 
 The app refuses to start if `SECRET_KEY` or `DATABASE_URL` is missing, so a
 misconfigured server fails loudly instead of running with unsafe settings.
@@ -75,10 +77,17 @@ misconfigured server fails loudly instead of running with unsafe settings.
 |--------|------------------------|---------------------------------------------------|
 | GET    | `/api/v1/health`       | `200 {"status":"ok"}`                             |
 | GET    | `/api/v1/health/ready` | `200 {"status":"ok"}` or `503 {"status":"unavailable"}` |
+| POST   | `/api/v1/auth/login`   | `200 {"user": {...}}` and a session cookie; `401`, `422` or `429` |
+| POST   | `/api/v1/auth/logout`  | `204`; ends the session and clears the cookie     |
+| GET    | `/api/v1/auth/me`      | `200 {"user": {...}}` or `401`                    |
 
 Errors are always JSON in the form
 `{"error": {"code": "...", "message": "...", "request_id": "..."}}` and never
-include stack traces.
+include stack traces. Validation errors (`422`) add a `details` list naming
+each invalid field, without repeating the submitted value.
+
+Request bodies must be JSON (`Content-Type: application/json`); others get
+`415`.
 
 ## Logging and request IDs
 
@@ -106,6 +115,31 @@ It asks for an email address, a name and a password (typed twice, hidden).
 The password is never accepted as a command-line option, so it cannot end up
 in shell history. Passwords must be 12 to 128 characters and are stored only
 as Argon2id hashes.
+
+## Login sessions
+
+`POST /api/v1/auth/login` takes `{"email": "...", "password": "..."}`. On
+success the server creates a session and sends its random token in an
+`HttpOnly`, `SameSite=Lax` cookie (`sms_session` in development,
+`__Host-sms_session` with `Secure` in production). The database stores only a
+SHA-256 hash of the token.
+
+- A session ends after 30 minutes without activity, or 8 hours after login,
+  whichever comes first. Logging out ends it immediately.
+- Every failed login gets the same `401` "Invalid email or password.", so the
+  response does not reveal which emails have accounts.
+- After 10 failed logins for one account, or 50 from one IP address, within
+  15 minutes, further attempts get `429` with a `Retry-After` header until
+  the old failures leave the window. Accounts are never locked permanently.
+- Requests that change data (`POST`, `PUT`, `PATCH`, `DELETE`) are refused
+  with `403` if the browser says they come from any site other than
+  `FRONTEND_ORIGIN`.
+
+An expired session is deleted when its cookie is next used. To delete all
+expired sessions and failed-login records older than 15 minutes (to be
+scheduled with deployment):
+
+    flask --app app prune-sessions
 
 ## Dependencies
 

@@ -2,12 +2,14 @@
 
 import click
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 
+from app.auth import rate_limit
 from app.auth.passwords import PasswordPolicyError, hash_password
+from app.auth.sessions import utcnow
 from app.extensions import db
-from app.models import User
+from app.models import User, UserSession
 from app.models.user import MAX_NAME_LENGTH, EmailFormatError, normalize_email, validate_email
 
 
@@ -55,3 +57,17 @@ def register_cli(app: Flask) -> None:
 
         current_app.logger.info("Platform administrator created: user_id=%s", user.id)
         click.echo(f"Platform administrator created: {email}")
+
+    @app.cli.command("prune-sessions")
+    def prune_sessions() -> None:
+        """Delete expired sessions and old failed-login records."""
+        now = utcnow()
+        idle_cutoff = now - current_app.config["SESSION_IDLE_TIMEOUT"]
+        sessions = db.session.execute(
+            delete(UserSession).where(
+                or_(UserSession.expires_at <= now, UserSession.last_seen_at <= idle_cutoff)
+            )
+        ).rowcount
+        attempts = rate_limit.prune(now)
+        db.session.commit()
+        click.echo(f"Deleted {sessions} expired sessions and {attempts} old login attempts.")
