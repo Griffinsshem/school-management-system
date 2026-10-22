@@ -42,3 +42,8 @@ next-env.d.ts
 
 # Keep the documented example (never real secrets)
 !.env.example
+
+# playwright (browser tests)
+/test-results/
+/playwright-report/
+/blob-report/

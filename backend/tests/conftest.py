@@ -77,8 +77,17 @@ def schema_owner_engine(migrated_database):
     """
     app = create_app("testing")
     engine = create_engine(app.config["MIGRATION_DATABASE_URI"])
+    # Start from empty tables, even if something else left data behind (for
+    # example the browser tests' server, which shares this database).
+    _empty_tables(engine)
     yield engine
     engine.dispose()
+
+
+def _empty_tables(engine) -> None:
+    with engine.begin() as connection:
+        for table in TABLES_TO_CLEAN:
+            connection.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
 
 
 @pytest.fixture
@@ -87,9 +96,7 @@ def db_app(migrated_database, schema_owner_engine, app):
     yield app
     with app.app_context():
         db.session.remove()
-    with schema_owner_engine.begin() as connection:
-        for table in TABLES_TO_CLEAN:
-            connection.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
+    _empty_tables(schema_owner_engine)
 
 
 @pytest.fixture

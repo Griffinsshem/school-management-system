@@ -124,6 +124,21 @@ statement.
   and returns only the invitation whose token hash matches exactly; it
   cannot list or search. Only `sms_app` may call it, and its `search_path`
   is fixed. Tests probe it with empty, wildcard, partial and injected input.
+- **The browser talks only to the frontend's own address.** Next.js forwards
+  `/api/...` to Flask, so the `HttpOnly` session cookie is first-party and
+  never visible to page scripts. Flask's address (`API_ORIGIN`) is a
+  server-only setting, never `NEXT_PUBLIC_`.
+- **Every page is sent with security headers**: `X-Frame-Options: DENY`
+  (no embedding, against clickjacking), `X-Content-Type-Options: nosniff`, a
+  strict `Referrer-Policy` (`no-referrer` on the invitation page) and a
+  `Permissions-Policy` turning off camera, microphone and location.
+  `X-Powered-By` is not sent.
+- **After login, only addresses on this site are followed.** `?next=` must
+  be a path on this site, so the login page cannot send people elsewhere.
+- **Invitation tokens stay out of addresses.** The page removes `#token=...`
+  from the address bar as soon as it loads and keeps the token only in that
+  tab's session storage until it is used. It is sent to the API only in a
+  JSON body.
 - **Forwarded client IPs are trusted only from configured proxies.**
   `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
   clients cannot fake their IP to dodge rate limits.
@@ -241,7 +256,28 @@ not feasible, and password hashing only runs for a valid token.
 - The migration names the runtime user `sms_app`. A production database
   must use the same name, or the REVOKE must be adjusted.
 
-### Row-Level Security covers students only
+### Behind the frontend proxy, Flask sees one IP for everyone (deployment blocker)
+
+All API requests now arrive from the Next.js server, so Flask sees its IP for
+every visitor. The "50 failed logins per IP" limit would then count everyone
+together: one person could block logins for all users for 15 minutes.
+Setting `TRUSTED_PROXY_COUNT` fixes this only if the `X-Forwarded-For` header
+reaching Flask is trustworthy. A self-hosted Next.js server passes on
+whatever the client sent (checked 2026-10-22), so it is not. Vercel is
+documented to overwrite the header with the real client IP; this must be
+confirmed on Vercel, and `TRUSTED_PROXY_COUNT` set to match, before real
+schools use the system. In development every request comes from 127.0.0.1
+anyway.
+
+### No Content Security Policy yet
+
+A Content Security Policy would limit the damage of any script-injection
+bug, which matters because the invitation page keeps a token in session
+storage. React escapes all text it displays and the app adds no HTML of its
+own, which removes the common causes. A policy with per-request nonces, as
+Next.js recommends, is planned as a separate change.
+
+### Row-Level Security covers students and invitations only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's

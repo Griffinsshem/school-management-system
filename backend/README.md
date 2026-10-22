@@ -52,7 +52,11 @@ ruff format --check .
 Tests use the `sms_test` database and migrate it themselves. They read only
 `TEST_DATABASE_URL` and `TEST_MIGRATION_DATABASE_URL` (from the environment,
 or else from `.env`) and refuse to run against a database whose name does not
-end in `_test`.
+end in `_test`. They empty its tables before starting.
+
+The frontend's browser tests start `scripts/e2e_server.py`: an API on
+`127.0.0.1:5001` that uses the same `sms_test` database, empties it and adds
+clearly fake data. Do not run `pytest` and the browser tests at the same time.
 
 ## Configuration
 

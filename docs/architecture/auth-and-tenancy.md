@@ -61,12 +61,22 @@ upgraded at login. **Implemented.**
   message, and unknown emails still run a password check so timing does not
   reveal which accounts exist.
 
-## Same-domain API access (planned, B7)
+## Same-domain API access
 
-The browser only talks to the frontend's domain; Next.js forwards `/api/...`
-to the Flask API. The session cookie stays first-party, so browsers that
-block cross-site cookies do not break login. To be verified on the hosting
-platforms before relying on it.
+**Implemented** (B7). The browser only talks to the frontend's domain;
+Next.js forwards `/api/...` to the Flask API at `API_ORIGIN` (a server-only
+setting, fixed when the frontend is built). The session cookie stays
+first-party, so browsers that block cross-site cookies do not break login,
+and Flask's `Origin` check still sees the frontend's address.
+
+The screens (`/login`, `/` and `/invitations/accept`) ask `GET /api/v1/auth/me`
+from the browser and go to the login page on a `401`. Next.js's `proxy.ts`
+also sends visitors without any session cookie straight to `/login`; it is a
+shortcut, not a security check. Every decision is still made by Flask.
+
+Still to verify on the hosting platforms: that the forwarding works on Vercel,
+and how Flask learns the real client IP for rate limiting (see
+`docs/security-notes.md`).
 
 ## School isolation
 

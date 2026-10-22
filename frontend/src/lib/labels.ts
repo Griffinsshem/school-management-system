@@ -1,0 +1,26 @@
+// Plain-language names for the codes the API uses.
+
+const ROLE_LABELS: Record<string, string> = {
+  school_admin: "School administrator",
+  principal: "Principal",
+  teacher: "Teacher",
+  finance_officer: "Finance officer",
+  registrar: "Registrar",
+  guardian: "Parent or guardian",
+  student: "Student",
+};
+
+const PERMISSION_LABELS: Record<string, string> = {
+  "members.read": "See the school's members",
+  "members.manage": "Invite and remove members",
+  "students.read": "See student records",
+  "students.manage": "Add and change student records",
+};
+
+export function roleLabel(role: string): string {
+  return ROLE_LABELS[role] ?? role;
+}
+
+export function permissionLabel(permission: string): string {
+  return PERMISSION_LABELS[permission] ?? permission;
+}
