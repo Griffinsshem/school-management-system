@@ -111,6 +111,19 @@ statement.
   students until classes exist, so they will only see the children they
   teach. Responses, logs and audit events never include a child's details
   beyond what the endpoint is for; validation errors never echo them.
+- **People join only by invitation.** Invitation tokens are random 256-bit
+  values stored only as SHA-256 hashes, used once, valid for 7 days and
+  revocable. The link carries the token after `#`, so it never reaches
+  server logs, and the API receives it only in a JSON body. Every unusable
+  link gets the same `404`. Accepting locks the invitation, so it cannot be
+  used twice concurrently. An existing account gains a role only when its
+  owner is logged in; a different logged-in user is refused.
+- **One narrow, tested exception to Row-Level Security.** Invitations are
+  under Row-Level Security, but someone accepting one has no school yet.
+  The database function `invitation_by_token_hash` runs as the schema owner
+  and returns only the invitation whose token hash matches exactly; it
+  cannot list or search. Only `sms_app` may call it, and its `search_path`
+  is fixed. Tests probe it with empty, wildcard, partial and injected input.
 - **Forwarded client IPs are trusted only from configured proxies.**
   `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
   clients cannot fake their IP to dodge rate limits.
@@ -193,9 +206,26 @@ possible later if monitoring shows a need.
 ### No breached-password check yet
 
 Passwords are not yet checked against lists of known breached passwords, as
-NIST recommends. This needs either an external service or a bundled list and
-will be reconsidered when users can choose or change their own passwords
-(invitations, B6).
+NIST recommends. People now choose their own passwords when accepting an
+invitation, so this matters more. It needs either an external service (such
+as Have I Been Pwned's range API) or a bundled list, and is deferred until
+one of those is approved.
+
+### Invitation links are shared by hand
+
+There is no email delivery yet: the inviter copies the link and sends it,
+for example by WhatsApp or SMS. Anyone who obtains the link before the
+invitee can accept it and create the account. Single use, 7-day expiry,
+revocation and the audit trail limit the damage; email delivery can be
+added once a provider is chosen.
+
+### Unknown invitation tokens are logged, not audited
+
+The preview and accept endpoints need no login. Refused reuse of a real
+invitation is audited, but made-up tokens are only logged as warnings: the
+audit trail is never pruned, so recording them would let anyone fill the
+database. These endpoints are not rate-limited; guessing a 256-bit token is
+not feasible, and password hashing only runs for a valid token.
 
 ### Audit trail limits
 

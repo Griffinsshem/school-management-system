@@ -1,4 +1,6 @@
+import hashlib
 import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -9,7 +11,7 @@ from sqlalchemy import create_engine, text
 from app import create_app
 from app.auth.passwords import hash_password
 from app.extensions import db
-from app.models import Membership, School, Student, User
+from app.models import Invitation, Membership, School, Student, User
 from app.school_context import set_database_school
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
@@ -21,6 +23,7 @@ TABLES_TO_CLEAN = (
     "audit_events",
     "login_attempts",
     "sessions",
+    "invitations",
     "students",
     "memberships",
     "schools",
@@ -156,5 +159,32 @@ def make_student(db_app):
             student_id = student.id
             db.session.commit()
             return student_id
+
+    return _make
+
+
+@pytest.fixture
+def make_invitation(db_app):
+    """Create an invitation (through Row-Level Security); return (id, token)."""
+
+    def _make(school_id, invited_by, email="invitee@example.com", role="teacher", **fields):
+        token = fields.pop("token", None) or f"test-token-{email}-{role}"
+        now = datetime.now(UTC)
+        values = {"expires_at": now + timedelta(days=7)} | fields
+        with db_app.app_context():
+            set_database_school(school_id)
+            invitation = Invitation(
+                school_id=school_id,
+                email=email,
+                role=role,
+                token_hash=hashlib.sha256(token.encode()).hexdigest(),
+                invited_by_user_id=invited_by,
+                **values,
+            )
+            db.session.add(invitation)
+            db.session.flush()
+            invitation_id = invitation.id
+            db.session.commit()
+            return invitation_id, token
 
     return _make

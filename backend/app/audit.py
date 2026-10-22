@@ -30,11 +30,16 @@ def record(
     target_type: str | None = None,
     target_id: uuid.UUID | None = None,
     outcome: str = "success",
+    actor_user_id: uuid.UUID | None = None,
 ) -> None:
-    """Add an audit event to the session. The caller commits."""
+    """Add an audit event to the session. The caller commits.
+
+    The actor is the logged-in user, unless `actor_user_id` names someone
+    else (for example a person whose account was created by this request).
+    """
     db.session.add(
         AuditEvent(
-            actor_user_id=_current_actor_id(),
+            actor_user_id=actor_user_id or _current_actor_id(),
             school_id=school_id,
             action=action,
             target_type=target_type,

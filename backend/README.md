@@ -90,6 +90,12 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/students/{id}` | Needs `students.read`: `200 {"student": {...}}` or `404` |
 | PATCH  | `/api/v1/school/students/{id}` | Needs `students.manage`: `200`, `404`, `409` or `422` |
 | POST   | `/api/v1/school/students/{id}/deactivate` | Needs `students.manage`: `200` or `404` |
+| POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
+| GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
+| POST   | `/api/v1/school/invitations/{id}/revoke` | Needs `members.manage`: `200`, `404` or `409` (already accepted) |
+| POST   | `/api/v1/platform/schools/{id}/invitations` | Platform admin only: invite a school admin; `201` or `404` |
+| POST   | `/api/v1/invitations/preview` | Anyone with the link: `200 {"invitation": {...}}` or `404` |
+| POST   | `/api/v1/invitations/accept` | Anyone with the link: `201` (account created and signed in), `200` (role added), `401`, `403`, `404` or `422` |
 
 Errors are always JSON in the form
 `{"error": {"code": "...", "message": "...", "request_id": "..."}}` and never
@@ -125,6 +131,8 @@ It asks for an email address, a name and a password (typed twice, hidden).
 The password is never accepted as a command-line option, so it cannot end up
 in shell history. Passwords must be 12 to 128 characters and are stored only
 as Argon2id hashes.
+
+Everyone else joins by invitation (below).
 
 ## Schools and memberships
 
@@ -195,11 +203,39 @@ events but cannot change or delete them. Recorded actions:
 | `student.created`        | A student is added |
 | `student.updated`        | A student is changed, or a change is refused (`404`) |
 | `student.deactivated`    | A student is deactivated, or a deactivation is refused (`404`) |
+| `invitation.created`     | An invitation is created |
+| `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
+| `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
+| `invitation.previewed`   | Preview of an expired, revoked or used invitation is refused |
 | A permission name        | A user is refused for lacking that permission, for example `members.manage` |
 
 To read the trail during development:
 
     sudo -u postgres psql -d sms_dev -c "SELECT occurred_at, action, outcome, target_type FROM audit_events ORDER BY occurred_at"
+
+### Invitations
+
+People join a school only by invitation. A school admin invites an email
+address to a role with `POST /api/v1/school/invitations`; a platform admin
+can invite a school's administrator with
+`POST /api/v1/platform/schools/{id}/invitations`. The response contains an
+`accept_url`, shown once, for the inviter to share (for example by WhatsApp
+or SMS). There is no email delivery yet.
+
+- The link looks like `FRONTEND_ORIGIN/invitations/accept#token=...`. The
+  token is after `#`, which browsers never send to servers; the page sends
+  it to the API in a JSON body.
+- Only a SHA-256 hash of the token is stored. A link works once, expires
+  after 7 days (`INVITATION_LIFETIME`) and can be revoked. Inviting the same
+  person to the same role again replaces the earlier link.
+- `POST /api/v1/invitations/preview` with `{"token": "..."}` shows the
+  school, role, email and whether that email already has an account.
+- `POST /api/v1/invitations/accept` with `{"token", "full_name", "password"}`
+  creates the account (12 to 128 character password) and signs the person in.
+  If the email already has an account, the person must be logged in as that
+  account and only `{"token"}` is needed; the role is added.
+- An unknown, expired, revoked or already used link always gets the same
+  `404`.
 
 ### Students
 

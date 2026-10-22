@@ -115,11 +115,20 @@ only. The API's database user can only add and read events. Successful
 changes are recorded in the same transaction as the change; refusals are
 recorded separately.
 
-## Sign-up (planned, B6)
+## Sign-up by invitation
 
-There is no public sign-up. A platform administrator creates a school and
-invites its first school administrator, who invites staff, parents and
-students. Invitations are single-use and expire.
+**Implemented** (B6). There is no public sign-up. A platform administrator
+creates a school and invites its first school administrator, who invites
+staff, parents and students. Invitations are single-use, expire after 7 days
+and can be revoked; only a hash of each token is stored. The invitee opens
+the link, previews it, and either creates an account (and is signed in) or,
+if the email already has an account, logs in and accepts to add the role.
+
+Invitations are under Row-Level Security. Because an invitee has no school
+yet, the database function `invitation_by_token_hash` (owned by the schema
+owner, callable only by `sms_app`) finds one invitation by its exact token
+hash; it is the only way past the policy. Links are shared by the inviter
+for now; email delivery is planned once a provider is chosen.
 
 ## Password reset (planned, B8)
 

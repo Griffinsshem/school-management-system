@@ -56,6 +56,9 @@ class BaseConfig:
     LOGIN_MAX_FAILURES_PER_ACCOUNT = 10
     LOGIN_MAX_FAILURES_PER_IP = 50
 
+    # How long an invitation link stays usable.
+    INVITATION_LIFETIME = timedelta(days=7)
+
 
 class DevelopmentConfig(BaseConfig):
     LOG_FORMAT = "text"
