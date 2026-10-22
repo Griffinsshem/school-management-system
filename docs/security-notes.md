@@ -98,6 +98,19 @@ statement.
   same transaction as the change; refusals (wrong school, missing
   permission, platform access) are recorded on their own. Events hold IDs
   only, never names or emails.
+- **Students are isolated by the database itself.** PostgreSQL Row-Level
+  Security limits `sms_app` to the rows of the school set for the current
+  transaction, for reads and for writes, independently of the application's
+  own school filter. With no school set, no rows are visible. The setting is
+  transaction-local, so pooled connections carry nothing between requests,
+  and `sms_app` cannot disable the policy. Tests run directly against the
+  database as `sms_app`, and the endpoints were shown to stay isolated with
+  the application's filter removed.
+- **Children's data is kept to a minimum.** Student records hold an admission
+  number, a name and an optional date of birth. Teachers have no access to
+  students until classes exist, so they will only see the children they
+  teach. Responses, logs and audit events never include a child's details
+  beyond what the endpoint is for; validation errors never echo them.
 - **Forwarded client IPs are trusted only from configured proxies.**
   `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
   clients cannot fake their IP to dodge rate limits.
@@ -115,6 +128,10 @@ statement.
   `"use cache"` unless the cache is keyed to that user and school.
 - **Never commit real student, parent or staff data.** Seed data must be
   clearly fake and labelled as such.
+- **Every new school-owned table gets Row-Level Security in its own
+  migration**, with the same `school_isolation` policy as `students`, and
+  tests in the style of `tests/test_row_level_security.py` that query the
+  database directly as `sms_app`.
 
 ## Known findings
 
@@ -193,6 +210,20 @@ will be reconsidered when users can choose or change their own passwords
   rate limiting but not audited.
 - The migration names the runtime user `sms_app`. A production database
   must use the same name, or the REVOKE must be adjusted.
+
+### Row-Level Security covers students only
+
+`memberships` and `audit_events` carry a `school_id` but are not under
+Row-Level Security: memberships must be read across schools to list a user's
+own schools at login, and audit events include refusals that belong to no
+school. Both are protected by the application layer (and the audit trail is
+append-only). `users`, `sessions` and `schools` are not school-owned.
+
+### Student search is not indexed for large schools
+
+Search matches part of a name with `ILIKE`, which scans the school's
+students. That is fast for thousands of students per school; a trigram index
+can be added if a school grows far beyond that.
 
 ### The school list is not paginated
 

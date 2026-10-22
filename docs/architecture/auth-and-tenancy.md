@@ -84,10 +84,13 @@ unknown ID, to an inactive school and to a school whose membership ended.
 1. **Application layer** (implemented): every school-owned query goes
    through `current_school()`, `school_required` or `permission_required`.
    The member endpoints (B4) look up IDs only within the active school.
-2. **Database layer** (planned, B5): PostgreSQL Row-Level Security policies
-   restrict rows to the current school, set per request. The API connects as
-   `sms_app`, which does not own the tables, so the policies cannot be
-   bypassed by it.
+2. **Database layer** (implemented, B5, for `students`): a PostgreSQL
+   Row-Level Security policy restricts rows to the school set for the
+   current transaction (`app.current_school_id`, set by
+   `app/school_context.py` from the active school). The setting is
+   transaction-local, and an empty setting matches no rows. The API connects
+   as `sms_app`, which does not own the tables, so it cannot bypass the
+   policy. Every new school-owned table gets the same policy.
 
 Every feature that touches school data includes tests in which a School A
 user tries to read and change School B data and is refused.

@@ -21,6 +21,7 @@ from app.auth.sessions import current_user
 from app.errors import ApiError
 from app.extensions import db
 from app.models import Membership, School, User, UserSession
+from app.school_context import set_database_school
 
 SCHOOL_NOT_AVAILABLE = "You do not have access to that school."
 
@@ -86,6 +87,9 @@ def current_school() -> School | None:
         return None
 
     g.current_school = school
+    # The transaction already in progress learns its school now; later
+    # transactions in this request get it from the after_begin listener.
+    set_database_school(school.id)
     return school
 
 
@@ -99,10 +103,12 @@ def set_active_school(user: User, school_id: uuid.UUID) -> School:
         # belongs to someone else, so other schools' IDs cannot be probed.
         raise ApiError(403, "school_not_available", SCHOOL_NOT_AVAILABLE)
 
-    g.current_session.active_school_id = school.id
-    audit.record("school.selected", school_id=school.id, target_type="school", target_id=school.id)
+    school_id = school.id
+    g.current_session.active_school_id = school_id
+    audit.record("school.selected", school_id=school_id, target_type="school", target_id=school_id)
     db.session.commit()
     g.current_school = school
+    set_database_school(school_id)
     return school
 
 

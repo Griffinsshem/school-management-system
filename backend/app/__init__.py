@@ -11,6 +11,7 @@ from app.config import get_config, load_from_environment, validate_config
 from app.errors import register_error_handlers
 from app.extensions import db, migrate
 from app.observability import configure_logging, register_request_hooks
+from app.school_context import register_school_context
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
@@ -44,6 +45,8 @@ def create_app(config_name: str | None = None, overrides: dict | None = None) ->
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_count, x_proto=proxy_count)
 
     db.init_app(app)
+    # Row-Level Security: every transaction is told its school (or none).
+    register_school_context()
     migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))
 
     # Importing the models registers their tables with SQLAlchemy and migrations.

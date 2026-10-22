@@ -21,13 +21,17 @@ from app.models import Membership
 
 MEMBERS_READ = "members.read"
 MEMBERS_MANAGE = "members.manage"
+STUDENTS_READ = "students.read"
+STUDENTS_MANAGE = "students.manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
-    "school_admin": frozenset({MEMBERS_READ, MEMBERS_MANAGE}),
-    "principal": frozenset({MEMBERS_READ}),
+    "school_admin": frozenset({MEMBERS_READ, MEMBERS_MANAGE, STUDENTS_READ, STUDENTS_MANAGE}),
+    "principal": frozenset({MEMBERS_READ, STUDENTS_READ}),
+    # No student access until classes exist: a teacher should see only the
+    # students they teach, not the whole school.
     "teacher": frozenset(),
     "finance_officer": frozenset(),
-    "registrar": frozenset(),
+    "registrar": frozenset({STUDENTS_READ, STUDENTS_MANAGE}),
     "guardian": frozenset(),
     "student": frozenset(),
 }

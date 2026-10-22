@@ -85,6 +85,11 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/platform/schools` | Platform admin only: `200 {"schools": [...]}`, `401` or `403` |
 | GET    | `/api/v1/school/members` | Needs `members.read`: `200 {"members": [...]}` for the active school; `401` or `403` |
 | POST   | `/api/v1/school/members/{id}/deactivate` | Needs `members.manage`: `200 {"member": {...}}`, `404`, `409` (last school admin), `401` or `403` |
+| GET    | `/api/v1/school/students` | Needs `students.read`: `200 {"students": [...], "page", "per_page", "total"}`; `422` for bad query parameters |
+| POST   | `/api/v1/school/students` | Needs `students.manage`: `201 {"student": {...}}`, `409` (admission number taken), `422` |
+| GET    | `/api/v1/school/students/{id}` | Needs `students.read`: `200 {"student": {...}}` or `404` |
+| PATCH  | `/api/v1/school/students/{id}` | Needs `students.manage`: `200`, `404`, `409` or `422` |
+| POST   | `/api/v1/school/students/{id}/deactivate` | Needs `students.manage`: `200` or `404` |
 
 Errors are always JSON in the form
 `{"error": {"code": "...", "message": "...", "request_id": "..."}}` and never
@@ -162,8 +167,13 @@ every endpoint checks on the server).
 
 | Permission       | Roles                       | Allows |
 |------------------|-----------------------------|--------|
-| `members.read`   | `school_admin`, `principal` | Listing the school's members |
-| `members.manage` | `school_admin`              | Deactivating a member |
+| `members.read`    | `school_admin`, `principal`              | Listing the school's members |
+| `members.manage`  | `school_admin`                           | Deactivating a member |
+| `students.read`   | `school_admin`, `principal`, `registrar` | Listing and viewing students |
+| `students.manage` | `school_admin`, `registrar`              | Adding, changing and deactivating students |
+
+Teachers have no student access yet: once classes exist they will see only
+the students they teach.
 
 A school always keeps at least one active `school_admin`: deactivating the
 last one is refused with `409`.
@@ -182,11 +192,40 @@ events but cannot change or delete them. Recorded actions:
 | `membership.deactivated` | A member is deactivated, or a deactivation is refused (`404`) |
 | `school.selected`        | A user switches school, or is refused (`403`) |
 | `platform.access`        | A non-admin is refused a platform endpoint |
+| `student.created`        | A student is added |
+| `student.updated`        | A student is changed, or a change is refused (`404`) |
+| `student.deactivated`    | A student is deactivated, or a deactivation is refused (`404`) |
 | A permission name        | A user is refused for lacking that permission, for example `members.manage` |
 
 To read the trail during development:
 
     sudo -u postgres psql -d sms_dev -c "SELECT occurred_at, action, outcome, target_type FROM audit_events ORDER BY occurred_at"
+
+### Students
+
+A student record holds an admission number (unique within the school, 1 to
+30 characters), a full name and an optional date of birth (`YYYY-MM-DD`, not
+in the future, at most 30 years ago). Students are deactivated, never
+deleted. Only the minimum is stored; further details will arrive with the
+features that need them.
+
+- `GET /api/v1/school/students` takes `page` (default 1), `per_page` (1 to
+  100, default 50) and `q`, which matches part of the name or admission
+  number regardless of letter case. Results are sorted by name.
+- `PATCH` changes only the fields sent; `"date_of_birth": null` clears it.
+- The school is never taken from the request: a body containing `school_id`
+  is refused.
+
+### Database-level isolation (Row-Level Security)
+
+The `students` table is protected by a PostgreSQL Row-Level Security policy:
+the API's database user (`sms_app`) can only see or write rows of the school
+set for the current transaction. The app sets it from the session's active
+school (`app/school_context.py`); with no active school, the database
+returns no rows. The setting ends with each transaction, so a reused
+connection never carries another school's context. The schema owner
+(`sms_migrator`) is not limited, so tests and migrations use it for set-up
+and clean-up.
 
 ## Login sessions
 

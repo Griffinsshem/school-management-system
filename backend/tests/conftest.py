@@ -9,12 +9,23 @@ from sqlalchemy import create_engine, text
 from app import create_app
 from app.auth.passwords import hash_password
 from app.extensions import db
-from app.models import Membership, School, User
+from app.models import Membership, School, Student, User
+from app.school_context import set_database_school
 
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 # Emptied after every test that uses the `db_app` fixture, children first.
-TABLES_TO_CLEAN = ("login_attempts", "sessions", "memberships", "schools", "users")
+# The schema owner does the emptying: the API's user cannot delete audit
+# events, and Row-Level Security hides other schools' students from it.
+TABLES_TO_CLEAN = (
+    "audit_events",
+    "login_attempts",
+    "sessions",
+    "students",
+    "memberships",
+    "schools",
+    "users",
+)
 
 
 def pytest_configure(config):
@@ -56,10 +67,10 @@ def migrated_database():
 
 @pytest.fixture(scope="session")
 def schema_owner_engine(migrated_database):
-    """A connection as the schema owner (sms_migrator), for test clean-up only.
+    """A connection as the schema owner (sms_migrator), for test set-up and clean-up.
 
-    The API's user cannot delete audit events, by design, so tests empty that
-    table through the owner instead.
+    The owner is not limited by the API user's restrictions (append-only
+    audit events, Row-Level Security), so it can see and empty everything.
     """
     app = create_app("testing")
     engine = create_engine(app.config["MIGRATION_DATABASE_URI"])
@@ -73,11 +84,9 @@ def db_app(migrated_database, schema_owner_engine, app):
     yield app
     with app.app_context():
         db.session.remove()
-        for table in TABLES_TO_CLEAN:
-            db.session.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
-        db.session.commit()
     with schema_owner_engine.begin() as connection:
-        connection.execute(text("DELETE FROM audit_events"))
+        for table in TABLES_TO_CLEAN:
+            connection.execute(text(f"DELETE FROM {table}"))  # noqa: S608 (fixed names)
 
 
 @pytest.fixture
@@ -125,3 +134,27 @@ def add_member(db_app):
             return membership.id
 
     return _add
+
+
+@pytest.fixture
+def make_student(db_app):
+    """Create a student in a school (through Row-Level Security) and return its ID."""
+
+    def _make(school_id, admission_number="ADM-001", full_name="Demo Student", **fields):
+        with db_app.app_context():
+            set_database_school(school_id)
+            student = Student(
+                school_id=school_id,
+                admission_number=admission_number,
+                full_name=full_name,
+                **fields,
+            )
+            db.session.add(student)
+            db.session.flush()
+            # Read the ID before committing: afterwards, reloading the row
+            # would run in a new transaction with no school, and RLS hides it.
+            student_id = student.id
+            db.session.commit()
+            return student_id
+
+    return _make

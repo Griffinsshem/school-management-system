@@ -5,6 +5,8 @@ from app.auth.permissions import (
     MEMBERS_MANAGE,
     MEMBERS_READ,
     ROLE_PERMISSIONS,
+    STUDENTS_MANAGE,
+    STUDENTS_READ,
     permission_required,
 )
 from app.models.membership import ROLES
@@ -25,11 +27,18 @@ def test_every_role_has_an_explicit_permission_list():
 
 
 def test_roles_get_only_what_they_are_given():
-    assert ROLE_PERMISSIONS["school_admin"] == {MEMBERS_READ, MEMBERS_MANAGE}
-    assert ROLE_PERMISSIONS["principal"] == {MEMBERS_READ}
-    for role in ("teacher", "finance_officer", "registrar", "guardian", "student"):
+    assert ROLE_PERMISSIONS["school_admin"] == {
+        MEMBERS_READ,
+        MEMBERS_MANAGE,
+        STUDENTS_READ,
+        STUDENTS_MANAGE,
+    }
+    assert ROLE_PERMISSIONS["principal"] == {MEMBERS_READ, STUDENTS_READ}
+    assert ROLE_PERMISSIONS["registrar"] == {STUDENTS_READ, STUDENTS_MANAGE}
+    # Teachers get no student access until classes exist.
+    for role in ("teacher", "finance_officer", "guardian", "student"):
         assert ROLE_PERMISSIONS[role] == frozenset()
-    assert ALL_PERMISSIONS == {MEMBERS_READ, MEMBERS_MANAGE}
+    assert ALL_PERMISSIONS == {MEMBERS_READ, MEMBERS_MANAGE, STUDENTS_READ, STUDENTS_MANAGE}
 
 
 def test_an_unknown_permission_is_a_programming_error():
@@ -40,10 +49,11 @@ def test_an_unknown_permission_is_a_programming_error():
 @pytest.mark.parametrize(
     ("roles", "expected"),
     [
-        (["school_admin"], ["members.manage", "members.read"]),
-        (["principal"], ["members.read"]),
+        (["school_admin"], ["members.manage", "members.read", "students.manage", "students.read"]),
+        (["principal"], ["members.read", "students.read"]),
         (["teacher"], []),
-        (["teacher", "principal"], ["members.read"]),
+        (["teacher", "principal"], ["members.read", "students.read"]),
+        (["principal", "registrar"], ["members.read", "students.manage", "students.read"]),
     ],
 )
 def test_me_lists_the_permissions_of_all_roles_combined(
