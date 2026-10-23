@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { AppShell, goToLogin } from "@/components/app-shell";
 import {
   ErrorMessage,
-  buttonClass,
+  inlineButtonClass,
   inputClass,
   labelClass,
   secondaryButtonClass,
@@ -185,7 +185,7 @@ function SwitchSchool({
             </option>
           ))}
         </select>
-        <button type="submit" className={`${buttonClass} w-auto`} disabled={pending || selected === activeId}>
+        <button type="submit" className={inlineButtonClass} disabled={pending || selected === activeId}>
           Switch
         </button>
       </div>

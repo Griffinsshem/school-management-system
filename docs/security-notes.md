@@ -147,6 +147,11 @@ statement.
   they are used, and logging out (or a session ending) loads the login page
   afresh, so the previous person's pages are gone even on a shared computer.
   A browser test checks both.
+- **Student searches stay out of the browser history.** The Students page
+  keeps the search text in memory and sends it only to the API; the page's
+  address stays `/students`. Searches run on Enter or "Search", not on every
+  keystroke. Dates of birth are shown as calendar dates, never shifted by
+  time zones.
 - **The interface hides what a person cannot do, but the API decides.** A
   principal sees no invite or remove buttons, and a browser test also
   confirms the API refuses them directly.
@@ -210,6 +215,13 @@ Flask's built-in development server prints its own access line for each
 request, including the query string and client IP. It is used only locally.
 The production web server (set up with deployment) must have its access log
 disabled or configured to the same rules as the app's summary line.
+
+This matters more since the Students page: a search sends part of a child's
+name in the query string (`/api/v1/school/students?q=...`). The page never
+puts it in its own address, so it stays out of browser history, but the
+development server's access line shows it. Before real schools use the
+system, check what Vercel and Render record for each request; if they keep
+query strings, move the search into a request body (a small API change).
 
 ### Rate limiting stores only hashed emails and IPs
 

@@ -16,5 +16,5 @@ export function proxy(request: NextRequest) {
 
 // Pages that need a login. The login and invitation pages are not listed.
 export const config = {
-  matcher: ["/", "/people"],
+  matcher: ["/", "/people", "/students"],
 };

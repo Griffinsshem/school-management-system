@@ -77,6 +77,7 @@ export function AppShell({
 
   const links = [
     { href: "/", label: "Home", show: true },
+    { href: "/students", label: "Students", show: me.permissions.includes("students.read") },
     { href: "/people", label: "People", show: me.permissions.includes("members.read") },
   ].filter((link) => link.show);
 

@@ -38,6 +38,7 @@ To test from a phone on the same network, run
 |---------|--------------|
 | `/login` | Log in. `?next=` (a path on this site only) says where to go afterwards. |
 | `/` | Your active school, role and permissions; choose or switch school; log out. Needs a login. |
+| `/students` | The school's students: search by name or admission number, 50 per page (`students.read`). School admins and registrars (`students.manage`) also add, edit and deactivate students. Needs a login. |
 | `/people` | The school's members and invitations (`members.read`). School admins (`members.manage`) also invite people, withdraw invitations and remove members. Needs a login. |
 | `/invitations/accept#token=...` | Accept an invitation: create an account, or log in and accept. The token is removed from the address bar at once. |
 

@@ -48,7 +48,7 @@ const UNEXPECTED_ERROR: ApiErrorBody = {
 
 export async function api<T>(
   path: string,
-  options: { method?: "GET" | "POST"; body?: unknown } = {},
+  options: { method?: "GET" | "POST" | "PATCH"; body?: unknown } = {},
 ): Promise<ApiResult<T>> {
   const hasBody = options.body !== undefined;
   let response: Response;

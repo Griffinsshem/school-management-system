@@ -55,8 +55,14 @@ export const inputClass =
 
 export const labelClass = "mb-1 block text-sm font-medium";
 
-export const buttonClass =
-  "inline-flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-60";
+const primaryButtonBase =
+  "inline-flex items-center justify-center rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-60";
+
+// Full width: the main button of a small form (log in, create account).
+export const buttonClass = `${primaryButtonBase} w-full`;
+
+// As wide as its text: a button beside other controls (Search, Switch).
+export const inlineButtonClass = primaryButtonBase;
 
 export const secondaryButtonClass =
   "inline-flex items-center justify-center rounded-md border border-zinc-400 px-4 py-2 font-medium hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:hover:bg-zinc-800";

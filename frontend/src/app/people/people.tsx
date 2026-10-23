@@ -9,6 +9,7 @@ import {
   ErrorMessage,
   Notice,
   buttonClass,
+  inlineButtonClass,
   inputClass,
   labelClass,
   secondaryButtonClass,
@@ -340,7 +341,7 @@ function InvitationLink({
         onFocus={(event) => event.target.select()}
       />
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={`${buttonClass} w-auto`} onClick={copy}>
+        <button type="button" className={inlineButtonClass} onClick={copy}>
           Copy link
         </button>
         {canShare && (
@@ -427,7 +428,7 @@ function MembersTable({
       <h2 id="members-heading" className="mb-3 text-xl font-semibold">
         Members
       </h2>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className={tableClass}>
           <thead>
             <tr>
@@ -510,7 +511,7 @@ function InvitationsTable({
       {invitations.length === 0 ? (
         <p>No invitations yet.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className={tableClass}>
             <thead>
               <tr>
