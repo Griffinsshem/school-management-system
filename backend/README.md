@@ -41,6 +41,19 @@ curl http://127.0.0.1:5000/api/v1/health/ready
 # {"status":"ok"}
 ```
 
+`flask run` is for development only. Production uses gunicorn with the
+settings in `gunicorn.conf.py` and the entry point `wsgi.py`:
+
+```bash
+gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+gunicorn's own access log and control socket are switched off: the app
+writes one line per request without query strings or IP addresses. Settings
+come from environment variables only (gunicorn does not read `.env`), and
+`APP_ENV` defaults to `production`. Deployment is described in
+`../docs/deployment.md`.
+
 ## Test and lint
 
 ```bash
