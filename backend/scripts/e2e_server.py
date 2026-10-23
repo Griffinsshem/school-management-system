@@ -6,7 +6,7 @@ It is not for development use. It:
 1. uses ONLY the test database (TEST_DATABASE_URL, whose name must end in
    `_test`; the app refuses anything else),
 2. brings that database to the latest migration and EMPTIES every table,
-3. adds clearly fake data: one administrator in two schools,
+3. adds clearly fake data: an administrator in two schools and a principal,
 4. serves the API on 127.0.0.1:5001, accepting requests from the frontend
    that Playwright starts on 127.0.0.1:3100.
 
@@ -36,10 +36,11 @@ PORT = 5001
 FRONTEND_ORIGIN = "http://127.0.0.1:3100"
 TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 
-# Fake account that exists only in the test database. Keep in sync with
+# Fake accounts that exist only in the test database. Keep in sync with
 # frontend/e2e/helpers.ts.
 ADMIN_EMAIL = "e2e.admin@example.com"
-ADMIN_PASSWORD = "e2e only password"  # noqa: S105
+PRINCIPAL_EMAIL = "e2e.principal@example.com"
+PASSWORD = "e2e only password"  # noqa: S105
 
 
 def load_test_settings() -> None:
@@ -62,19 +63,20 @@ def reset_and_seed(app) -> None:
             connection.execute(text(f"TRUNCATE {tables}"))  # noqa: S608 (names from our models)
         owner.dispose()
 
-        admin = User(
-            email=ADMIN_EMAIL,
-            full_name="E2E Admin",
-            password_hash=hash_password(ADMIN_PASSWORD),
+        password_hash = hash_password(PASSWORD)
+        admin = User(email=ADMIN_EMAIL, full_name="E2E Admin", password_hash=password_hash)
+        principal = User(
+            email=PRINCIPAL_EMAIL, full_name="E2E Principal", password_hash=password_hash
         )
         school_a = School(code="e2e-school-a", name="E2E School A", county_code=47)
         school_b = School(code="e2e-school-b", name="E2E School B", county_code=1)
-        db.session.add_all([admin, school_a, school_b])
+        db.session.add_all([admin, principal, school_a, school_b])
         db.session.flush()
         db.session.add_all(
             [
                 Membership(user_id=admin.id, school_id=school_a.id, role="school_admin"),
                 Membership(user_id=admin.id, school_id=school_b.id, role="teacher"),
+                Membership(user_id=principal.id, school_id=school_a.id, role="principal"),
             ]
         )
         db.session.commit()

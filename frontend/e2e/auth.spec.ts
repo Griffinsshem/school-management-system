@@ -56,6 +56,25 @@ test("logging in, choosing and switching school, and logging out", async ({ page
   await expect(page).toHaveURL("/login?next=%2F");
 });
 
+test("nothing private stays in the tab after login and logout", async ({ page }) => {
+  await page.goto("/login");
+  await logIn(page);
+  await expect(page.getByRole("heading", { name: "Choose a school" })).toBeVisible();
+  // Next.js keeps the login page hidden in the tab: its password is cleared.
+  const passwords = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLInputElement>("input[type=password]")].map((i) => i.value),
+  );
+  expect(passwords.every((value) => value === "")).toBe(true);
+
+  await page.getByRole("button", { name: new RegExp(SCHOOL_A) }).click();
+  await page.getByRole("link", { name: "People" }).click();
+  await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
+  await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL("/login");
+  // Logging out loads the login page afresh: the previous pages are gone.
+  expect(await page.content()).not.toContain(ADMIN_EMAIL);
+});
+
 test("after login, only addresses on this site are followed", async ({ page }) => {
   await page.goto("/login?next=https://evil.example/steal");
   await logIn(page);

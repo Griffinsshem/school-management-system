@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
+import { AppShell, goToLogin } from "@/components/app-shell";
 import {
   ErrorMessage,
   buttonClass,
@@ -13,37 +13,18 @@ import {
 import { api, withReference, type Me, type School } from "@/lib/api";
 import { permissionLabel, roleLabel } from "@/lib/labels";
 
-const SESSION_ENDED = "/login?next=%2F&expired=1";
-
 function uniqueSchools(me: Me): School[] {
   const byId = new Map(me.memberships.map((membership) => [membership.school.id, membership.school]));
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function Home() {
-  const router = useRouter();
-  const [me, setMe] = useState<Me | null>(null);
+  return <AppShell path="/">{(me, setMe) => <HomeContent me={me} setMe={setMe} />}</AppShell>;
+}
+
+function HomeContent({ me, setMe }: { me: Me; setMe: (me: Me) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    api<Me>("/auth/me").then((result) => {
-      if (cancelled) {
-        return;
-      }
-      if (result.ok) {
-        setMe(result.data);
-      } else if (result.status === 401) {
-        router.replace(SESSION_ENDED);
-      } else {
-        setError(withReference(result.error));
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
 
   async function chooseSchool(schoolId: string) {
     setError(null);
@@ -56,30 +37,10 @@ export function Home() {
     if (result.ok) {
       setMe(result.data);
     } else if (result.status === 401) {
-      router.replace(SESSION_ENDED);
+      goToLogin("/");
     } else {
       setError(withReference(result.error));
     }
-  }
-
-  async function logOut() {
-    setError(null);
-    setPending(true);
-    const result = await api("/auth/logout", { method: "POST" });
-    if (result.ok || result.status === 401) {
-      router.replace("/login");
-      return;
-    }
-    setPending(false);
-    setError(withReference(result.error));
-  }
-
-  if (!me) {
-    return (
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
-        {error ? <ErrorMessage message={error} /> : <p role="status">Loading...</p>}
-      </main>
-    );
   }
 
   const schools = uniqueSchools(me);
@@ -89,45 +50,28 @@ export function Home() {
     : [];
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <p className="font-semibold">School Management System</p>
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="sr-only">Logged in as </span>
-              {me.user.full_name}
-            </p>
-            <button type="button" className={secondaryButtonClass} onClick={logOut} disabled={pending}>
-              Log out
-            </button>
-          </div>
-        </div>
-      </header>
+    <>
+      <ErrorMessage message={error} />
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <ErrorMessage message={error} />
+      {active ? (
+        <ActiveSchool school={active} roles={roles} permissions={me.permissions} />
+      ) : schools.length > 0 ? (
+        <ChooseSchool schools={schools} onChoose={chooseSchool} pending={pending} />
+      ) : (
+        <section>
+          <h1 className="mb-2 text-2xl font-semibold tracking-tight">Welcome, {me.user.full_name}</h1>
+          <p>
+            {me.user.is_platform_admin
+              ? "You are a platform administrator. School pages appear here once you are a member of a school."
+              : "You are not a member of any school yet. Ask your school for an invitation link."}
+          </p>
+        </section>
+      )}
 
-        {active ? (
-          <ActiveSchool school={active} roles={roles} permissions={me.permissions} />
-        ) : schools.length > 0 ? (
-          <ChooseSchool schools={schools} onChoose={chooseSchool} pending={pending} />
-        ) : (
-          <section>
-            <h1 className="mb-2 text-2xl font-semibold tracking-tight">Welcome, {me.user.full_name}</h1>
-            <p>
-              {me.user.is_platform_admin
-                ? "You are a platform administrator. School pages appear here once you are a member of a school."
-                : "You are not a member of any school yet. Ask your school for an invitation link."}
-            </p>
-          </section>
-        )}
-
-        {active && schools.length > 1 && (
-          <SwitchSchool schools={schools} activeId={active.id} onChoose={chooseSchool} pending={pending} />
-        )}
-      </main>
-    </div>
+      {active && schools.length > 1 && (
+        <SwitchSchool schools={schools} activeId={active.id} onChoose={chooseSchool} pending={pending} />
+      )}
+    </>
   );
 }
 

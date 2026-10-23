@@ -139,6 +139,17 @@ statement.
   from the address bar as soon as it loads and keeps the token only in that
   tab's session storage until it is used. It is sent to the API only in a
   JSON body.
+- **Invitation links are shown once.** The People page shows a new link
+  only until "Done" or a reload; it is never stored in the browser. Lost
+  links are replaced by inviting the person again.
+- **Nothing private stays in the browser tab.** Next.js keeps recently
+  visited pages hidden in the tab. Password fields are cleared as soon as
+  they are used, and logging out (or a session ending) loads the login page
+  afresh, so the previous person's pages are gone even on a shared computer.
+  A browser test checks both.
+- **The interface hides what a person cannot do, but the API decides.** A
+  principal sees no invite or remove buttons, and a browser test also
+  confirms the API refuses them directly.
 - **Forwarded client IPs are trusted only from configured proxies.**
   `X-Forwarded-For` is ignored unless `TRUSTED_PROXY_COUNT` is set, so
   clients cannot fake their IP to dodge rate limits.

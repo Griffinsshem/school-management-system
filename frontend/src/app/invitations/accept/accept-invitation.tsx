@@ -281,6 +281,9 @@ function CreateAccount({ token, email }: { token: string; email: string }) {
     });
     if (result.ok) {
       forgetToken();
+      // This page stays, hidden, in the tab: do not leave the password in it.
+      setPassword("");
+      setConfirm("");
       router.replace("/");
       return;
     }

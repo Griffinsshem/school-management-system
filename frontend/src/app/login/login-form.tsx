@@ -24,6 +24,9 @@ export function LoginForm() {
     setPending(true);
     const result = await api("/auth/login", { method: "POST", body: { email, password } });
     if (result.ok) {
+      // Next.js keeps this page, hidden, in the tab: do not leave the
+      // password in it.
+      setPassword("");
       router.replace(next);
       return;
     }

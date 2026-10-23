@@ -17,10 +17,28 @@ const PERMISSION_LABELS: Record<string, string> = {
   "students.manage": "Add and change student records",
 };
 
+// Every role a school can give, in the order they are offered.
+export const ROLES = Object.keys(ROLE_LABELS);
+
 export function roleLabel(role: string): string {
   return ROLE_LABELS[role] ?? role;
 }
 
 export function permissionLabel(permission: string): string {
   return PERMISSION_LABELS[permission] ?? permission;
+}
+
+const INVITATION_STATUS_LABELS: Record<string, string> = {
+  pending: "Waiting",
+  accepted: "Accepted",
+  revoked: "Withdrawn",
+  expired: "Expired",
+};
+
+export function invitationStatusLabel(status: string): string {
+  return INVITATION_STATUS_LABELS[status] ?? status;
+}
+
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 }
