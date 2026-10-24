@@ -14,7 +14,10 @@ services:
     region: frankfurt
     rootDir: backend
     buildCommand: pip install -r requirements.txt && pip check
-    startCommand: gunicorn -c gunicorn.conf.py wsgi:app
+    # Render sets GUNICORN_CMD_ARGS="--preload --access-logfile - ..." for
+    # Python services, which would override gunicorn.conf.py and log every
+    # request's query string. `env -u` starts gunicorn without it.
+    startCommand: env -u GUNICORN_CMD_ARGS gunicorn -c gunicorn.conf.py wsgi:app
     healthCheckPath: /api/v1/health
     # Deploy a commit only after its GitHub Actions checks have passed.
     autoDeployTrigger: checksPass
@@ -23,6 +26,10 @@ services:
         value: production
       - key: LOG_LEVEL
         value: INFO
+      # Two worker processes, so one slow request does not hold up everyone
+      # (Render's default for a free instance is one). See gunicorn.conf.py.
+      - key: WEB_CONCURRENCY
+        value: "2"
       - key: SECRET_KEY
         generateValue: true
       # sms_app's connection string (rows only), from Neon.
