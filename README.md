@@ -6,9 +6,9 @@ A multi-school School Management System for administrators, teachers,
 finance staff, parents and students, built with strict school-level data
 isolation and security as first priorities.
 
-> **Status:** Foundation in progress. The backend connects to PostgreSQL with
-> versioned migrations and exposes health checks only. No school management
-> features are implemented yet.
+> **Status:** In development. Login, schools, roles, invitations, people and
+> students work, and a staging copy with fake data runs on free hosting
+> ([docs/deployment.md](docs/deployment.md)). Not yet ready for real schools.
 
 ## Stack
 
@@ -17,7 +17,7 @@ isolation and security as first priorities.
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4      |
 | Backend  | Python 3.12, Flask 3.1, SQLAlchemy 2.1, Flask-Migrate, Pytest, Ruff |
 | Database | PostgreSQL 16, least-privilege users, Alembic migrations         |
-| Hosting  | Vercel (frontend), Render (backend), subject to free-tier review  |
+| Hosting  | Staging: Vercel (frontend), Render (API), Neon (database)         |
 
 ## Repository structure
 
@@ -44,7 +44,8 @@ The frontend and backend run independently. Follow each guide:
 
 Database setup and migrations are described in
 [docs/database.md](docs/database.md). Security decisions and known findings
-are recorded in [docs/security-notes.md](docs/security-notes.md).
+are recorded in [docs/security-notes.md](docs/security-notes.md). The staging
+deployment is described in [docs/deployment.md](docs/deployment.md).
 
 ## Continuous integration
 

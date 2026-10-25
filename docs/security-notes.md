@@ -201,7 +201,8 @@ template and plugins support ESLint 10. No vulnerability is reported for it.
 
 `sms_app` and `sms_migrator` each use one password for both `sms_dev` and
 `sms_test`. This is acceptable on a single developer machine. Production will
-use separate users and credentials, set up with deployment.
+use separate users and credentials; staging already does (on Neon, with
+generated passwords; see [deployment.md](deployment.md)).
 
 ### `sms_app` can write to `alembic_version`
 
@@ -219,9 +220,13 @@ disabled or configured to the same rules as the app's summary line.
 This matters more since the Students page: a search sends part of a child's
 name in the query string (`/api/v1/school/students?q=...`). The page never
 puts it in its own address, so it stays out of browser history, but the
-development server's access line shows it. Before real schools use the
-system, check what Vercel and Render record for each request; if they keep
-query strings, move the search into a request body (a small API change).
+development server's access line shows it.
+
+On staging, gunicorn's access log is off, and Render's attempt to turn it
+back on is blocked (checked 2026-10-24; see [deployment.md](deployment.md)).
+Vercel's own request logs have not been checked yet. If they keep query
+strings, move the search into a request body (a small API change) before
+real schools use the system.
 
 ### Rate limiting stores only hashed emails and IPs
 
@@ -279,18 +284,27 @@ not feasible, and password hashing only runs for a valid token.
 - The migration names the runtime user `sms_app`. A production database
   must use the same name, or the REVOKE must be adjusted.
 
-### Behind the frontend proxy, Flask sees one IP for everyone (deployment blocker)
+### Flask sees one IP for everyone (deployment blocker, feature B11)
 
-All API requests now arrive from the Next.js server, so Flask sees its IP for
-every visitor. The "50 failed logins per IP" limit would then count everyone
+On staging every request reaches gunicorn from `127.0.0.1` (Render's proxy
+inside the container), so the "50 failed logins per IP" limit counts everyone
 together: one person could block logins for all users for 15 minutes.
-Setting `TRUSTED_PROXY_COUNT` fixes this only if the `X-Forwarded-For` header
-reaching Flask is trustworthy. A self-hosted Next.js server passes on
-whatever the client sent (checked 2026-10-22), so it is not. Vercel is
-documented to overwrite the header with the real client IP; this must be
-confirmed on Vercel, and `TRUSTED_PROXY_COUNT` set to match, before real
-schools use the system. In development every request comes from 127.0.0.1
-anyway.
+Measured on 2026-10-24 ([deployment.md](deployment.md#client-ip-addresses-measured-2026-10-24)):
+Vercel replaces any `X-Forwarded-For` a visitor sends, but Render's address
+is public, and a request sent straight to Render keeps a forged value. So no
+`TRUSTED_PROXY_COUNT` is right for both routes, and it stays `0`.
+
+Feature B11 will let only the Vercel frontend call the API, then trust the
+measured number of proxies. A self-hosted Next.js server (instead of Vercel)
+would pass on whatever the client sent (checked 2026-10-22). In development
+every request comes from 127.0.0.1 anyway.
+
+### Requests without an `Origin` header pass the CSRF check
+
+The API refuses data-changing requests whose `Origin` is another site, but
+lets requests with no `Origin` through, so tools such as curl work. Browsers
+send `Origin` on these requests, and the session cookie is `SameSite=Lax`,
+so a page on another site still cannot act with a visitor's session.
 
 ### No Content Security Policy yet
 
@@ -322,5 +336,5 @@ hundreds of schools; pagination will be added before it could grow large.
 ### `psycopg[binary]` in production
 
 The backend uses psycopg's pre-built binary package. psycopg's documentation
-suggests a locally built package for production. To be reviewed when Render
-deployment is set up.
+suggests a locally built package for production. Staging on Render uses the
+binary package; to be reviewed before production.

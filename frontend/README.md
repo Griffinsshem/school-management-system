@@ -78,6 +78,24 @@ use the test database. The tests rebuild `.next/` for port 5001, so run
 After a failure, `npx playwright show-trace` with the path printed in the
 output replays it step by step.
 
+## Smoke checks against staging
+
+A few read-only checks run against the deployed staging site instead of local
+servers (`playwright.staging.config.ts`, folder `e2e-staging/`): logging in
+with the demo accounts, the production cookie, the Students and People pages,
+and logging out. They create and change nothing, so they can run after every
+deploy. The demo password is typed at a hidden prompt and never saved;
+traces and screenshots are off so it is not recorded either.
+
+```bash
+read -rsp "Demo password: " STAGING_PASSWORD; echo; export STAGING_PASSWORD
+STAGING_URL=https://school-management-system-one-peach.vercel.app npx playwright test -c playwright.staging.config.ts
+unset STAGING_PASSWORD
+```
+
+Plain `npx playwright test` never touches staging. See
+[../docs/deployment.md](../docs/deployment.md).
+
 ## Configuration
 
 | Variable | Purpose |
