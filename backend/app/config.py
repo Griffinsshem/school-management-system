@@ -15,6 +15,7 @@ MIN_SECRET_KEY_LENGTH = 32
 TEST_DATABASE_SUFFIX = "_test"
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 MAX_TRUSTED_PROXY_COUNT = 5
+MIN_PROXY_SECRET_LENGTH = 32
 
 
 class BaseConfig:
@@ -45,6 +46,10 @@ class BaseConfig:
     # TEMPORARY (B10): /api/v1/diagnostics/client-ip, for measuring which
     # addresses reach the API on staging. Off unless CLIENT_IP_DIAGNOSTICS=1.
     CLIENT_IP_DIAGNOSTICS = False
+    # Shared by the frontend's host and the API's host: API requests without
+    # it are refused (see app.frontend_proxy). Required in production.
+    PROXY_SHARED_SECRET: str | None = None
+    REQUIRE_PROXY_SHARED_SECRET = False
 
     # Login session cookie. Secure cookies are named with the __Host- prefix,
     # which makes browsers enforce Secure, Path=/ and no Domain.
@@ -71,7 +76,7 @@ class DevelopmentConfig(BaseConfig):
 
 
 class ProductionConfig(BaseConfig):
-    pass
+    REQUIRE_PROXY_SHARED_SECRET = True
 
 
 class TestingConfig(BaseConfig):
@@ -109,6 +114,7 @@ def load_from_environment(config: dict) -> None:
     config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", config["LOG_LEVEL"]).upper()
     config["FRONTEND_ORIGIN"] = os.environ.get("FRONTEND_ORIGIN", config["FRONTEND_ORIGIN"])
     config["CLIENT_IP_DIAGNOSTICS"] = os.environ.get("CLIENT_IP_DIAGNOSTICS") == "1"
+    config["PROXY_SHARED_SECRET"] = os.environ.get("PROXY_SHARED_SECRET") or None
     proxy_count = os.environ.get("TRUSTED_PROXY_COUNT")
     if proxy_count is not None:
         try:
@@ -139,6 +145,22 @@ def validate_config(config: dict) -> None:
         raise RuntimeError(f"TRUSTED_PROXY_COUNT must be between 0 and {MAX_TRUSTED_PROXY_COUNT}.")
 
     _validate_frontend_origin(config)
+    _validate_proxy_secret(config)
+
+
+def _validate_proxy_secret(config: dict) -> None:
+    secret = config.get("PROXY_SHARED_SECRET")
+    if secret is None:
+        if config.get("REQUIRE_PROXY_SHARED_SECRET"):
+            raise RuntimeError(
+                "PROXY_SHARED_SECRET must be set in production (the same value as the "
+                "frontend's). See docs/deployment.md."
+            )
+        return
+    if len(secret) < MIN_PROXY_SECRET_LENGTH:
+        raise RuntimeError(
+            f"PROXY_SHARED_SECRET must be at least {MIN_PROXY_SECRET_LENGTH} characters long."
+        )
 
 
 def _validate_test_databases(config: dict) -> None:

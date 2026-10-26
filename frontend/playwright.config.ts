@@ -10,6 +10,10 @@ import { defineConfig, devices } from "@playwright/test";
 // do not clash with `npm run dev` (3000) and `flask run` (5000).
 const API_ORIGIN = "http://127.0.0.1:5001";
 const WEB_ORIGIN = "http://127.0.0.1:3100";
+// A fake secret for these tests only, so the frontend-to-API handshake is
+// tested exactly as on the real hosts. Keep in sync with
+// backend/scripts/e2e_server.py.
+const PROXY_SHARED_SECRET = "e2e-only-proxy-secret-never-used-anywhere-else";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -38,7 +42,9 @@ export default defineConfig({
       // A production build, so the tests check what will be deployed.
       command: "npm run build && npx next start --hostname 127.0.0.1 --port 3100",
       url: `${WEB_ORIGIN}/login`,
-      env: { API_ORIGIN },
+      // TRUST_X_FORWARDED_FOR: these tests act as the visitor's host, as
+      // Vercel does (see src/proxy.ts).
+      env: { API_ORIGIN, PROXY_SHARED_SECRET, TRUST_X_FORWARDED_FOR: "1" },
       reuseExistingServer: false,
       timeout: 180_000,
       stdout: "ignore",

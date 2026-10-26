@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 // Where the Flask API runs. Read only on the server (never NEXT_PUBLIC_), so
 // visitors' browsers never learn it: they only ever talk to this site, and
-// Next.js forwards /api/... to Flask. The login cookie then stays first-party.
-// Rewrites are fixed when the app is built, so API_ORIGIN must be set at build
-// time in production (for example in the hosting platform's settings).
+// src/proxy.ts forwards /api/... to Flask. The login cookie then stays
+// first-party. Checked here so a missing or malformed value stops the build
+// (and `next start`) instead of failing on the first request.
 function apiOrigin(): string {
   const value = process.env.API_ORIGIN;
   if (!value) {
@@ -20,7 +20,7 @@ function apiOrigin(): string {
   return value;
 }
 
-const API_ORIGIN = apiOrigin();
+apiOrigin();
 
 // Sent with every response. A full Content Security Policy needs per-request
 // nonces and is planned separately (see docs/security-notes.md).
@@ -53,14 +53,6 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },
     ];
-  },
-  async rewrites() {
-    return {
-      // Checked before pages and static files, so nothing can shadow the API.
-      beforeFiles: [{ source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` }],
-      afterFiles: [],
-      fallback: [],
-    };
   },
 };
 

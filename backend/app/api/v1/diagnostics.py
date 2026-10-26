@@ -6,7 +6,7 @@ instead of guesses. It is off unless CLIENT_IP_DIAGNOSTICS=1, answers 404
 otherwise, and is removed again before B10 is finished.
 """
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, g, jsonify, request
 
 from app.auth.rate_limit import _client_ip
 
@@ -14,6 +14,7 @@ diagnostics_bp = Blueprint("diagnostics", __name__)
 
 # Headers that proxies and CDNs commonly use to pass on the visitor's address.
 ADDRESS_HEADERS = (
+    "X-SMS-Client-IP",
     "X-Forwarded-For",
     "X-Real-IP",
     "X-Vercel-Forwarded-For",
@@ -34,6 +35,7 @@ def client_ip():
     response = jsonify(
         {
             "trusted_proxy_count": current_app.config["TRUSTED_PROXY_COUNT"],
+            "via_frontend_proxy": g.get("via_frontend_proxy", False),
             "rate_limit_ip": _client_ip(),
             "socket_peer": original.get("REMOTE_ADDR") or request.environ.get("REMOTE_ADDR"),
             "headers": {name: request.headers.get(name) for name in ADDRESS_HEADERS},

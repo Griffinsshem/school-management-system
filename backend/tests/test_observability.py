@@ -144,6 +144,7 @@ def test_log_level_is_read_from_the_environment(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "x" * 48)
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/example")
     monkeypatch.setenv("FRONTEND_ORIGIN", "https://app.example.com")
+    monkeypatch.setenv("PROXY_SHARED_SECRET", "p" * 40)
     monkeypatch.setenv("LOG_LEVEL", "warning")
 
     app = create_app("production")

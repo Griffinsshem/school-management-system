@@ -6,6 +6,7 @@ VALID_KEY = "x" * 48
 VALID_DB_URL = "postgresql+psycopg://user:pass@localhost:5432/example"
 NON_TEST_DB_URL = "postgresql+psycopg://user:pass@localhost:5432/sms_dev"
 VALID_ORIGIN = "https://app.example.com"
+VALID_PROXY_SECRET = "p" * 40
 APP_VARIABLES = (
     "SECRET_KEY",
     "DATABASE_URL",
@@ -13,6 +14,7 @@ APP_VARIABLES = (
     "APP_ENV",
     "FRONTEND_ORIGIN",
     "TRUSTED_PROXY_COUNT",
+    "PROXY_SHARED_SECRET",
 )
 
 
@@ -30,6 +32,7 @@ def production_env(env):
     env.setenv("SECRET_KEY", VALID_KEY)
     env.setenv("DATABASE_URL", VALID_DB_URL)
     env.setenv("FRONTEND_ORIGIN", VALID_ORIGIN)
+    env.setenv("PROXY_SHARED_SECRET", VALID_PROXY_SECRET)
     return env
 
 
@@ -112,3 +115,26 @@ def test_tests_require_a_test_database_url(monkeypatch):
 def test_tests_refuse_a_database_not_named_test(setting):
     with pytest.raises(RuntimeError, match="Refusing to run tests"):
         create_app("testing", overrides={setting: NON_TEST_DB_URL})
+
+
+def test_production_requires_the_proxy_secret(production_env):
+    production_env.delenv("PROXY_SHARED_SECRET")
+
+    with pytest.raises(RuntimeError, match="PROXY_SHARED_SECRET must be set"):
+        create_app("production")
+
+
+def test_short_proxy_secret_is_rejected(production_env):
+    production_env.setenv("PROXY_SHARED_SECRET", "too-short")
+
+    with pytest.raises(RuntimeError, match="at least 32 characters"):
+        create_app("production")
+
+
+def test_development_runs_without_the_proxy_secret(env):
+    env.setenv("SECRET_KEY", VALID_KEY)
+    env.setenv("DATABASE_URL", VALID_DB_URL)
+
+    app = create_app("development")
+
+    assert app.config["PROXY_SHARED_SECRET"] is None

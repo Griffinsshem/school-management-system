@@ -22,9 +22,11 @@ def test_off_unless_the_setting_is_exactly_1(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "x" * 48)
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@127.0.0.1:1/unused")
     monkeypatch.setenv("FRONTEND_ORIGIN", "https://app.example.com")
+    monkeypatch.setenv("PROXY_SHARED_SECRET", "p" * 40)
     for value, expected in (("true", 404), ("0", 404), ("1", 200)):
         monkeypatch.setenv("CLIENT_IP_DIAGNOSTICS", value)
-        response = create_app().test_client().get(URL)
+        headers = {"X-SMS-Proxy-Secret": "p" * 40}
+        response = create_app().test_client().get(URL, headers=headers)
         assert response.status_code == expected, value
 
 

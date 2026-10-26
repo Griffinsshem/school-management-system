@@ -38,6 +38,10 @@ services:
       # The Vercel site's address, for example https://example.vercel.app
       - key: FRONTEND_ORIGIN
         sync: false
-      # 0 until the real client IP has been checked behind Vercel and Render.
+      # 0: the visitor's IP comes from the frontend's X-SMS-Client-IP header,
+      # trusted only with PROXY_SHARED_SECRET (see docs/deployment.md).
       - key: TRUSTED_PROXY_COUNT
         value: "0"
+      # The same value as PROXY_SHARED_SECRET in Vercel; set in the dashboard.
+      - key: PROXY_SHARED_SECRET
+        sync: false

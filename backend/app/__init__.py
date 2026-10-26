@@ -10,6 +10,7 @@ from app.auth.csrf import register_csrf_protection
 from app.config import get_config, load_from_environment, validate_config
 from app.errors import register_error_handlers
 from app.extensions import db, migrate
+from app.frontend_proxy import register_frontend_proxy_check
 from app.observability import configure_logging, register_request_hooks
 from app.school_context import register_school_context
 
@@ -37,6 +38,7 @@ def create_app(config_name: str | None = None, overrides: dict | None = None) ->
 
     configure_logging(app)
     register_request_hooks(app)
+    register_frontend_proxy_check(app)
     register_csrf_protection(app)
 
     proxy_count = app.config["TRUSTED_PROXY_COUNT"]

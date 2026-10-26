@@ -24,6 +24,7 @@ PRODUCTION_ENV = {
     # Never connected to: the health check does not touch the database.
     "DATABASE_URL": "postgresql+psycopg://user:pass@127.0.0.1:1/unused",
     "FRONTEND_ORIGIN": "https://app.example.com",
+    "PROXY_SHARED_SECRET": "p" * 40,
 }
 APP_VARIABLES = (
     "APP_ENV",
@@ -32,6 +33,7 @@ APP_VARIABLES = (
     "MIGRATION_DATABASE_URL",
     "FRONTEND_ORIGIN",
     "TRUSTED_PROXY_COUNT",
+    "PROXY_SHARED_SECRET",
 )
 
 

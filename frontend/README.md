@@ -23,9 +23,11 @@ npm run dev
 
 Open `http://127.0.0.1:3000`. The dev server listens only on this computer.
 
-The browser only ever talks to this address: Next.js forwards every
+The browser only ever talks to this address: `src/proxy.ts` forwards every
 `/api/...` request to the Flask API at `API_ORIGIN`. The login cookie is
-therefore first-party and `HttpOnly` (page scripts cannot read it).
+therefore first-party and `HttpOnly` (page scripts cannot read it). When
+`PROXY_SHARED_SECRET` is set, the forwarded requests carry it, and the API
+refuses any request without it.
 
 To test from a phone on the same network, run
 `npm run dev -- --hostname 0.0.0.0` and also set the backend's
@@ -70,6 +72,10 @@ API is started with `python`):
 npx playwright test
 ```
 
+Both test servers share a fake proxy secret (in `playwright.config.ts` and
+`../backend/scripts/e2e_server.py`), so the frontend-to-API handshake is
+tested as on the real hosts, including that the API refuses direct requests.
+
 The tests start their own servers on ports 3100 and 5001, so `npm run dev`
 and `flask run` can keep running. Do not run `pytest` at the same time: both
 use the test database. The tests rebuild `.next/` for port 5001, so run
@@ -100,7 +106,9 @@ Plain `npx playwright test` never touches staging. See
 
 | Variable | Purpose |
 |----------|---------|
-| `API_ORIGIN` | Where the Flask API runs, for example `http://127.0.0.1:5000`. Server-only. Optional for `npm run dev`; required for `npm run build` and `npm start`, which must use the same value (the forwarding rule is fixed at build time). |
+| `API_ORIGIN` | Where the Flask API runs, for example `http://127.0.0.1:5000`. Server-only. Optional for `npm run dev`; required for `npm run build` and `npm start`. |
+| `PROXY_SHARED_SECRET` | The same value as the API's `PROXY_SHARED_SECRET`. Server-only. Added to every forwarded `/api` request so the API knows it came through this site. Required wherever the API requires it (staging, production); leave unset for local development unless the API sets it too. |
+| `TRUST_X_FORWARDED_FOR` | `1` only where the host replaces any `X-Forwarded-For` a visitor sends, so it can be passed on as the visitor's address. Not needed on Vercel, which is recognised automatically. Never set it for a self-hosted Next.js server. |
 
 See `.env.example`. Never put secrets in variables starting with
 `NEXT_PUBLIC_`: those are sent to every visitor's browser.

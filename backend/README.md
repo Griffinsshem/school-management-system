@@ -84,6 +84,7 @@ clearly fake data. Do not run `pytest` and the browser tests at the same time.
 | `TEST_MIGRATION_DATABASE_URL` | Test migration connection as `sms_migrator` to `sms_test`.      |
 | `FRONTEND_ORIGIN`             | The frontend's origin, e.g. `https://app.example.com`. Required in production (https); defaults to `http://127.0.0.1:3000` in development. |
 | `TRUSTED_PROXY_COUNT`         | Reverse proxies whose `X-Forwarded-For` is trusted (0 to 5, default 0). |
+| `PROXY_SHARED_SECRET`         | Shared with the frontend's host (at least 32 characters). When set, API requests without it are refused with `403` (health checks excepted), and only then is the frontend's `X-SMS-Client-IP` trusted. Required in production. |
 | `PORT`, `WEB_CONCURRENCY`     | gunicorn only: the port to listen on (default 10000) and the number of worker processes (default 2). |
 | `CLIENT_IP_DIAGNOSTICS`       | Temporary (until B11): `1` turns on `/api/v1/diagnostics/client-ip`. Leave unset. |
 

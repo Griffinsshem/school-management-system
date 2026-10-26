@@ -7,8 +7,9 @@ It is not for development use. It:
    `_test`; the app refuses anything else),
 2. brings that database to the latest migration and EMPTIES every table,
 3. adds clearly fake data: an administrator in two schools and a principal,
-4. serves the API on 127.0.0.1:5001, accepting requests from the frontend
-   that Playwright starts on 127.0.0.1:3100.
+4. serves the API on 127.0.0.1:5001, accepting requests only from the
+   frontend that Playwright starts on 127.0.0.1:3100 (which adds the shared
+   proxy secret below, as on the real hosts).
 
 The backend tests (pytest) also use the test database and empty it before
 they start, so do not run both at the same time.
@@ -34,6 +35,9 @@ from app.models import Membership, School, User  # noqa: E402
 HOST = "127.0.0.1"
 PORT = 5001
 FRONTEND_ORIGIN = "http://127.0.0.1:3100"
+# A fake secret for the browser tests only. Keep in sync with
+# frontend/playwright.config.ts.
+PROXY_SECRET = "e2e-only-proxy-secret-never-used-anywhere-else"  # noqa: S105
 TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 
 # Fake accounts that exist only in the test database. Keep in sync with
@@ -84,7 +88,10 @@ def reset_and_seed(app) -> None:
 
 def main() -> None:
     load_test_settings()
-    app = create_app("testing", overrides={"FRONTEND_ORIGIN": FRONTEND_ORIGIN})
+    app = create_app(
+        "testing",
+        overrides={"FRONTEND_ORIGIN": FRONTEND_ORIGIN, "PROXY_SHARED_SECRET": PROXY_SECRET},
+    )
     reset_and_seed(app)
     print(f"E2E API ready on http://{HOST}:{PORT} (test database, fake data)", flush=True)
     # One line per request is noise in the test output; problems still show.

@@ -10,10 +10,11 @@ import hmac
 import math
 from datetime import datetime
 
-from flask import current_app, request
+from flask import current_app
 from sqlalchemy import delete, func, select
 
 from app.extensions import db
+from app.frontend_proxy import client_ip
 from app.models import LoginAttempt
 
 
@@ -24,9 +25,9 @@ def _key_hash(key_type: str, value: str) -> str:
 
 
 def _client_ip() -> str:
-    # With TRUSTED_PROXY_COUNT set, ProxyFix has already put the real client
-    # address here; otherwise forwarding headers are ignored.
-    return request.remote_addr or "unknown"
+    # The frontend's client-IP header is trusted only on requests that carry
+    # the shared proxy secret (see app.frontend_proxy).
+    return client_ip()
 
 
 def _keys(email: str) -> list[tuple[str, str, int]]:
