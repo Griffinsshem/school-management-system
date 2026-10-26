@@ -43,9 +43,6 @@ class BaseConfig:
     # Number of reverse proxies in front of the API whose X-Forwarded-For header
     # is trusted. 0 means the header is ignored, so clients cannot fake their IP.
     TRUSTED_PROXY_COUNT = 0
-    # TEMPORARY (B10): /api/v1/diagnostics/client-ip, for measuring which
-    # addresses reach the API on staging. Off unless CLIENT_IP_DIAGNOSTICS=1.
-    CLIENT_IP_DIAGNOSTICS = False
     # Shared by the frontend's host and the API's host: API requests without
     # it are refused (see app.frontend_proxy). Required in production.
     PROXY_SHARED_SECRET: str | None = None
@@ -113,7 +110,6 @@ def load_from_environment(config: dict) -> None:
     config["MIGRATION_DATABASE_URI"] = os.environ.get("MIGRATION_DATABASE_URL")
     config["LOG_LEVEL"] = os.environ.get("LOG_LEVEL", config["LOG_LEVEL"]).upper()
     config["FRONTEND_ORIGIN"] = os.environ.get("FRONTEND_ORIGIN", config["FRONTEND_ORIGIN"])
-    config["CLIENT_IP_DIAGNOSTICS"] = os.environ.get("CLIENT_IP_DIAGNOSTICS") == "1"
     config["PROXY_SHARED_SECRET"] = os.environ.get("PROXY_SHARED_SECRET") or None
     proxy_count = os.environ.get("TRUSTED_PROXY_COUNT")
     if proxy_count is not None:

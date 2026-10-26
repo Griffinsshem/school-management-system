@@ -284,20 +284,29 @@ not feasible, and password hashing only runs for a valid token.
 - The migration names the runtime user `sms_app`. A production database
   must use the same name, or the REVOKE must be adjusted.
 
-### Flask sees one IP for everyone (deployment blocker, feature B11)
+### Only the frontend may call the API (B11)
 
-On staging every request reaches gunicorn from `127.0.0.1` (Render's proxy
-inside the container), so the "50 failed logins per IP" limit counts everyone
-together: one person could block logins for all users for 15 minutes.
-Measured on 2026-10-24 ([deployment.md](deployment.md#client-ip-addresses-measured-2026-10-24)):
-Vercel replaces any `X-Forwarded-For` a visitor sends, but Render's address
-is public, and a request sent straight to Render keeps a forged value. So no
-`TRUSTED_PROXY_COUNT` is right for both routes, and it stays `0`.
+Every request reaches gunicorn from `127.0.0.1` (Render's proxy inside the
+container), and Render's address is public, so the API could not tell
+visitors apart: one person could have blocked logins for everyone. Since B11
+the frontend adds a shared secret (`PROXY_SHARED_SECRET`) and the visitor's
+address to every API request; the API refuses requests without the secret
+(`403`, health checks excepted, constant-time comparison) and trusts the
+address only with it. Measured on staging on 2026-10-26: each visitor is
+counted separately, forged headers are ignored, and direct requests to Render
+are refused ([deployment.md](deployment.md#client-ip-addresses)).
 
-Feature B11 will let only the Vercel frontend call the API, then trust the
-measured number of proxies. A self-hosted Next.js server (instead of Vercel)
-would pass on whatever the client sent (checked 2026-10-22). In development
-every request comes from 127.0.0.1 anyway.
+What remains:
+
+- Anyone who learns the secret can call the API directly and choose the
+  address it counts. It lives only in Vercel's and Render's settings; change
+  it if it may have leaked.
+- The address comes from Vercel's `X-Forwarded-For`, which Vercel replaces.
+  A self-hosted Next.js server passes on whatever the visitor sent (checked
+  2026-10-22), so `src/proxy.ts` uses it only on Vercel or where
+  `TRUST_X_FORWARDED_FOR=1` is set deliberately.
+- In development no secret is set, the API accepts direct requests, and
+  every request comes from 127.0.0.1 anyway.
 
 ### Requests without an `Origin` header pass the CSRF check
 

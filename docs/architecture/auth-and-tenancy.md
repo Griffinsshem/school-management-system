@@ -63,20 +63,21 @@ upgraded at login. **Implemented.**
 
 ## Same-domain API access
 
-**Implemented** (B7). The browser only talks to the frontend's domain;
-Next.js forwards `/api/...` to the Flask API at `API_ORIGIN` (a server-only
-setting, fixed when the frontend is built). The session cookie stays
-first-party, so browsers that block cross-site cookies do not break login,
-and Flask's `Origin` check still sees the frontend's address.
+**Implemented** (B7, tightened in B11). The browser only talks to the
+frontend's domain; `src/proxy.ts` forwards `/api/...` to the Flask API at
+`API_ORIGIN` (a server-only setting). The session cookie stays first-party,
+so browsers that block cross-site cookies do not break login, and Flask's
+`Origin` check still sees the frontend's address. On staging and production
+the forwarded requests carry a secret shared with the API, which refuses any
+request without it, and the visitor's address for login limits.
 
 The screens (`/login`, `/` and `/invitations/accept`) ask `GET /api/v1/auth/me`
 from the browser and go to the login page on a `401`. Next.js's `proxy.ts`
 also sends visitors without any session cookie straight to `/login`; it is a
 shortcut, not a security check. Every decision is still made by Flask.
 
-Still to verify on the hosting platforms: that the forwarding works on Vercel,
-and how Flask learns the real client IP for rate limiting (see
-`docs/security-notes.md`).
+Verified on staging (Vercel and Render) on 2026-10-26; see
+`docs/deployment.md`.
 
 ## School isolation
 

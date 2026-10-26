@@ -75,6 +75,8 @@ def test_env_file_loads_safely_in_a_shell(tmp_path):
     assert "channel_binding=require" in result.stdout
     assert "APP_ENV='production'" in text
     assert f"FRONTEND_ORIGIN='{staging.PLACEHOLDER_ORIGIN}'" in text
+    # Production settings refuse to start without one (flask commands, seeding).
+    assert "PROXY_SHARED_SECRET='" in text
 
 
 def test_env_file_is_private_and_never_overwritten(tmp_path, monkeypatch):
@@ -86,6 +88,19 @@ def test_env_file_is_private_and_never_overwritten(tmp_path, monkeypatch):
     with pytest.raises(FileExistsError):
         staging.write_env_file("A='2'\n")
     assert env_file.read_text() == "A='1'\n"
+
+
+def test_rotation_replaces_the_env_file_and_keeps_it_private(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env.staging"
+    monkeypatch.setattr(staging, "ENV_FILE", env_file)
+    staging.write_env_file("A='old'\n")
+    (tmp_path / ".env.staging.new").write_text("left over from an interrupted run")
+
+    staging.write_env_file("A='new'\n", replace=True)
+
+    assert env_file.read_text() == "A='new'\n"
+    assert env_file.stat().st_mode & 0o777 == 0o600
+    assert sorted(path.name for path in tmp_path.iterdir()) == [".env.staging"]
 
 
 def test_checks_pass_for_the_least_privilege_api_user(migrated_database, capsys):

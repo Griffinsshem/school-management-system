@@ -86,7 +86,6 @@ clearly fake data. Do not run `pytest` and the browser tests at the same time.
 | `TRUSTED_PROXY_COUNT`         | Reverse proxies whose `X-Forwarded-For` is trusted (0 to 5, default 0). |
 | `PROXY_SHARED_SECRET`         | Shared with the frontend's host (at least 32 characters). When set, API requests without it are refused with `403` (health checks excepted), and only then is the frontend's `X-SMS-Client-IP` trusted. Required in production. |
 | `PORT`, `WEB_CONCURRENCY`     | gunicorn only: the port to listen on (default 10000) and the number of worker processes (default 2). |
-| `CLIENT_IP_DIAGNOSTICS`       | Temporary (until B11): `1` turns on `/api/v1/diagnostics/client-ip`. Leave unset. |
 
 The app refuses to start if `SECRET_KEY` or `DATABASE_URL` is missing, so a
 misconfigured server fails loudly instead of running with unsafe settings.

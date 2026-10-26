@@ -12,6 +12,13 @@ Run from the backend/ folder with the virtual environment active.
         Any time, for example after migrations. Connects as sms_app (from
         .env.staging) and confirms it is still a least-privilege user.
 
+    python scripts/staging_database.py rotate
+        Gives sms_migrator and sms_app new random passwords (for example after
+        losing this computer, or on a schedule) and writes a new
+        backend/.env.staging. The API on Render keeps its old password until
+        its DATABASE_URL is replaced with the new one, so do that straight
+        away.
+
 Why SQL instead of Neon's "create role" button: Neon makes roles created in
 its console, CLI or API members of neon_superuser, which can bypass Row-Level
 Security. Roles created with SQL get no such membership.
@@ -96,6 +103,10 @@ def env_file_text(urls: dict[str, str]) -> str:
         **urls,
         "FRONTEND_ORIGIN": PLACEHOLDER_ORIGIN,
         "TRUSTED_PROXY_COUNT": "0",
+        # Production settings require one; flask commands run from this
+        # computer serve no requests, so a local random value is enough. The
+        # real shared secret lives only in Vercel's and Render's settings.
+        "PROXY_SHARED_SECRET": secrets.token_urlsafe(48),
     }
     lines = [
         "# STAGING settings for running flask commands from this computer. Never commit.",
@@ -105,11 +116,21 @@ def env_file_text(urls: dict[str, str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_env_file(text: str) -> None:
-    # O_EXCL: never overwrite an existing file; 0o600: only you can read it.
-    fd = os.open(ENV_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+def write_env_file(text: str, replace: bool = False) -> None:
+    """Write .env.staging, readable only by you (0o600).
+
+    Without `replace`, an existing file is never overwritten. With it, the new
+    file is written next to the old one and then swapped in, so the file is
+    never left half-written or briefly readable by others.
+    """
+    target = ENV_FILE.with_name(ENV_FILE.name + ".new") if replace else ENV_FILE
+    if replace:
+        target.unlink(missing_ok=True)  # left over from an interrupted run
+    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as handle:
         handle.write(text)
+    if replace:
+        os.replace(target, ENV_FILE)
 
 
 def create() -> None:
@@ -180,6 +201,41 @@ def create() -> None:
     print(f"Wrote {ENV_FILE.name} (readable only by you). No password was displayed.")
     print()
     if not run_checks(urls["DATABASE_URL"], expect_tables=False):
+        raise SetupError("Some checks failed. Do not deploy; share the output above.")
+
+
+def rotate() -> None:
+    owner = parse_owner_url(getpass.getpass("Neon owner connection string (hidden): "))
+    app_password = secrets.token_urlsafe(32)
+    migrator_password = secrets.token_urlsafe(32)
+    urls = build_urls(owner, app_password, migrator_password)
+
+    with psycopg.connect(libpq(owner), autocommit=True, connect_timeout=15) as conn:
+        found = {
+            row[0]
+            for row in conn.execute(
+                "SELECT rolname FROM pg_roles WHERE rolname = ANY(%s)", ([APP_USER, MIGRATOR],)
+            )
+        }
+        if found != {APP_USER, MIGRATOR}:
+            raise SetupError("sms_app and sms_migrator do not both exist. Run create first.")
+        print("Setting new passwords for sms_migrator and sms_app...")
+        with conn.transaction():
+            for role, password in ((MIGRATOR, migrator_password), (APP_USER, app_password)):
+                conn.execute(
+                    sql.SQL("ALTER ROLE {} PASSWORD {}").format(
+                        sql.Identifier(role), sql.Literal(password)
+                    )
+                )
+
+    write_env_file(env_file_text(urls), replace=True)
+    print(f"Wrote {ENV_FILE.name} (readable only by you). No password was displayed.")
+    print()
+    passed = run_checks(urls["DATABASE_URL"])
+    print()
+    print("Now replace DATABASE_URL on Render with the new one from .env.staging:")
+    print("  the API cannot open new database connections until you do.")
+    if not passed:
         raise SetupError("Some checks failed. Do not deploy; share the output above.")
 
 
@@ -254,11 +310,13 @@ def run_checks(database_url: str, expect_tables: bool = True, require_tls: bool 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=("create", "check"))
+    parser.add_argument("command", choices=("create", "check", "rotate"))
     args = parser.parse_args()
     try:
         if args.command == "create":
             create()
+        elif args.command == "rotate":
+            rotate()
         else:
             if not ENV_FILE.exists():
                 raise SetupError(f"{ENV_FILE.name} not found. Run the create command first.")
