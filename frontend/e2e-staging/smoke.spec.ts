@@ -71,7 +71,9 @@ test("an administrator sees the school's students and staff", async ({ page, con
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("a teacher sees the school year but no student or staff pages yet", async ({ page }) => {
+test("a teacher sees the school year and their classes, but no student or staff pages", async ({
+  page,
+}) => {
   await logIn(page, TEACHER_EMAIL);
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_A })).toBeVisible();
   await expect(role(page)).toHaveText("Teacher");
@@ -81,6 +83,10 @@ test("a teacher sees the school year but no student or staff pages yet", async (
   await page.getByRole("link", { name: "School year" }).click();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a school year" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Classes" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "My classes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add a class" })).toHaveCount(0);
 
   await logOut(page);
 });

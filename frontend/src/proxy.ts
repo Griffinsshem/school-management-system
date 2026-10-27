@@ -62,5 +62,5 @@ function visitorIp(request: NextRequest): string | undefined {
 export const config = {
   // API requests, and the pages that need a login (the login and invitation
   // pages are not listed).
-  matcher: ["/api/:path*", "/", "/people", "/school-year", "/students"],
+  matcher: ["/api/:path*", "/", "/classes", "/people", "/school-year", "/students"],
 };

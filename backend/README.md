@@ -113,6 +113,11 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | POST   | `/api/v1/school/academic-years` | Needs `academics.manage`: `201 {"academic_year": {...}}`, `409` (`year_name_taken` or `overlapping_year`), `422` |
 | PATCH  | `/api/v1/school/academic-years/{id}` | Needs `academics.manage`: `200`, `404`, `409` or `422` |
 | PUT    | `/api/v1/school/academic-years/{id}/terms/{1-3}` | Needs `academics.manage`: `200` (term created or changed), `404` or `422` |
+| GET    | `/api/v1/school/classes?academic_year_id=...` | Needs `classes.read` (every class) or `classes.read_own` (own classes): `200 {"academic_year", "grades", "classes"}`, `404` or `422` |
+| POST   | `/api/v1/school/classes` | Needs `classes.manage`: `201 {"class": {...}}`, `409` (`class_exists`) or `422` |
+| PATCH  | `/api/v1/school/classes/{id}` | Needs `classes.manage`: `200`, `404`, `409` or `422` |
+| POST   | `/api/v1/school/classes/{id}/teachers` | Needs `classes.manage`: `201`, `404`, `409` (`already_assigned`) or `422` |
+| DELETE | `/api/v1/school/classes/{id}/teachers/{membership_id}` | Needs `classes.manage`: `200` or `404` |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
 | POST   | `/api/v1/school/invitations/{id}/revoke` | Needs `members.manage`: `200`, `404` or `409` (already accepted) |
@@ -204,9 +209,12 @@ every endpoint checks on the server).
 | `students.manage` | `school_admin`, `registrar`              | Adding, changing and deactivating students |
 | `academics.read`  | `school_admin`, `principal`, `registrar`, `teacher`, `finance_officer` | Seeing school years and terms |
 | `academics.manage`| `school_admin`                           | Adding and changing school years and terms |
+| `classes.read`    | `school_admin`, `principal`, `registrar` | Seeing every class and its class teachers |
+| `classes.manage`  | `school_admin`                           | Adding and changing classes, choosing class teachers |
+| `classes.read_own`| `teacher`                                | Seeing only the classes they are an active class teacher of |
 
-Teachers have no student access yet: once classes exist they will see only
-the students they teach.
+Teachers have no student access yet: once enrolment exists (C3) they will
+see only the students of their own classes.
 
 A school always keeps at least one active `school_admin`: deactivating the
 last one is refused with `409`.
@@ -231,6 +239,10 @@ events but cannot change or delete them. Recorded actions:
 | `academic_year.created`  | A school year is added |
 | `academic_year.updated`  | A school year is changed, or a change is refused (`404`) |
 | `term.saved`             | A term is set or changed (one event per term), or a change is refused (`404`) |
+| `class.created`          | A class is added |
+| `class.updated`          | A class is changed, or a change is refused (`404`) |
+| `class_teacher.added`    | A class teacher is assigned, or an assignment is refused (`404`) |
+| `class_teacher.removed`  | A class teacher is removed, or a removal is refused (`404`) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -304,10 +316,30 @@ terms, numbered 1 to 3. Dates are `YYYY-MM-DD`, between the years 2000 and
   (`SELECT ... FOR UPDATE`), so two administrators saving at the same moment
   cannot both pass them.
 
+### Classes and class teachers
+
+A class is a grade, and optionally a stream (1 to 20 characters, such as
+"East"), in one school year: "Grade 4 East", or "Grade 4". Grades are the
+codes `pp1`, `pp2`, `grade_1` to `grade_12` and `form_1` to `form_4`. A grade
+and stream appear once per year (also with no stream). Classes are corrected,
+never deleted; the year cannot be changed.
+
+- Which grades exist follows Kenya's move from 8-4-4 to CBC, by the calendar
+  year the school year starts in (`app/models/school_class.py`): Grade 7 to 12
+  from 2023 to 2028 (Grade n from 2016 + n), Form 1 to 4 until 2024 to 2027
+  (Form n until 2023 + n). PP1, PP2 and Grades 1 to 6 always. The list
+  response's `grades` gives the grades of that year. Checked 2026-10-27.
+- A class teacher must be an active `teacher` of the same school; the
+  database enforces school and role with a three-column foreign key. A class
+  can have several. Removing one deletes only the assignment.
+- A teacher sees only the classes they are an active class teacher of. Once
+  their membership is deactivated their assignments stop counting; school
+  admins still see them, with `is_active: false`.
+
 ### Database-level isolation (Row-Level Security)
 
-The `students`, `invitations`, `academic_years` and `terms` tables are
-protected by a PostgreSQL Row-Level Security policy:
+The `students`, `invitations`, `academic_years`, `terms`, `classes` and
+`class_teachers` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

@@ -4,6 +4,9 @@ from app.auth.permissions import (
     ACADEMICS_MANAGE,
     ACADEMICS_READ,
     ALL_PERMISSIONS,
+    CLASSES_MANAGE,
+    CLASSES_READ,
+    CLASSES_READ_OWN,
     MEMBERS_MANAGE,
     MEMBERS_READ,
     ROLE_PERMISSIONS,
@@ -36,13 +39,25 @@ def test_roles_get_only_what_they_are_given():
         STUDENTS_MANAGE,
         ACADEMICS_READ,
         ACADEMICS_MANAGE,
+        CLASSES_READ,
+        CLASSES_MANAGE,
     }
-    assert ROLE_PERMISSIONS["principal"] == {MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ}
-    assert ROLE_PERMISSIONS["registrar"] == {STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ}
-    # Teachers get no student access until classes exist; like finance
-    # officers they see only the school years and terms.
-    for role in ("teacher", "finance_officer"):
-        assert ROLE_PERMISSIONS[role] == {ACADEMICS_READ}
+    assert ROLE_PERMISSIONS["principal"] == {
+        MEMBERS_READ,
+        STUDENTS_READ,
+        ACADEMICS_READ,
+        CLASSES_READ,
+    }
+    # Registrars see every class (to enrol students) but do not create them.
+    assert ROLE_PERMISSIONS["registrar"] == {
+        STUDENTS_READ,
+        STUDENTS_MANAGE,
+        ACADEMICS_READ,
+        CLASSES_READ,
+    }
+    # Teachers get no student access yet, and see only their own classes.
+    assert ROLE_PERMISSIONS["teacher"] == {ACADEMICS_READ, CLASSES_READ_OWN}
+    assert ROLE_PERMISSIONS["finance_officer"] == {ACADEMICS_READ}
     for role in ("guardian", "student"):
         assert ROLE_PERMISSIONS[role] == frozenset()
     assert ALL_PERMISSIONS == {
@@ -52,12 +67,17 @@ def test_roles_get_only_what_they_are_given():
         STUDENTS_MANAGE,
         ACADEMICS_READ,
         ACADEMICS_MANAGE,
+        CLASSES_READ,
+        CLASSES_MANAGE,
+        CLASSES_READ_OWN,
     }
 
 
 def test_an_unknown_permission_is_a_programming_error():
     with pytest.raises(ValueError, match="Unknown permission"):
         permission_required("members.delete_everything")
+    with pytest.raises(ValueError, match="classes.everything"):
+        permission_required(CLASSES_READ, "classes.everything")
 
 
 @pytest.mark.parametrize(
@@ -68,19 +88,24 @@ def test_an_unknown_permission_is_a_programming_error():
             [
                 "academics.manage",
                 "academics.read",
+                "classes.manage",
+                "classes.read",
                 "members.manage",
                 "members.read",
                 "students.manage",
                 "students.read",
             ],
         ),
-        (["principal"], ["academics.read", "members.read", "students.read"]),
-        (["teacher"], ["academics.read"]),
+        (["principal"], ["academics.read", "classes.read", "members.read", "students.read"]),
+        (["teacher"], ["academics.read", "classes.read_own"]),
         (["guardian"], []),
-        (["teacher", "principal"], ["academics.read", "members.read", "students.read"]),
+        (
+            ["teacher", "principal"],
+            ["academics.read", "classes.read", "classes.read_own", "members.read", "students.read"],
+        ),
         (
             ["principal", "registrar"],
-            ["academics.read", "members.read", "students.manage", "students.read"],
+            ["academics.read", "classes.read", "members.read", "students.manage", "students.read"],
         ),
     ],
 )
@@ -108,7 +133,8 @@ def test_permissions_come_only_from_the_active_school(db_app, make_user, make_sc
     body = client.get(ME).get_json()
 
     assert body["active_school"]["code"] == "school-b"
-    assert body["permissions"] == ["academics.read"]  # A teacher's, not School A's.
+    # A teacher's, not School A's.
+    assert body["permissions"] == ["academics.read", "classes.read_own"]
     assert client.get("/api/v1/school/members").status_code == 403
 
 

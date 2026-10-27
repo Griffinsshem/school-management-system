@@ -24,6 +24,8 @@ TABLES_TO_CLEAN = (
     "login_attempts",
     "sessions",
     "invitations",
+    "class_teachers",
+    "classes",
     "terms",
     "academic_years",
     "students",

@@ -6,6 +6,7 @@ from app.models.invitation import Invitation
 from app.models.login_attempt import LoginAttempt
 from app.models.membership import Membership
 from app.models.school import School
+from app.models.school_class import ClassTeacher, SchoolClass
 from app.models.session import UserSession
 from app.models.student import Student
 from app.models.user import User
@@ -13,10 +14,12 @@ from app.models.user import User
 __all__ = [
     "AcademicYear",
     "AuditEvent",
+    "ClassTeacher",
     "Invitation",
     "LoginAttempt",
     "Membership",
     "School",
+    "SchoolClass",
     "Student",
     "Term",
     "User",

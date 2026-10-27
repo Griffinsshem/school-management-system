@@ -25,6 +25,10 @@ STUDENTS_READ = "students.read"
 STUDENTS_MANAGE = "students.manage"
 ACADEMICS_READ = "academics.read"
 ACADEMICS_MANAGE = "academics.manage"
+CLASSES_READ = "classes.read"
+CLASSES_MANAGE = "classes.manage"
+# Only the classes the user is a class teacher of (see app/api/v1/classes.py).
+CLASSES_READ_OWN = "classes.read_own"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -35,15 +39,20 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             STUDENTS_MANAGE,
             ACADEMICS_READ,
             ACADEMICS_MANAGE,
+            CLASSES_READ,
+            CLASSES_MANAGE,
         }
     ),
-    "principal": frozenset({MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ}),
+    "principal": frozenset({MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ, CLASSES_READ}),
     # No student access until classes exist: a teacher should see only the
     # students they teach, not the whole school. School years and terms are
-    # not personal data, so every staff role may see them.
-    "teacher": frozenset({ACADEMICS_READ}),
+    # not personal data, so every staff role may see them. A teacher sees
+    # only their own classes.
+    "teacher": frozenset({ACADEMICS_READ, CLASSES_READ_OWN}),
     "finance_officer": frozenset({ACADEMICS_READ}),
-    "registrar": frozenset({STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ}),
+    # Registrars see every class (they will enrol students in C3) but do
+    # not create classes.
+    "registrar": frozenset({STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ, CLASSES_READ}),
     "guardian": frozenset(),
     "student": frozenset(),
 }
@@ -72,20 +81,23 @@ def current_permissions() -> frozenset[str]:
     return permissions
 
 
-def permission_required(permission: str):
+def permission_required(permission: str, *alternatives: str):
     """Require login, an active school and `permission` there (401, 403 otherwise).
 
-    Refusals for a missing permission are recorded in the audit trail, with
-    the missing permission as the action.
+    With `alternatives`, any one of the permissions is enough; the view then
+    decides what each one may see. Refusals are recorded in the audit trail,
+    with the first permission as the action.
     """
-    if permission not in ALL_PERMISSIONS:
-        raise ValueError(f"Unknown permission: {permission}")
+    accepted = frozenset((permission, *alternatives))
+    unknown = accepted - ALL_PERMISSIONS
+    if unknown:
+        raise ValueError(f"Unknown permission: {', '.join(sorted(unknown))}")
 
     def decorator(view):
         @wraps(view)
         @school_required
         def wrapped(*args, **kwargs):
-            if permission not in current_permissions():
+            if not accepted & current_permissions():
                 audit.record_denied(permission, school_id=current_school().id)
                 raise ApiError(403, "forbidden", "You do not have permission to do that.")
             return view(*args, **kwargs)

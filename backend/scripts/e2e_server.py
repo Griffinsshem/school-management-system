@@ -6,7 +6,8 @@ It is not for development use. It:
 1. uses ONLY the test database (TEST_DATABASE_URL, whose name must end in
    `_test`; the app refuses anything else),
 2. brings that database to the latest migration and EMPTIES every table,
-3. adds clearly fake data: an administrator in two schools and a principal,
+3. adds clearly fake data: an administrator in two schools, a principal and
+   a teacher,
 4. serves the API on 127.0.0.1:5001, accepting requests only from the
    frontend that Playwright starts on 127.0.0.1:3100 (which adds the shared
    proxy secret below, as on the real hosts).
@@ -44,6 +45,7 @@ TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 # frontend/e2e/helpers.ts.
 ADMIN_EMAIL = "e2e.admin@example.com"
 PRINCIPAL_EMAIL = "e2e.principal@example.com"
+TEACHER_EMAIL = "e2e.teacher@example.com"
 PASSWORD = "e2e only password"  # noqa: S105
 
 
@@ -72,15 +74,17 @@ def reset_and_seed(app) -> None:
         principal = User(
             email=PRINCIPAL_EMAIL, full_name="E2E Principal", password_hash=password_hash
         )
+        teacher = User(email=TEACHER_EMAIL, full_name="E2E Teacher", password_hash=password_hash)
         school_a = School(code="e2e-school-a", name="E2E School A", county_code=47)
         school_b = School(code="e2e-school-b", name="E2E School B", county_code=1)
-        db.session.add_all([admin, principal, school_a, school_b])
+        db.session.add_all([admin, principal, teacher, school_a, school_b])
         db.session.flush()
         db.session.add_all(
             [
                 Membership(user_id=admin.id, school_id=school_a.id, role="school_admin"),
                 Membership(user_id=admin.id, school_id=school_b.id, role="teacher"),
                 Membership(user_id=principal.id, school_id=school_a.id, role="principal"),
+                Membership(user_id=teacher.id, school_id=school_a.id, role="teacher"),
             ]
         )
         db.session.commit()

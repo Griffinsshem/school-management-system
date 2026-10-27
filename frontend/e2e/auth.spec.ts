@@ -43,8 +43,11 @@ test("logging in, choosing and switching school, and logging out", async ({ page
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_B })).toBeVisible();
   await expect(page.locator("dt:has-text('Your role') + dd")).toHaveText("Teacher");
-  // A teacher may only look at the school year (C1).
-  await expect(page.locator("dt:has-text('You can') + dd")).toHaveText("See the school year and terms");
+  // A teacher may look at the school year (C1) and their own classes (C2).
+  await expect(page.locator("dt:has-text('You can') + dd").getByRole("listitem")).toHaveText([
+    "See the school year and terms",
+    "See the classes you teach",
+  ]);
 
   // The choice is kept by the server, so it survives a reload.
   await page.reload();

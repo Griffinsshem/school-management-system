@@ -78,6 +78,11 @@ export function AppShell({
   const links = [
     { href: "/", label: "Home", show: true },
     { href: "/school-year", label: "School year", show: me.permissions.includes("academics.read") },
+    {
+      href: "/classes",
+      label: "Classes",
+      show: me.permissions.includes("classes.read") || me.permissions.includes("classes.read_own"),
+    },
     { href: "/students", label: "Students", show: me.permissions.includes("students.read") },
     { href: "/people", label: "People", show: me.permissions.includes("members.read") },
   ].filter((link) => link.show);
@@ -89,7 +94,7 @@ export function AppShell({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <p className="font-semibold">School Management System</p>
             <nav aria-label="Main">
-              <ul className="flex gap-4">
+              <ul className="flex flex-wrap gap-x-4 gap-y-1">
                 {links.map((link) => (
                   <li key={link.href}>
                     <Link

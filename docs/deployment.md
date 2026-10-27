@@ -101,7 +101,7 @@ which would otherwise silently fill in any missing staging value.
 `check` connects as `sms_app` and must show only `ok` lines: an encrypted
 connection; not a superuser; cannot bypass Row-Level Security; member of no
 other role; cannot create tables; every table owned by `sms_migrator`;
-Row-Level Security on for students, invitations, academic years and terms; audit events cannot be
+Row-Level Security on for students, invitations, academic years, terms, classes and class teachers; audit events cannot be
 changed or deleted. Run it after every migration.
 
 Neon's proxy ends TLS before the database, so the database's own

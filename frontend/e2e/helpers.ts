@@ -5,6 +5,7 @@ import { expect, type Page } from "@playwright/test";
 export const ADMIN_EMAIL = "e2e.admin@example.com";
 export const ADMIN_PASSWORD = "e2e only password";
 export const PRINCIPAL_EMAIL = "e2e.principal@example.com";
+export const TEACHER_EMAIL = "e2e.teacher@example.com";
 export const SCHOOL_A = "E2E School A";
 export const SCHOOL_B = "E2E School B";
 

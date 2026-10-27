@@ -30,6 +30,9 @@ class Membership(db.Model):
     __table_args__ = (
         UniqueConstraint("user_id", "school_id", "role", name="uq_memberships_user_school_role"),
         CheckConstraint(f"role IN ({_ROLE_LIST})", name="role_valid"),
+        # Lets class teachers prove they hold the teacher role in the same
+        # school (a three-column foreign key; see app/models/school_class.py).
+        UniqueConstraint("id", "school_id", "role", name="uq_memberships_id_school_role"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
