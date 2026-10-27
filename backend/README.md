@@ -109,6 +109,10 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/students/{id}` | Needs `students.read`: `200 {"student": {...}}` or `404` |
 | PATCH  | `/api/v1/school/students/{id}` | Needs `students.manage`: `200`, `404`, `409` or `422` |
 | POST   | `/api/v1/school/students/{id}/deactivate` | Needs `students.manage`: `200` or `404` |
+| GET    | `/api/v1/school/academic-years` | Needs `academics.read`: `200 {"academic_years": [...], "current": {...}}`, newest first |
+| POST   | `/api/v1/school/academic-years` | Needs `academics.manage`: `201 {"academic_year": {...}}`, `409` (`year_name_taken` or `overlapping_year`), `422` |
+| PATCH  | `/api/v1/school/academic-years/{id}` | Needs `academics.manage`: `200`, `404`, `409` or `422` |
+| PUT    | `/api/v1/school/academic-years/{id}/terms/{1-3}` | Needs `academics.manage`: `200` (term created or changed), `404` or `422` |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
 | POST   | `/api/v1/school/invitations/{id}/revoke` | Needs `members.manage`: `200`, `404` or `409` (already accepted) |
@@ -198,6 +202,8 @@ every endpoint checks on the server).
 | `members.manage`  | `school_admin`                           | Deactivating a member |
 | `students.read`   | `school_admin`, `principal`, `registrar` | Listing and viewing students |
 | `students.manage` | `school_admin`, `registrar`              | Adding, changing and deactivating students |
+| `academics.read`  | `school_admin`, `principal`, `registrar`, `teacher`, `finance_officer` | Seeing school years and terms |
+| `academics.manage`| `school_admin`                           | Adding and changing school years and terms |
 
 Teachers have no student access yet: once classes exist they will see only
 the students they teach.
@@ -222,6 +228,9 @@ events but cannot change or delete them. Recorded actions:
 | `student.created`        | A student is added |
 | `student.updated`        | A student is changed, or a change is refused (`404`) |
 | `student.deactivated`    | A student is deactivated, or a deactivation is refused (`404`) |
+| `academic_year.created`  | A school year is added |
+| `academic_year.updated`  | A school year is changed, or a change is refused (`404`) |
+| `term.saved`             | A term is set or changed (one event per term), or a change is refused (`404`) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -271,9 +280,34 @@ features that need them.
 - The school is never taken from the request: a body containing `school_id`
   is refused.
 
+### School years and terms
+
+A school records each school year (for example "2027", 1 to 20 characters,
+unique within the school) with its first and last day, and up to three
+terms, numbered 1 to 3. Dates are `YYYY-MM-DD`, between the years 2000 and
+2100. Years and terms are never deleted: mistakes are corrected by editing.
+
+- A year ends after it starts and lasts at most 400 days. Years of one
+  school never share a day (`409 overlapping_year`).
+- Terms lie inside their year and follow each other in number order; a term
+  may start the day after the previous one ends. A year's dates cannot be
+  changed so that a term falls outside it.
+- `POST` may include `terms` (0 to 3); either everything is saved or nothing
+  is. `PATCH` changes only the fields sent (none may be null).
+  `PUT .../terms/{number}` with `{"starts_on", "ends_on"}` creates or
+  corrects one term.
+- `current` in the list says which year and term contain today, and the next
+  term when today is in none. "Today" is the date in Kenya
+  (`Africa/Nairobi`, from the `tzdata` package), so it does not depend on
+  the server's clock zone.
+- Checks that compare rows run while the school's row is locked
+  (`SELECT ... FOR UPDATE`), so two administrators saving at the same moment
+  cannot both pass them.
+
 ### Database-level isolation (Row-Level Security)
 
-The `students` table is protected by a PostgreSQL Row-Level Security policy:
+The `students`, `invitations`, `academic_years` and `terms` tables are
+protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

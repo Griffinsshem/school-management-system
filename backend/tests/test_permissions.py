@@ -1,6 +1,8 @@
 import pytest
 
 from app.auth.permissions import (
+    ACADEMICS_MANAGE,
+    ACADEMICS_READ,
     ALL_PERMISSIONS,
     MEMBERS_MANAGE,
     MEMBERS_READ,
@@ -32,13 +34,25 @@ def test_roles_get_only_what_they_are_given():
         MEMBERS_MANAGE,
         STUDENTS_READ,
         STUDENTS_MANAGE,
+        ACADEMICS_READ,
+        ACADEMICS_MANAGE,
     }
-    assert ROLE_PERMISSIONS["principal"] == {MEMBERS_READ, STUDENTS_READ}
-    assert ROLE_PERMISSIONS["registrar"] == {STUDENTS_READ, STUDENTS_MANAGE}
-    # Teachers get no student access until classes exist.
-    for role in ("teacher", "finance_officer", "guardian", "student"):
+    assert ROLE_PERMISSIONS["principal"] == {MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ}
+    assert ROLE_PERMISSIONS["registrar"] == {STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ}
+    # Teachers get no student access until classes exist; like finance
+    # officers they see only the school years and terms.
+    for role in ("teacher", "finance_officer"):
+        assert ROLE_PERMISSIONS[role] == {ACADEMICS_READ}
+    for role in ("guardian", "student"):
         assert ROLE_PERMISSIONS[role] == frozenset()
-    assert ALL_PERMISSIONS == {MEMBERS_READ, MEMBERS_MANAGE, STUDENTS_READ, STUDENTS_MANAGE}
+    assert ALL_PERMISSIONS == {
+        MEMBERS_READ,
+        MEMBERS_MANAGE,
+        STUDENTS_READ,
+        STUDENTS_MANAGE,
+        ACADEMICS_READ,
+        ACADEMICS_MANAGE,
+    }
 
 
 def test_an_unknown_permission_is_a_programming_error():
@@ -49,11 +63,25 @@ def test_an_unknown_permission_is_a_programming_error():
 @pytest.mark.parametrize(
     ("roles", "expected"),
     [
-        (["school_admin"], ["members.manage", "members.read", "students.manage", "students.read"]),
-        (["principal"], ["members.read", "students.read"]),
-        (["teacher"], []),
-        (["teacher", "principal"], ["members.read", "students.read"]),
-        (["principal", "registrar"], ["members.read", "students.manage", "students.read"]),
+        (
+            ["school_admin"],
+            [
+                "academics.manage",
+                "academics.read",
+                "members.manage",
+                "members.read",
+                "students.manage",
+                "students.read",
+            ],
+        ),
+        (["principal"], ["academics.read", "members.read", "students.read"]),
+        (["teacher"], ["academics.read"]),
+        (["guardian"], []),
+        (["teacher", "principal"], ["academics.read", "members.read", "students.read"]),
+        (
+            ["principal", "registrar"],
+            ["academics.read", "members.read", "students.manage", "students.read"],
+        ),
     ],
 )
 def test_me_lists_the_permissions_of_all_roles_combined(
@@ -80,7 +108,7 @@ def test_permissions_come_only_from_the_active_school(db_app, make_user, make_sc
     body = client.get(ME).get_json()
 
     assert body["active_school"]["code"] == "school-b"
-    assert body["permissions"] == []
+    assert body["permissions"] == ["academics.read"]  # A teacher's, not School A's.
     assert client.get("/api/v1/school/members").status_code == 403
 
 

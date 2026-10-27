@@ -2,6 +2,7 @@
 
 from flask import Blueprint
 
+from app.api.v1.academic_years import academic_years_bp
 from app.api.v1.auth import auth_bp
 from app.api.v1.health import health_bp
 from app.api.v1.invitations import invitations_bp, school_invitations_bp
@@ -17,3 +18,4 @@ api_v1.register_blueprint(school_bp)
 api_v1.register_blueprint(students_bp)
 api_v1.register_blueprint(school_invitations_bp)
 api_v1.register_blueprint(invitations_bp)
+api_v1.register_blueprint(academic_years_bp)

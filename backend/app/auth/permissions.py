@@ -23,15 +23,27 @@ MEMBERS_READ = "members.read"
 MEMBERS_MANAGE = "members.manage"
 STUDENTS_READ = "students.read"
 STUDENTS_MANAGE = "students.manage"
+ACADEMICS_READ = "academics.read"
+ACADEMICS_MANAGE = "academics.manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
-    "school_admin": frozenset({MEMBERS_READ, MEMBERS_MANAGE, STUDENTS_READ, STUDENTS_MANAGE}),
-    "principal": frozenset({MEMBERS_READ, STUDENTS_READ}),
+    "school_admin": frozenset(
+        {
+            MEMBERS_READ,
+            MEMBERS_MANAGE,
+            STUDENTS_READ,
+            STUDENTS_MANAGE,
+            ACADEMICS_READ,
+            ACADEMICS_MANAGE,
+        }
+    ),
+    "principal": frozenset({MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ}),
     # No student access until classes exist: a teacher should see only the
-    # students they teach, not the whole school.
-    "teacher": frozenset(),
-    "finance_officer": frozenset(),
-    "registrar": frozenset({STUDENTS_READ, STUDENTS_MANAGE}),
+    # students they teach, not the whole school. School years and terms are
+    # not personal data, so every staff role may see them.
+    "teacher": frozenset({ACADEMICS_READ}),
+    "finance_officer": frozenset({ACADEMICS_READ}),
+    "registrar": frozenset({STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ}),
     "guardian": frozenset(),
     "student": frozenset(),
 }

@@ -15,6 +15,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   "members.manage": "Invite and remove members",
   "students.read": "See student records",
   "students.manage": "Add and change student records",
+  "academics.read": "See the school year and terms",
+  "academics.manage": "Set up school years and terms",
 };
 
 // Every role a school can give, in the order they are offered.
