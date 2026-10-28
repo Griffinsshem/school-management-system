@@ -62,6 +62,40 @@ test("logging in, choosing and switching school, and logging out", async ({ page
   await expect(page).toHaveURL("/login?next=%2F");
 });
 
+test("logging out while a page is still loading goes to the plain login page", async ({ page }) => {
+  await logInToSchoolA(page);
+  // A slow server: the school years request reaches the API only after the
+  // logout has ended the session, and its 401 comes back first.
+  let yearsSent = () => {};
+  const yearsDone = new Promise<void>((resolve) => (yearsSent = resolve));
+  let logoutDone = () => {};
+  const loggedOut = new Promise<void>((resolve) => (logoutDone = resolve));
+  await page.route("**/api/v1/school/academic-years", async (route) => {
+    await loggedOut;
+    const response = await route.fetch();
+    expect(response.status()).toBe(401);
+    await route.fulfill({ response });
+    yearsSent();
+  });
+  await page.route("**/api/v1/auth/logout", async (route) => {
+    const response = await route.fetch();
+    logoutDone();
+    await yearsDone;
+    await page.waitForTimeout(300);
+    await route.fulfill({ response });
+  });
+  const yearsRequested = page.waitForRequest("**/api/v1/school/academic-years");
+  await page.getByRole("link", { name: "School year" }).click();
+  await yearsRequested;
+  await page.getByRole("button", { name: "Log out" }).click();
+
+  // The plain login page: no "Your session has ended" note.
+  await expect(page).toHaveURL("/login");
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL("/login");
+  await expect(page.getByText("Your session has ended")).toHaveCount(0);
+});
+
 test("nothing private stays in the tab after login and logout", async ({ page }) => {
   await page.goto("/login");
   await logIn(page);

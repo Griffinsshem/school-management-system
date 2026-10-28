@@ -18,8 +18,17 @@ export function loginUrl(next: string): string {
 // back is instant. When a session ends, everything the previous person saw
 // must go, so these load the login page afresh instead.
 export function goToLogin(next: string) {
+  // A request that was still on its way when the person clicked "Log out"
+  // comes back 401 once the session has ended. That is not an expired
+  // session: the logout itself decides where to go.
+  if (loggingOut) {
+    return;
+  }
   window.location.replace(loginUrl(next));
 }
+
+// Set while "Log out" is in progress (one tab, one page at a time).
+let loggingOut = false;
 
 function logOutCompleted() {
   window.location.replace("/login");
@@ -58,11 +67,13 @@ export function AppShell({
   async function logOut() {
     setError(null);
     setPending(true);
+    loggingOut = true;
     const result = await api("/auth/logout", { method: "POST" });
     if (result.ok || result.status === 401) {
       logOutCompleted();
       return;
     }
+    loggingOut = false;
     setPending(false);
     setError(withReference(result.error));
   }
