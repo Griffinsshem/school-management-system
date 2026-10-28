@@ -20,6 +20,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   "classes.read": "See every class and its class teachers",
   "classes.manage": "Set up classes and choose class teachers",
   "classes.read_own": "See the classes you teach",
+  "enrolments.manage": "Add students to classes and move them",
 };
 
 // Every role a school can give, in the order they are offered.

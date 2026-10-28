@@ -43,7 +43,15 @@ MIGRATOR = "sms_migrator"
 POSTGRES_MAJOR_VERSION = 16
 SAFE_SSL_MODES = ("require", "verify-ca", "verify-full")
 # Tables whose rows are separated by school with Row-Level Security.
-RLS_TABLES = ("students", "invitations", "academic_years", "terms", "classes", "class_teachers")
+RLS_TABLES = (
+    "students",
+    "invitations",
+    "academic_years",
+    "terms",
+    "classes",
+    "class_teachers",
+    "enrolments",
+)
 # Placeholder until the Vercel address is known (replace it in .env.staging).
 PLACEHOLDER_ORIGIN = "https://staging.example.invalid"
 

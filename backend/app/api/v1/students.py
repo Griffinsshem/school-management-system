@@ -17,7 +17,7 @@ from app.auth.permissions import STUDENTS_MANAGE, STUDENTS_READ, permission_requ
 from app.auth.schools import current_school
 from app.errors import ApiError
 from app.extensions import db
-from app.models import Student
+from app.models import AcademicYear, Enrolment, Student
 from app.schemas import parse_json_body, parse_query
 from app.schemas.students import (
     CreateStudentRequest,
@@ -88,6 +88,17 @@ def list_students():
                 Student.admission_number.ilike(pattern, escape="\\"),
             )
         )
+    if query.not_enrolled_in:
+        year = db.session.scalar(
+            select(AcademicYear.id).where(
+                AcademicYear.id == query.not_enrolled_in,
+                AcademicYear.school_id == current_school().id,
+            )
+        )
+        if year is None:
+            raise ApiError(404, "not_found", "School year not found.")
+        enrolled = select(Enrolment.student_id).where(Enrolment.academic_year_id == year)
+        conditions += [Student.is_active.is_(True), Student.id.not_in(enrolled)]
 
     total = db.session.scalar(select(func.count()).select_from(Student).where(*conditions))
     students = db.session.scalars(

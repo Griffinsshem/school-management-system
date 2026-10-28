@@ -91,3 +91,5 @@ class StudentListQuery(BaseModel):
     per_page: int = Field(default=50, ge=1, le=MAX_PER_PAGE)
     # Matches part of the name or admission number, ignoring letter case.
     q: str | None = Field(default=None, min_length=1, max_length=MAX_SEARCH_LENGTH)
+    # Only active students with no class in this school year (for enrolling).
+    not_enrolled_in: uuid.UUID | None = None

@@ -91,8 +91,10 @@ class SchoolClass(db.Model):
             name="uq_classes_year_grade_stream",
             postgresql_nulls_not_distinct=True,
         ),
-        # Lets class teachers (and later enrolments) prove the same school.
+        # Lets class teachers prove the same school, and enrolments the same
+        # year and school.
         UniqueConstraint("id", "school_id", name="uq_classes_id_school"),
+        UniqueConstraint("id", "academic_year_id", "school_id", name="uq_classes_id_year_school"),
         CheckConstraint(f"grade IN ({_GRADE_LIST})", name="grade_valid"),
         CheckConstraint(
             "stream IS NULL OR (stream = btrim(stream) AND stream <> '')", name="stream_trimmed"

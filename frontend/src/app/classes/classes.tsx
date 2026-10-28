@@ -303,7 +303,12 @@ function YearClasses({
               {list.classes.map((schoolClass) => (
                 <tr key={schoolClass.id}>
                   <th scope="row" className={`${tdClass} font-medium`}>
-                    {schoolClass.name}
+                    <Link
+                      href={`/classes/${schoolClass.id}`}
+                      className="underline underline-offset-4 hover:no-underline"
+                    >
+                      {schoolClass.name}
+                    </Link>
                   </th>
                   <td className={tdClass}>
                     <TeacherNames schoolClass={schoolClass} />

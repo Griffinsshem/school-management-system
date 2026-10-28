@@ -118,6 +118,10 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | PATCH  | `/api/v1/school/classes/{id}` | Needs `classes.manage`: `200`, `404`, `409` or `422` |
 | POST   | `/api/v1/school/classes/{id}/teachers` | Needs `classes.manage`: `201`, `404`, `409` (`already_assigned`) or `422` |
 | DELETE | `/api/v1/school/classes/{id}/teachers/{membership_id}` | Needs `classes.manage`: `200` or `404` |
+| GET    | `/api/v1/school/classes/{id}/students` | Needs `classes.read`, or `classes.read_own` for a class the user teaches: `200 {"class", "students"}` or `404` |
+| POST   | `/api/v1/school/classes/{id}/students` | Needs `enrolments.manage`: enrol 1 to 100 students (`{"student_ids": [...]}`), all or none: `201`, `404`, `409` (`already_enrolled`) or `422` |
+| PATCH  | `/api/v1/school/classes/{id}/students/{student_id}` | Needs `enrolments.manage`: move to another class of the year (`{"class_id"}`): `200`, `404` or `422` |
+| DELETE | `/api/v1/school/classes/{id}/students/{student_id}` | Needs `enrolments.manage`: `200` or `404` |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
 | POST   | `/api/v1/school/invitations/{id}/revoke` | Needs `members.manage`: `200`, `404` or `409` (already accepted) |
@@ -211,10 +215,11 @@ every endpoint checks on the server).
 | `academics.manage`| `school_admin`                           | Adding and changing school years and terms |
 | `classes.read`    | `school_admin`, `principal`, `registrar` | Seeing every class and its class teachers |
 | `classes.manage`  | `school_admin`                           | Adding and changing classes, choosing class teachers |
-| `classes.read_own`| `teacher`                                | Seeing only the classes they are an active class teacher of |
+| `classes.read_own`| `teacher`                                | Seeing only the classes they are an active class teacher of, and their class lists |
+| `enrolments.manage`| `school_admin`, `registrar`             | Enrolling students in classes, moving and removing them |
 
-Teachers have no student access yet: once enrolment exists (C3) they will
-see only the students of their own classes.
+Teachers have no access to student records: they see only the class lists
+of their own classes, with each student's name and admission number.
 
 A school always keeps at least one active `school_admin`: deactivating the
 last one is refused with `409`.
@@ -243,6 +248,10 @@ events but cannot change or delete them. Recorded actions:
 | `class.updated`          | A class is changed, or a change is refused (`404`) |
 | `class_teacher.added`    | A class teacher is assigned, or an assignment is refused (`404`) |
 | `class_teacher.removed`  | A class teacher is removed, or a removal is refused (`404`) |
+| `enrolment.added`        | A student is enrolled in a class (one event per student), or enrolling into a missing class is refused (`404`) |
+| `enrolment.moved`        | A student is moved to another class, or a move is refused (`404`) |
+| `enrolment.removed`      | A student is removed from a class, or a removal is refused (`404`) |
+| `class.students_read`    | A class list is refused (`404`): another school's class, or a class the teacher does not teach |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -288,6 +297,8 @@ features that need them.
 - `GET /api/v1/school/students` takes `page` (default 1), `per_page` (1 to
   100, default 50) and `q`, which matches part of the name or admission
   number regardless of letter case. Results are sorted by name.
+- `not_enrolled_in=<school year id>` lists only active students with no class
+  in that year (for enrolling); `404` for another school's year.
 - `PATCH` changes only the fields sent; `"date_of_birth": null` clears it.
 - The school is never taken from the request: a body containing `school_id`
   is refused.
@@ -336,10 +347,26 @@ never deleted; the year cannot be changed.
   their membership is deactivated their assignments stop counting; school
   admins still see them, with `is_active: false`.
 
+### Class lists (enrolments)
+
+An enrolment puts a student in a class for that class's school year.
+
+- A student is in at most one class per school year; enrolling one who
+  already has a class that year is refused (`409`) and names the class:
+  move them instead. Enrolling several is all or nothing.
+- Only active students of the school can be enrolled (checked by the API: a
+  database rule would stop enrolled students being deactivated).
+- The database checks that the student, the class and the year belong
+  together (multi-column foreign keys), so a move stays within the year.
+- Removing an enrolment deletes it; the audit trail keeps the history.
+  Enrolled students and classes cannot be deleted.
+- Teachers get only `id`, `admission_number` and `full_name` for each
+  student; staff who may read student records also get `is_active`.
+
 ### Database-level isolation (Row-Level Security)
 
-The `students`, `invitations`, `academic_years`, `terms`, `classes` and
-`class_teachers` tables are protected by a PostgreSQL Row-Level Security policy:
+The `students`, `invitations`, `academic_years`, `terms`, `classes`,
+`class_teachers` and `enrolments` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

@@ -29,6 +29,7 @@ CLASSES_READ = "classes.read"
 CLASSES_MANAGE = "classes.manage"
 # Only the classes the user is a class teacher of (see app/api/v1/classes.py).
 CLASSES_READ_OWN = "classes.read_own"
+ENROLMENTS_MANAGE = "enrolments.manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -41,6 +42,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             ACADEMICS_MANAGE,
             CLASSES_READ,
             CLASSES_MANAGE,
+            ENROLMENTS_MANAGE,
         }
     ),
     "principal": frozenset({MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ, CLASSES_READ}),
@@ -50,9 +52,10 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     # only their own classes.
     "teacher": frozenset({ACADEMICS_READ, CLASSES_READ_OWN}),
     "finance_officer": frozenset({ACADEMICS_READ}),
-    # Registrars see every class (they will enrol students in C3) but do
-    # not create classes.
-    "registrar": frozenset({STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ, CLASSES_READ}),
+    # Registrars see every class and enrol students, but do not create classes.
+    "registrar": frozenset(
+        {STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ, CLASSES_READ, ENROLMENTS_MANAGE}
+    ),
     "guardian": frozenset(),
     "student": frozenset(),
 }

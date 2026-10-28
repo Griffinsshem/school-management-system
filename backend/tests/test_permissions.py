@@ -7,6 +7,7 @@ from app.auth.permissions import (
     CLASSES_MANAGE,
     CLASSES_READ,
     CLASSES_READ_OWN,
+    ENROLMENTS_MANAGE,
     MEMBERS_MANAGE,
     MEMBERS_READ,
     ROLE_PERMISSIONS,
@@ -41,6 +42,7 @@ def test_roles_get_only_what_they_are_given():
         ACADEMICS_MANAGE,
         CLASSES_READ,
         CLASSES_MANAGE,
+        ENROLMENTS_MANAGE,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -48,12 +50,13 @@ def test_roles_get_only_what_they_are_given():
         ACADEMICS_READ,
         CLASSES_READ,
     }
-    # Registrars see every class (to enrol students) but do not create them.
+    # Registrars see every class and enrol students, but do not create classes.
     assert ROLE_PERMISSIONS["registrar"] == {
         STUDENTS_READ,
         STUDENTS_MANAGE,
         ACADEMICS_READ,
         CLASSES_READ,
+        ENROLMENTS_MANAGE,
     }
     # Teachers get no student access yet, and see only their own classes.
     assert ROLE_PERMISSIONS["teacher"] == {ACADEMICS_READ, CLASSES_READ_OWN}
@@ -70,6 +73,7 @@ def test_roles_get_only_what_they_are_given():
         CLASSES_READ,
         CLASSES_MANAGE,
         CLASSES_READ_OWN,
+        ENROLMENTS_MANAGE,
     }
 
 
@@ -90,6 +94,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "academics.read",
                 "classes.manage",
                 "classes.read",
+                "enrolments.manage",
                 "members.manage",
                 "members.read",
                 "students.manage",
@@ -105,7 +110,14 @@ def test_an_unknown_permission_is_a_programming_error():
         ),
         (
             ["principal", "registrar"],
-            ["academics.read", "classes.read", "members.read", "students.manage", "students.read"],
+            [
+                "academics.read",
+                "classes.read",
+                "enrolments.manage",
+                "members.read",
+                "students.manage",
+                "students.read",
+            ],
         ),
     ],
 )

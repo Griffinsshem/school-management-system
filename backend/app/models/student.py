@@ -36,6 +36,8 @@ class Student(db.Model):
     __table_args__ = (
         # Admission numbers repeat across schools, never within one.
         UniqueConstraint("school_id", "admission_number", name="uq_students_school_admission"),
+        # Lets enrolments prove the student is in the same school.
+        UniqueConstraint("id", "school_id", name="uq_students_id_school"),
         CheckConstraint(
             "admission_number = btrim(admission_number) AND admission_number <> ''",
             name="admission_number_trimmed",
