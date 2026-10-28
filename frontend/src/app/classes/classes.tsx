@@ -281,7 +281,7 @@ function YearClasses({
       {list.classes.length === 0 ? (
         <p>
           {onlyMine
-            ? `You are not a class teacher of any class in ${list.academic_year.name}.`
+            ? `You do not teach any class in ${list.academic_year.name}.`
             : `No classes in ${list.academic_year.name} yet.`}
         </p>
       ) : (
@@ -292,6 +292,7 @@ function YearClasses({
               <tr>
                 <th scope="col" className={thClass}>Class</th>
                 <th scope="col" className={thClass}>Class teachers</th>
+                {onlyMine && <th scope="col" className={thClass}>You teach</th>}
                 {canManage && (
                   <th scope="col" className={thClass}>
                     <span className="sr-only">Actions</span>
@@ -313,6 +314,11 @@ function YearClasses({
                   <td className={tdClass}>
                     <TeacherNames schoolClass={schoolClass} />
                   </td>
+                  {onlyMine && (
+                    <td className={tdClass}>
+                      <YouTeach schoolClass={schoolClass} />
+                    </td>
+                  )}
                   {canManage && (
                     <td className={tdClass}>
                       <button
@@ -350,6 +356,15 @@ function TeacherNames({ schoolClass }: { schoolClass: SchoolClass }) {
       ))}
     </ul>
   );
+}
+
+// What the logged-in teacher does in the class (D3).
+function YouTeach({ schoolClass }: { schoolClass: SchoolClass }) {
+  const parts = [
+    ...(schoolClass.is_class_teacher ? ["Class teacher"] : []),
+    ...schoolClass.my_subjects,
+  ];
+  return <>{parts.join(", ")}</>;
 }
 
 function FormerTeacher() {

@@ -17,6 +17,10 @@ export type SchoolClass = {
   stream: string | null;
   name: string; // "Grade 4 East"
   teachers: ClassTeacher[];
+  // About the logged-in user, in the class list only: whether they are an
+  // active class teacher of the class, and the subjects they teach it.
+  is_class_teacher: boolean;
+  my_subjects: string[];
 };
 
 export type Grade = { code: string; name: string };

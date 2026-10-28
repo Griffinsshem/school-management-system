@@ -74,5 +74,6 @@ export const config = {
     "/school-year",
     "/students",
     "/students/:id",
+    "/subjects",
   ],
 };

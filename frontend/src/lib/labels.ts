@@ -26,6 +26,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   "attendance.record_own": "Take attendance for the classes you teach",
   "guardians.read": "See students' guardians",
   "guardians.manage": "Add and change students' guardians",
+  "subjects.read": "See subjects and who teaches them",
+  "subjects.manage": "Set up subjects and choose subject teachers",
 };
 
 // Every role a school can give, in the order they are offered.

@@ -13,6 +13,7 @@ from app.api.v1.invitations import invitations_bp, school_invitations_bp
 from app.api.v1.platform import platform_bp
 from app.api.v1.school import school_bp
 from app.api.v1.students import students_bp
+from app.api.v1.subjects import subjects_bp
 
 api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 api_v1.register_blueprint(health_bp)
@@ -27,3 +28,4 @@ api_v1.register_blueprint(classes_bp)
 api_v1.register_blueprint(enrolments_bp)
 api_v1.register_blueprint(attendance_bp)
 api_v1.register_blueprint(guardians_bp)
+api_v1.register_blueprint(subjects_bp)

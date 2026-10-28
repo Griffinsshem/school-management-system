@@ -1,7 +1,8 @@
 """Classes in a school year and their class teachers (C2).
 
 School administrators, principals and registrars see every class; a teacher
-sees only the classes they are an active class teacher of. Only school
+sees only the classes they are an active class teacher of or teach a subject
+to (D3), with which of the two they are. Only school
 administrators create and change classes and assign teachers.
 
 Classes are never deleted: mistakes are corrected by editing. Removing a
@@ -15,7 +16,7 @@ needs the year's dates, so it is checked here.
 import uuid
 
 from flask import Blueprint, current_app, g, jsonify
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app import audit
@@ -29,7 +30,16 @@ from app.auth.permissions import (
 from app.auth.schools import current_school
 from app.errors import ApiError
 from app.extensions import db
-from app.models import AcademicYear, ClassTeacher, Membership, SchoolClass, User
+from app.models import (
+    AcademicYear,
+    ClassSubject,
+    ClassTeacher,
+    Membership,
+    SchoolClass,
+    Subject,
+    SubjectTeacher,
+    User,
+)
 from app.models.school_class import (
     FIRST_CBC_YEAR_OFFSET,
     GRADES,
@@ -130,7 +140,45 @@ def _teachers(classes: list[SchoolClass]) -> dict[uuid.UUID, list[ClassTeacherOu
     return by_class
 
 
-def _class_out(school_class: SchoolClass, teachers: list[ClassTeacherOut]) -> dict:
+def _mine(classes: list[SchoolClass], memberships: set[uuid.UUID]) -> tuple[set, dict]:
+    """Of these classes: those the memberships are class teachers of, and the
+    subjects (by name) they teach each one."""
+    ids = [c.id for c in classes]
+    subjects: dict[uuid.UUID, list[str]] = {class_id: [] for class_id in ids}
+    if not ids or not memberships:
+        return set(), subjects
+    class_teacher_of = set(
+        db.session.scalars(
+            select(ClassTeacher.class_id).where(
+                ClassTeacher.class_id.in_(ids), ClassTeacher.membership_id.in_(memberships)
+            )
+        )
+    )
+    rows = db.session.execute(
+        select(ClassSubject.class_id, Subject.name)
+        .join(Subject, ClassSubject.subject_id == Subject.id)
+        .where(
+            ClassSubject.class_id.in_(ids),
+            ClassSubject.id.in_(
+                select(SubjectTeacher.class_subject_id).where(
+                    SubjectTeacher.membership_id.in_(memberships)
+                )
+            ),
+        )
+        .order_by(func.lower(Subject.name), Subject.id)
+    )
+    for class_id, name in rows:
+        subjects[class_id].append(name)
+    return class_teacher_of, subjects
+
+
+def _class_out(
+    school_class: SchoolClass,
+    teachers: list[ClassTeacherOut],
+    *,
+    is_class_teacher: bool = False,
+    my_subjects: list[str] | None = None,
+) -> dict:
     return SchoolClassOut(
         id=school_class.id,
         academic_year_id=school_class.academic_year_id,
@@ -139,6 +187,8 @@ def _class_out(school_class: SchoolClass, teachers: list[ClassTeacherOut]) -> di
         stream=school_class.stream,
         name=school_class.name,
         teachers=teachers,
+        is_class_teacher=is_class_teacher,
+        my_subjects=my_subjects or [],
     ).model_dump(mode="json")
 
 
@@ -174,16 +224,23 @@ def list_classes():
 
     statement = select(SchoolClass).where(SchoolClass.academic_year_id == year.id)
     sees_all = CLASSES_READ in current_permissions()
+    mine = _my_teacher_memberships()
     if not sees_all:
-        # A teacher sees only the classes they are an active class teacher of.
-        mine = _my_teacher_memberships()
+        # A teacher sees only the classes they are an active class teacher
+        # of, or teach a subject to.
         statement = statement.where(
             SchoolClass.id.in_(
                 select(ClassTeacher.class_id).where(ClassTeacher.membership_id.in_(mine))
             )
+            | SchoolClass.id.in_(
+                select(ClassSubject.class_id)
+                .join(SubjectTeacher, SubjectTeacher.class_subject_id == ClassSubject.id)
+                .where(SubjectTeacher.membership_id.in_(mine))
+            )
         )
     classes = sorted(db.session.scalars(statement), key=_sort_key)
     teachers = _teachers(classes)
+    class_teacher_of, my_subjects = _mine(classes, mine)
     if not sees_all:
         # Former teachers of the class are an administrator's concern only.
         teachers = {key: [t for t in value if t.is_active] for key, value in teachers.items()}
@@ -193,7 +250,15 @@ def list_classes():
         {
             "academic_year": {"id": str(year.id), "name": year.name},
             "grades": [grade.model_dump() for grade in grades],
-            "classes": [_class_out(c, teachers[c.id]) for c in classes],
+            "classes": [
+                _class_out(
+                    c,
+                    teachers[c.id],
+                    is_class_teacher=c.id in class_teacher_of,
+                    my_subjects=my_subjects[c.id],
+                )
+                for c in classes
+            ],
         }
     )
 

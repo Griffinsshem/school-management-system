@@ -12,6 +12,7 @@ from app.models.school import School
 from app.models.school_class import ClassTeacher, SchoolClass
 from app.models.session import UserSession
 from app.models.student import Student
+from app.models.subject import ClassSubject, Subject, SubjectTeacher
 from app.models.user import User
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "AttendanceMark",
     "AttendanceRegister",
     "AuditEvent",
+    "ClassSubject",
     "ClassTeacher",
     "Enrolment",
     "Guardian",
@@ -29,6 +31,8 @@ __all__ = [
     "SchoolClass",
     "Student",
     "StudentGuardian",
+    "Subject",
+    "SubjectTeacher",
     "Term",
     "User",
     "UserSession",

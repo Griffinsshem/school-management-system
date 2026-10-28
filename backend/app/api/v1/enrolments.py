@@ -1,9 +1,9 @@
 """The students of a class: enrolling, moving and removing them (C3).
 
 - Staff with `classes.read` see every class list; a teacher (`classes.read_own`)
-  sees only the lists of classes they are an active class teacher of, and
-  only each student's name and admission number. Another class's list looks
-  exactly like a missing one (404).
+  sees only the lists of classes they are an active class teacher of or
+  teach a subject to (D3), and only each student's name and admission
+  number. Another class's list looks exactly like a missing one (404).
 - School administrators and registrars (`enrolments.manage`) enrol, move and
   remove students. Only active students can be enrolled; a student is in at
   most one class per school year (also enforced by the database).
@@ -29,7 +29,15 @@ from app.auth.permissions import (
 from app.auth.schools import current_school
 from app.errors import ApiError
 from app.extensions import db
-from app.models import ClassTeacher, Enrolment, Membership, SchoolClass, Student
+from app.models import (
+    ClassSubject,
+    ClassTeacher,
+    Enrolment,
+    Membership,
+    SchoolClass,
+    Student,
+    SubjectTeacher,
+)
 from app.models.school_class import TEACHER_ROLE
 from app.schemas import parse_json_body
 from app.schemas.enrolments import (
@@ -79,11 +87,34 @@ def _teaches(school_class: SchoolClass) -> bool:
     )
 
 
+def _teaches_a_subject(school_class: SchoolClass) -> bool:
+    """Whether the logged-in user, as an active teacher, teaches this class a
+    subject. Not used for attendance: only class teachers take registers."""
+    return (
+        db.session.scalar(
+            select(SubjectTeacher.id)
+            .join(ClassSubject, SubjectTeacher.class_subject_id == ClassSubject.id)
+            .join(Membership, SubjectTeacher.membership_id == Membership.id)
+            .where(
+                ClassSubject.class_id == school_class.id,
+                Membership.user_id == g.current_user.id,
+                Membership.role == TEACHER_ROLE,
+                Membership.is_active.is_(True),
+            )
+            .limit(1)
+        )
+        is not None
+    )
+
+
 def _class_for(class_id: uuid.UUID, action: str, *, reading: bool = False) -> SchoolClass:
     """The class, if this user may use it; otherwise a recorded refusal and 404."""
     school_class = _find_class(class_id)
     allowed = school_class is not None and (
-        not reading or CLASSES_READ in current_permissions() or _teaches(school_class)
+        not reading
+        or CLASSES_READ in current_permissions()
+        or _teaches(school_class)
+        or _teaches_a_subject(school_class)
     )
     if not allowed:
         # Another school's class, or a class this teacher does not teach,

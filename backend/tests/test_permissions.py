@@ -18,6 +18,8 @@ from app.auth.permissions import (
     ROLE_PERMISSIONS,
     STUDENTS_MANAGE,
     STUDENTS_READ,
+    SUBJECTS_MANAGE,
+    SUBJECTS_READ,
     permission_required,
 )
 from app.models.membership import ROLES
@@ -52,6 +54,8 @@ def test_roles_get_only_what_they_are_given():
         ATTENDANCE_RECORD,
         GUARDIANS_READ,
         GUARDIANS_MANAGE,
+        SUBJECTS_READ,
+        SUBJECTS_MANAGE,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -60,6 +64,7 @@ def test_roles_get_only_what_they_are_given():
         CLASSES_READ,
         ATTENDANCE_READ,
         GUARDIANS_READ,
+        SUBJECTS_READ,
     }
     # Registrars see every class and enrol students, but do not create classes.
     assert ROLE_PERMISSIONS["registrar"] == {
@@ -93,6 +98,8 @@ def test_roles_get_only_what_they_are_given():
         ATTENDANCE_RECORD_OWN,
         GUARDIANS_READ,
         GUARDIANS_MANAGE,
+        SUBJECTS_READ,
+        SUBJECTS_MANAGE,
     }
 
 
@@ -122,6 +129,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "members.read",
                 "students.manage",
                 "students.read",
+                "subjects.manage",
+                "subjects.read",
             ],
         ),
         (
@@ -133,6 +142,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "guardians.read",
                 "members.read",
                 "students.read",
+                "subjects.read",
             ],
         ),
         (["teacher"], ["academics.read", "attendance.record_own", "classes.read_own"]),
@@ -148,6 +158,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "guardians.read",
                 "members.read",
                 "students.read",
+                "subjects.read",
             ],
         ),
         (
@@ -162,6 +173,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "members.read",
                 "students.manage",
                 "students.read",
+                "subjects.read",
             ],
         ),
     ],

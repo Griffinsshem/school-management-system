@@ -14,10 +14,13 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
-import { canSeeAttendance, kenyaToday, registerPath } from "@/lib/attendance";
+import { kenyaToday, registerPath } from "@/lib/attendance";
 import type { ClassList as YearClasses } from "@/lib/classes";
 import { MAX_ENROL_AT_ONCE, type ClassList, type ClassStudent } from "@/lib/enrolments";
 import { MAX_SEARCH, type StudentPage } from "@/lib/students";
+import { canManageSubjects, canReadSubjects } from "@/lib/subjects";
+
+import { ClassSubjectsSection } from "./class-subjects";
 
 // The menu marks "Classes" as the current page.
 const MENU_PATH = "/classes";
@@ -51,7 +54,9 @@ function Content({ me, classId }: { me: Me; classId: string }) {
       key={school.id}
       classId={classId}
       canManage={me.permissions.includes("enrolments.manage")}
-      attendance={canSeeAttendance(me)}
+      everyRegister={me.permissions.includes("attendance.read")}
+      ownRegisters={me.permissions.includes("attendance.record_own")}
+      subjects={canReadSubjects(me) ? { canManage: canManageSubjects(me) } : null}
     />
   );
 }
@@ -67,14 +72,22 @@ function describeError(status: number, error: ApiErrorBody): string {
   return withReference(error);
 }
 
+// What a teacher (who sees only their own classes) does in this class: only
+// class teachers take its registers; subject teachers just see the list.
+type MyPart = { isClassTeacher: boolean; subjects: string[] };
+
 function Students({
   classId,
   canManage,
-  attendance,
+  everyRegister,
+  ownRegisters,
+  subjects,
 }: {
   classId: string;
   canManage: boolean;
-  attendance: boolean;
+  everyRegister: boolean;
+  ownRegisters: boolean;
+  subjects: { canManage: boolean } | null;
 }) {
   const path = `/school/classes/${classId}/students`;
   const [list, setList] = useState<ClassList | null>(null);
@@ -83,6 +96,7 @@ function Students({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [myPart, setMyPart] = useState<MyPart | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +118,24 @@ function Students({
       cancelled = true;
     };
   }, [path, classId, version]);
+
+  // A teacher's part in the class, from their class list for its year.
+  const yearId = list?.class.academic_year_id;
+  useEffect(() => {
+    if (everyRegister || !ownRegisters || !yearId) {
+      return;
+    }
+    let cancelled = false;
+    api<YearClasses>(`/school/classes?${new URLSearchParams({ academic_year_id: yearId })}`).then((response) => {
+      const mine = response.ok ? response.data.classes.find((c) => c.id === classId) : undefined;
+      if (!cancelled && mine) {
+        setMyPart({ isClassTeacher: mine.is_class_teacher, subjects: mine.my_subjects });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [everyRegister, ownRegisters, yearId, classId]);
 
   // After a change: show what happened and load the list again.
   function changed(message: string) {
@@ -131,6 +163,7 @@ function Students({
   }
 
   const count = list.students.length;
+  const attendance = everyRegister || (myPart?.isClassTeacher ?? false);
   return (
     <>
       <p className="mb-2">
@@ -144,6 +177,9 @@ function Students({
           <p className="text-zinc-600 dark:text-zinc-400">
             {count} student{count === 1 ? "" : "s"}
           </p>
+          {myPart && myPart.subjects.length > 0 && (
+            <p className="mt-1 text-sm">You teach {joinNames(myPart.subjects)} in this class.</p>
+          )}
           {attendance && (
             <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
               <Link href={registerPath(classId, kenyaToday())} className="underline">
@@ -180,9 +216,14 @@ function Students({
         />
       )}
 
+      {subjects && (
+        <ClassSubjectsSection classId={classId} className={list.class.name} canManage={subjects.canManage} />
+      )}
+
       <ErrorMessage message={error} />
       {notice && <Notice>{notice}</Notice>}
 
+      {subjects && <h2 className="mb-3 text-xl font-semibold">Students</h2>}
       {count === 0 ? (
         <p>No students in {list.class.name} yet.</p>
       ) : (
@@ -573,6 +614,11 @@ function AddStudents({
       </div>
     </section>
   );
+}
+
+// "Mathematics", "English and Mathematics", "Art, English and Mathematics".
+function joinNames(names: string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";

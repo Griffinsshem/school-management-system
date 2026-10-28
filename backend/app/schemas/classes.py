@@ -49,6 +49,10 @@ class SchoolClassOut(BaseModel):
     stream: str | None
     name: str
     teachers: list[ClassTeacherOut]
+    # About the logged-in user (filled in by the class list only): whether
+    # they are an active class teacher of it, and the subjects they teach it.
+    is_class_teacher: bool = False
+    my_subjects: list[str] = []
 
 
 class CreateClassRequest(BaseModel):

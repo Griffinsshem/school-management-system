@@ -99,6 +99,7 @@ export function AppShell({
       label: "Attendance",
       show: me.permissions.includes("attendance.read") || me.permissions.includes("attendance.record_own"),
     },
+    { href: "/subjects", label: "Subjects", show: me.permissions.includes("subjects.read") },
     { href: "/students", label: "Students", show: me.permissions.includes("students.read") },
     { href: "/people", label: "People", show: me.permissions.includes("members.read") },
   ].filter((link) => link.show);

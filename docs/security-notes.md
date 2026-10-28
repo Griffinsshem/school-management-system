@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance and guardians only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians and subjects only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -348,6 +348,14 @@ URLs, logs and the audit trail, and staging holds made-up guardians only.
 Before real schools use this, the school's notice to parents under Kenya's
 Data Protection Act 2019 (what is kept and why) should be reviewed with
 someone qualified; that is the school's responsibility, not the software's.
+
+### Subject teachers see names, not records
+
+A subject teacher sees the class list of each class they teach a subject
+to: names and admission numbers only, like a class teacher, and no student
+records, guardians or registers (decision of 2026-10-28). Only school
+administrators choose subject teachers, and a teacher loses the class as
+soon as they are removed or their membership is deactivated.
 
 ### Student search is not indexed for large schools
 

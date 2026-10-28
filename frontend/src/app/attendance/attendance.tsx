@@ -107,8 +107,11 @@ async function teacherDay(date: string): Promise<Day | { status: number; message
   if (!classes.ok) {
     return { status: classes.status, message: withReference(classes.error) };
   }
+  // Only class teachers take registers: a subject teacher's other classes
+  // are not listed here.
+  const own = classes.data.classes.filter((c) => c.is_class_teacher);
   const rows = await Promise.all(
-    classes.data.classes.map(async (c): Promise<Row> => {
+    own.map(async (c): Promise<Row> => {
       const row = { id: c.id, name: c.name, taken: false, present: 0, absent: 0, late: 0 };
       if (!inTerm) {
         return row;

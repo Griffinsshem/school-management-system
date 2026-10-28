@@ -118,7 +118,7 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | PATCH  | `/api/v1/school/classes/{id}` | Needs `classes.manage`: `200`, `404`, `409` or `422` |
 | POST   | `/api/v1/school/classes/{id}/teachers` | Needs `classes.manage`: `201`, `404`, `409` (`already_assigned`) or `422` |
 | DELETE | `/api/v1/school/classes/{id}/teachers/{membership_id}` | Needs `classes.manage`: `200` or `404` |
-| GET    | `/api/v1/school/classes/{id}/students` | Needs `classes.read`, or `classes.read_own` for a class the user teaches: `200 {"class", "students"}` or `404` |
+| GET    | `/api/v1/school/classes/{id}/students` | Needs `classes.read`, or `classes.read_own` for a class the user is a class teacher of or teaches a subject to: `200 {"class", "students"}` or `404` |
 | POST   | `/api/v1/school/classes/{id}/students` | Needs `enrolments.manage`: enrol 1 to 100 students (`{"student_ids": [...]}`), all or none: `201`, `404`, `409` (`already_enrolled`) or `422` |
 | PATCH  | `/api/v1/school/classes/{id}/students/{student_id}` | Needs `enrolments.manage`: move to another class of the year (`{"class_id"}`): `200`, `404` or `422` |
 | DELETE | `/api/v1/school/classes/{id}/students/{student_id}` | Needs `enrolments.manage`: `200` or `404` |
@@ -132,6 +132,14 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | DELETE | `/api/v1/school/students/{id}/guardians/{guardian_id}` | Needs `guardians.manage`: remove the guardian from this student (the record stays): `200` or `404` |
 | PATCH  | `/api/v1/school/guardians/{id}` | Needs `guardians.manage`: correct `full_name`, `phone`, `email` (for every linked student): `200`, `404`, `409` (`phone_taken`) or `422` |
 | POST   | `/api/v1/school/guardians/lookup` | Needs `guardians.read`: find by phone (`{"phone"}`, in the body, never the URL): `200 {"guardian": {..., "students"}}` or `404` |
+| GET    | `/api/v1/school/subjects` | Needs `subjects.read`: `200 {"subjects"}`, every subject by name, inactive ones included |
+| POST   | `/api/v1/school/subjects` | Needs `subjects.manage`: `{"name", "code"?}`: `201`, `409` (`subject_exists`, `code_taken`) or `422` |
+| PATCH  | `/api/v1/school/subjects/{id}` | Needs `subjects.manage`: change `name`, `code` (`null` removes it) or `is_active`: `200`, `404`, `409` or `422` |
+| GET    | `/api/v1/school/classes/{id}/subjects` | Needs `subjects.read`: `200 {"class", "subjects"}`, each with its `teachers`, or `404` |
+| POST   | `/api/v1/school/classes/{id}/subjects` | Needs `subjects.manage`: `{"subject_id"}` (an active subject): `201`, `404`, `409` (`already_taken`) or `422` |
+| DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}` | Needs `subjects.manage`: the class stops taking it, and its teachers there are removed: `200` or `404` |
+| POST   | `/api/v1/school/classes/{id}/subjects/{subject_id}/teachers` | Needs `subjects.manage`: `{"membership_id"}` (an active teacher): `201`, `404`, `409` (`already_assigned`) or `422` |
+| DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}/teachers/{membership_id}` | Needs `subjects.manage`: `200` or `404` |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -226,13 +234,15 @@ every endpoint checks on the server).
 | `academics.manage`| `school_admin`                           | Adding and changing school years and terms |
 | `classes.read`    | `school_admin`, `principal`, `registrar` | Seeing every class and its class teachers |
 | `classes.manage`  | `school_admin`                           | Adding and changing classes, choosing class teachers |
-| `classes.read_own`| `teacher`                                | Seeing only the classes they are an active class teacher of, and their class lists |
+| `classes.read_own`| `teacher`                                | Seeing only the classes they are an active class teacher of or teach a subject to, and their class lists |
 | `enrolments.manage`| `school_admin`, `registrar`             | Enrolling students in classes, moving and removing them |
 | `attendance.read`  | `school_admin`, `principal`             | Reading every class's registers, term summaries and the school's daily overview |
 | `attendance.record`| `school_admin`                          | Taking and correcting any class's register, for any term day up to today |
 | `attendance.record_own`| `teacher`                           | Reading, taking and correcting the registers of the classes they teach, for today and the previous 7 days |
 | `guardians.read`   | `school_admin`, `principal`, `registrar` | Seeing students' guardians and looking one up by phone |
 | `guardians.manage` | `school_admin`, `registrar`             | Adding, linking, correcting and removing students' guardians |
+| `subjects.read`    | `school_admin`, `principal`             | Seeing the school's subjects, the subjects each class takes and their teachers |
+| `subjects.manage`  | `school_admin`                          | Adding and changing subjects, choosing each class's subjects and subject teachers |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number. They
@@ -281,6 +291,13 @@ events but cannot change or delete them. Recorded actions:
 | `guardian.link_updated`  | A student's link changes relationship or primary (target: the student), or refused (`404`) |
 | `guardian.unlinked`      | A guardian is removed from a student (target: the student), or refused (`404`) |
 | `guardians.read`         | Reading a student's guardians is refused (`404`) |
+| `subject.created`        | A subject is added (target: the subject) |
+| `subject.updated`        | A subject is renamed, its code changed or it is made active or inactive (target: the subject), or refused (`404`) |
+| `class_subject.added`    | A class starts taking a subject (target: the class), or refused (`404`) |
+| `class_subject.removed`  | A class stops taking a subject, with its teachers there (target: the class), or refused (`404`) |
+| `class_subjects.read`    | Reading a class's subjects is refused (`404`) |
+| `subject_teacher.added`  | A teacher is assigned to a class's subject (target: the class), or refused (`404`) |
+| `subject_teacher.removed`| A teacher is removed from a class's subject (target: the class), or refused (`404`) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -372,9 +389,10 @@ never deleted; the year cannot be changed.
 - A class teacher must be an active `teacher` of the same school; the
   database enforces school and role with a three-column foreign key. A class
   can have several. Removing one deletes only the assignment.
-- A teacher sees only the classes they are an active class teacher of. Once
-  their membership is deactivated their assignments stop counting; school
-  admins still see them, with `is_active: false`.
+- A teacher sees only the classes they are an active class teacher of (or,
+  since D3, teach a subject to). Once their membership is deactivated their
+  assignments stop counting; school admins still see them, with
+  `is_active: false`.
 
 ### Class lists (enrolments)
 
@@ -439,11 +457,32 @@ each student they are responsible for, so siblings share one record
   (lookups send the number in the request body; error messages never repeat
   it).
 
+### Subjects and subject teachers
+
+Each school keeps its own subject list, a class takes some of those
+subjects, and each subject a class takes can have teachers (decisions of
+2026-10-28).
+
+- A subject has a name (up to 60 characters) and an optional short code (up
+  to 10), both trimmed with spaces inside collapsed. Each is used once per
+  school, whatever the letter case (the database enforces it).
+- Subjects are renamed or made inactive, never deleted. An inactive subject
+  cannot be added to a class, but stays on the classes that already take it.
+- A class takes a subject once; a subject teacher must be an active
+  `teacher` of the same school (a three-column foreign key, as for class
+  teachers), and a class's subject can have several. Removing a subject from
+  a class also removes its teachers there.
+- A subject teacher sees the class in their class list (`is_class_teacher`
+  false, the subject names in `my_subjects`) and its students' names and
+  admission numbers. They do not take its attendance: registers stay with
+  class teachers.
+
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
 `class_teachers`, `enrolments`, `attendance_registers`, `attendance_marks`,
-`guardians` and `student_guardians` tables are protected by a PostgreSQL Row-Level Security policy:
+`guardians`, `student_guardians`, `subjects`, `class_subjects` and
+`subject_teachers` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database
