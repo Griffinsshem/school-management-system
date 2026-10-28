@@ -125,6 +125,13 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/classes/{id}/attendance/{YYYY-MM-DD}` | Needs `attendance.read`, or `attendance.record_own` for a class the user teaches: `200` (the register, or a blank one with everyone present), `404` or `422` (not a term day up to today) |
 | PUT    | `/api/v1/school/classes/{id}/attendance/{YYYY-MM-DD}` | Needs `attendance.record`, or `attendance.record_own` for a class the user teaches (last 7 days only): save the whole register (`{"marks": [{"student_id", "status", "reason"}]}`), all or none: `201` (taken), `200` (corrected), `403` (`too_late_to_change`), `404`, `409` (`class_list_changed`, `register_students_differ`, `register_already_taken`) or `422` |
 | GET    | `/api/v1/school/classes/{id}/attendance?term={1-3}` | Same as reading a register: `200 {"class", "term", "registers", "students"}` with counts per day and per student, `404` or `422` |
+| GET    | `/api/v1/school/students/{id}/guardians` | Needs `guardians.read`: `200 {"student", "guardians"}` (primary first) or `404` |
+| POST   | `/api/v1/school/students/{id}/guardians` | Needs `guardians.manage`: add a new guardian and link them (`{"full_name", "phone", "email"?, "relationship", "is_primary"?}`): `201`, `404`, `409` (`guardian_exists`, `too_many_guardians`, `phone_taken`) or `422` |
+| POST   | `/api/v1/school/students/{id}/guardians/link` | Needs `guardians.manage`: link an existing guardian (`{"guardian_id", "relationship", "is_primary"?}`): `201`, `404`, `409` (`already_linked`, `too_many_guardians`) or `422` |
+| PATCH  | `/api/v1/school/students/{id}/guardians/{guardian_id}` | Needs `guardians.manage`: change `relationship`, or set `"is_primary": true`: `200`, `404` or `422` |
+| DELETE | `/api/v1/school/students/{id}/guardians/{guardian_id}` | Needs `guardians.manage`: remove the guardian from this student (the record stays): `200` or `404` |
+| PATCH  | `/api/v1/school/guardians/{id}` | Needs `guardians.manage`: correct `full_name`, `phone`, `email` (for every linked student): `200`, `404`, `409` (`phone_taken`) or `422` |
+| POST   | `/api/v1/school/guardians/lookup` | Needs `guardians.read`: find by phone (`{"phone"}`, in the body, never the URL): `200 {"guardian": {..., "students"}}` or `404` |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -224,9 +231,13 @@ every endpoint checks on the server).
 | `attendance.read`  | `school_admin`, `principal`             | Reading every class's registers, term summaries and the school's daily overview |
 | `attendance.record`| `school_admin`                          | Taking and correcting any class's register, for any term day up to today |
 | `attendance.record_own`| `teacher`                           | Reading, taking and correcting the registers of the classes they teach, for today and the previous 7 days |
+| `guardians.read`   | `school_admin`, `principal`, `registrar` | Seeing students' guardians and looking one up by phone |
+| `guardians.manage` | `school_admin`, `registrar`             | Adding, linking, correcting and removing students' guardians |
 
 Teachers have no access to student records: they see only the class lists
-of their own classes, with each student's name and admission number.
+of their own classes, with each student's name and admission number. They
+get no guardian (parent) data at all: contact goes through the office
+(decision of 2026-10-28).
 
 A school always keeps at least one active `school_admin`: deactivating the
 last one is refused with `409`.
@@ -264,6 +275,12 @@ events but cannot change or delete them. Recorded actions:
 | `attendance.mark_changed`| One student's mark is changed by a correction (one event per student) |
 | `attendance.saved`       | Saving a register is refused: another school's class or a class the teacher does not teach (`404`), or a day more than 7 days ago for a teacher (`403`) |
 | `attendance.read`        | Reading a register or summary is refused (`404`) |
+| `guardian.created`       | A new guardian is recorded (target: the guardian) |
+| `guardian.updated`       | A guardian's name, phone or email is corrected (target: the guardian), or refused (`404`) |
+| `guardian.linked`        | A guardian is linked to a student (target: the student), or refused (`404`) |
+| `guardian.link_updated`  | A student's link changes relationship or primary (target: the student), or refused (`404`) |
+| `guardian.unlinked`      | A guardian is removed from a student (target: the student), or refused (`404`) |
+| `guardians.read`         | Reading a student's guardians is refused (`404`) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -398,11 +415,35 @@ A register is one class's attendance for one day, with one mark per student:
 - Teachers and readers get only `id`, `admission_number` and `full_name` for
   each student.
 
+### Guardians
+
+A guardian (parent or other contact) is stored once per school and linked to
+each student they are responsible for, so siblings share one record
+(decisions of 2026-10-28).
+
+- Kept to a minimum: full name, a Kenyan mobile number, an optional email,
+  and per student the relationship (`mother`, `father`, `guardian`,
+  `grandparent`, `sibling`, `other_relative`) and whether this is the
+  primary contact. No ID numbers, addresses or free-text notes.
+- Phone numbers are accepted as people write them (`0712 345 678`,
+  `+254 712 345678`, `254712345678`) and stored as `+254712345678`; the
+  database refuses any other form, and a number appears once per school.
+  Adding a guardian whose number is already recorded is refused
+  (`guardian_exists`) so the existing record is linked instead.
+- At most 4 guardians per student. A student with guardians always has
+  exactly one primary: the first becomes primary, choosing another moves it,
+  and removing the primary passes it to the guardian linked longest ago.
+- Guardians are corrected, never deleted; removing one from a student
+  deletes only the link. Linked students and guardians cannot be deleted.
+- Phone numbers and emails never go into URLs, logs or the audit trail
+  (lookups send the number in the request body; error messages never repeat
+  it).
+
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
-`class_teachers`, `enrolments`, `attendance_registers` and
-`attendance_marks` tables are protected by a PostgreSQL Row-Level Security policy:
+`class_teachers`, `enrolments`, `attendance_registers`, `attendance_marks`,
+`guardians` and `student_guardians` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

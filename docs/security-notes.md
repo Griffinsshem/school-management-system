@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments and attendance only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance and guardians only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -338,6 +338,16 @@ after the other (the register row is locked while it is saved), and the
 second save replaces the first. Both are recorded in the audit trail, mark
 by mark. Taking a new register twice at once cannot happen: the database
 keeps one register per class per day and the second save is refused.
+
+### Guardians' contact details are personal data
+
+Guardians' names, phone numbers and emails are adults' personal data linked
+to children. Only school administrators and registrars change them and
+principals read them; teachers get none. Numbers and emails stay out of
+URLs, logs and the audit trail, and staging holds made-up guardians only.
+Before real schools use this, the school's notice to parents under Kenya's
+Data Protection Act 2019 (what is kept and why) should be reviewed with
+someone qualified; that is the school's responsibility, not the software's.
 
 ### Student search is not indexed for large schools
 

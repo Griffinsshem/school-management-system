@@ -36,6 +36,10 @@ ENROLMENTS_MANAGE = "enrolments.manage"
 ATTENDANCE_READ = "attendance.read"
 ATTENDANCE_RECORD = "attendance.record"
 ATTENDANCE_RECORD_OWN = "attendance.record_own"
+# Students' guardians (see app/api/v1/guardians.py). Teachers get neither
+# (decision of 2026-10-28): contact goes through the office.
+GUARDIANS_READ = "guardians.read"
+GUARDIANS_MANAGE = "guardians.manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -51,10 +55,19 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             ENROLMENTS_MANAGE,
             ATTENDANCE_READ,
             ATTENDANCE_RECORD,
+            GUARDIANS_READ,
+            GUARDIANS_MANAGE,
         }
     ),
     "principal": frozenset(
-        {MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ, CLASSES_READ, ATTENDANCE_READ}
+        {
+            MEMBERS_READ,
+            STUDENTS_READ,
+            ACADEMICS_READ,
+            CLASSES_READ,
+            ATTENDANCE_READ,
+            GUARDIANS_READ,
+        }
     ),
     # No student access until classes exist: a teacher should see only the
     # students they teach, not the whole school. School years and terms are
@@ -64,7 +77,15 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "finance_officer": frozenset({ACADEMICS_READ}),
     # Registrars see every class and enrol students, but do not create classes.
     "registrar": frozenset(
-        {STUDENTS_READ, STUDENTS_MANAGE, ACADEMICS_READ, CLASSES_READ, ENROLMENTS_MANAGE}
+        {
+            STUDENTS_READ,
+            STUDENTS_MANAGE,
+            ACADEMICS_READ,
+            CLASSES_READ,
+            ENROLMENTS_MANAGE,
+            GUARDIANS_READ,
+            GUARDIANS_MANAGE,
+        }
     ),
     "guardian": frozenset(),
     "student": frozenset(),

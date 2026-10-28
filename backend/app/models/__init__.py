@@ -4,6 +4,7 @@ from app.models.academic_year import AcademicYear, Term
 from app.models.attendance import AttendanceMark, AttendanceRegister
 from app.models.audit_event import AuditEvent
 from app.models.enrolment import Enrolment
+from app.models.guardian import Guardian, StudentGuardian
 from app.models.invitation import Invitation
 from app.models.login_attempt import LoginAttempt
 from app.models.membership import Membership
@@ -20,12 +21,14 @@ __all__ = [
     "AuditEvent",
     "ClassTeacher",
     "Enrolment",
+    "Guardian",
     "Invitation",
     "LoginAttempt",
     "Membership",
     "School",
     "SchoolClass",
     "Student",
+    "StudentGuardian",
     "Term",
     "User",
     "UserSession",

@@ -256,7 +256,11 @@ function StudentsList({ schoolName, canManage }: { schoolName: string; canManage
               {result.students.map((student) => (
                 <tr key={student.id}>
                   <td className={tdClass}>{student.admission_number}</td>
-                  <td className={tdClass}>{student.full_name}</td>
+                  <td className={tdClass}>
+                    <Link href={`/students/${student.id}`} className="underline">
+                      {student.full_name}
+                    </Link>
+                  </td>
                   <td className={tdClass}>{formatBirthDate(student.date_of_birth)}</td>
                   <td className={tdClass}>{student.is_active ? "Active" : "Inactive"}</td>
                   {canManage && (

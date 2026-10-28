@@ -11,6 +11,8 @@ from app.auth.permissions import (
     CLASSES_READ,
     CLASSES_READ_OWN,
     ENROLMENTS_MANAGE,
+    GUARDIANS_MANAGE,
+    GUARDIANS_READ,
     MEMBERS_MANAGE,
     MEMBERS_READ,
     ROLE_PERMISSIONS,
@@ -48,6 +50,8 @@ def test_roles_get_only_what_they_are_given():
         ENROLMENTS_MANAGE,
         ATTENDANCE_READ,
         ATTENDANCE_RECORD,
+        GUARDIANS_READ,
+        GUARDIANS_MANAGE,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -55,6 +59,7 @@ def test_roles_get_only_what_they_are_given():
         ACADEMICS_READ,
         CLASSES_READ,
         ATTENDANCE_READ,
+        GUARDIANS_READ,
     }
     # Registrars see every class and enrol students, but do not create classes.
     assert ROLE_PERMISSIONS["registrar"] == {
@@ -63,6 +68,8 @@ def test_roles_get_only_what_they_are_given():
         ACADEMICS_READ,
         CLASSES_READ,
         ENROLMENTS_MANAGE,
+        GUARDIANS_READ,
+        GUARDIANS_MANAGE,
     }
     # Teachers get no student records; they see and take attendance for only
     # their own classes.
@@ -84,6 +91,8 @@ def test_roles_get_only_what_they_are_given():
         ATTENDANCE_READ,
         ATTENDANCE_RECORD,
         ATTENDANCE_RECORD_OWN,
+        GUARDIANS_READ,
+        GUARDIANS_MANAGE,
     }
 
 
@@ -107,6 +116,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "classes.manage",
                 "classes.read",
                 "enrolments.manage",
+                "guardians.manage",
+                "guardians.read",
                 "members.manage",
                 "members.read",
                 "students.manage",
@@ -115,7 +126,14 @@ def test_an_unknown_permission_is_a_programming_error():
         ),
         (
             ["principal"],
-            ["academics.read", "attendance.read", "classes.read", "members.read", "students.read"],
+            [
+                "academics.read",
+                "attendance.read",
+                "classes.read",
+                "guardians.read",
+                "members.read",
+                "students.read",
+            ],
         ),
         (["teacher"], ["academics.read", "attendance.record_own", "classes.read_own"]),
         (["guardian"], []),
@@ -127,6 +145,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "attendance.record_own",
                 "classes.read",
                 "classes.read_own",
+                "guardians.read",
                 "members.read",
                 "students.read",
             ],
@@ -138,6 +157,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "attendance.read",
                 "classes.read",
                 "enrolments.manage",
+                "guardians.manage",
+                "guardians.read",
                 "members.read",
                 "students.manage",
                 "students.read",

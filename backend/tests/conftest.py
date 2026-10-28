@@ -26,6 +26,8 @@ TABLES_TO_CLEAN = (
     "invitations",
     "attendance_marks",
     "attendance_registers",
+    "student_guardians",
+    "guardians",
     "enrolments",
     "class_teachers",
     "classes",

@@ -7,6 +7,7 @@ from app.api.v1.attendance import attendance_bp
 from app.api.v1.auth import auth_bp
 from app.api.v1.classes import classes_bp
 from app.api.v1.enrolments import enrolments_bp
+from app.api.v1.guardians import guardians_bp
 from app.api.v1.health import health_bp
 from app.api.v1.invitations import invitations_bp, school_invitations_bp
 from app.api.v1.platform import platform_bp
@@ -25,3 +26,4 @@ api_v1.register_blueprint(academic_years_bp)
 api_v1.register_blueprint(classes_bp)
 api_v1.register_blueprint(enrolments_bp)
 api_v1.register_blueprint(attendance_bp)
+api_v1.register_blueprint(guardians_bp)

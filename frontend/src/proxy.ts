@@ -73,5 +73,6 @@ export const config = {
     "/people",
     "/school-year",
     "/students",
+    "/students/:id",
   ],
 };
