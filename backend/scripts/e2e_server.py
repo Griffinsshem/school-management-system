@@ -7,7 +7,8 @@ It is not for development use. It:
    `_test`; the app refuses anything else),
 2. brings that database to the latest migration and EMPTIES every table,
 3. adds clearly fake data: an administrator in two schools, a principal and
-   a teacher,
+   a teacher; and a third school with its own administrator and teacher, for
+   the attendance tests, which need a school year around today,
 4. serves the API on 127.0.0.1:5001, accepting requests only from the
    frontend that Playwright starts on 127.0.0.1:3100 (which adds the shared
    proxy secret below, as on the real hosts).
@@ -46,6 +47,9 @@ TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 ADMIN_EMAIL = "e2e.admin@example.com"
 PRINCIPAL_EMAIL = "e2e.principal@example.com"
 TEACHER_EMAIL = "e2e.teacher@example.com"
+# School C, for the attendance tests only.
+ATTENDANCE_ADMIN_EMAIL = "e2e.attendance.admin@example.com"
+ATTENDANCE_TEACHER_EMAIL = "e2e.attendance.teacher@example.com"
 PASSWORD = "e2e only password"  # noqa: S105
 
 
@@ -77,7 +81,21 @@ def reset_and_seed(app) -> None:
         teacher = User(email=TEACHER_EMAIL, full_name="E2E Teacher", password_hash=password_hash)
         school_a = School(code="e2e-school-a", name="E2E School A", county_code=47)
         school_b = School(code="e2e-school-b", name="E2E School B", county_code=1)
-        db.session.add_all([admin, principal, teacher, school_a, school_b])
+        attendance_admin = User(
+            email=ATTENDANCE_ADMIN_EMAIL,
+            full_name="E2E Attendance Admin",
+            password_hash=password_hash,
+        )
+        attendance_teacher = User(
+            email=ATTENDANCE_TEACHER_EMAIL,
+            full_name="E2E Attendance Teacher",
+            password_hash=password_hash,
+        )
+        school_c = School(code="e2e-school-c", name="E2E School C", county_code=30)
+        db.session.add_all(
+            [admin, principal, teacher, school_a, school_b]
+            + [attendance_admin, attendance_teacher, school_c]
+        )
         db.session.flush()
         db.session.add_all(
             [
@@ -85,6 +103,8 @@ def reset_and_seed(app) -> None:
                 Membership(user_id=admin.id, school_id=school_b.id, role="teacher"),
                 Membership(user_id=principal.id, school_id=school_a.id, role="principal"),
                 Membership(user_id=teacher.id, school_id=school_a.id, role="teacher"),
+                Membership(user_id=attendance_admin.id, school_id=school_c.id, role="school_admin"),
+                Membership(user_id=attendance_teacher.id, school_id=school_c.id, role="teacher"),
             ]
         )
         db.session.commit()

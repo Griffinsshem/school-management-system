@@ -51,6 +51,8 @@ RLS_TABLES = (
     "classes",
     "class_teachers",
     "enrolments",
+    "attendance_registers",
+    "attendance_marks",
 )
 # Placeholder until the Vercel address is known (replace it in .env.staging).
 PLACEHOLDER_ORIGIN = "https://staging.example.invalid"

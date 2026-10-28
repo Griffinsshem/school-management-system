@@ -21,6 +21,9 @@ const PERMISSION_LABELS: Record<string, string> = {
   "classes.manage": "Set up classes and choose class teachers",
   "classes.read_own": "See the classes you teach",
   "enrolments.manage": "Add students to classes and move them",
+  "attendance.read": "See every class's attendance",
+  "attendance.record": "Take and correct any class's attendance",
+  "attendance.record_own": "Take attendance for the classes you teach",
 };
 
 // Every role a school can give, in the order they are offered.

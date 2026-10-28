@@ -83,6 +83,11 @@ export function AppShell({
       label: "Classes",
       show: me.permissions.includes("classes.read") || me.permissions.includes("classes.read_own"),
     },
+    {
+      href: "/attendance",
+      label: "Attendance",
+      show: me.permissions.includes("attendance.read") || me.permissions.includes("attendance.record_own"),
+    },
     { href: "/students", label: "Students", show: me.permissions.includes("students.read") },
     { href: "/people", label: "People", show: me.permissions.includes("members.read") },
   ].filter((link) => link.show);

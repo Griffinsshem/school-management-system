@@ -323,13 +323,21 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers and enrolments only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments and attendance only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
 own schools at login, and audit events include refusals that belong to no
 school. Both are protected by the application layer (and the audit trail is
 append-only). `users`, `sessions` and `schools` are not school-owned.
+
+### Attendance corrections: the last save wins
+
+Two people correcting the same register at the same moment are handled one
+after the other (the register row is locked while it is saved), and the
+second save replaces the first. Both are recorded in the audit trail, mark
+by mark. Taking a new register twice at once cannot happen: the database
+keeps one register per class per day and the second save is refused.
 
 ### Student search is not indexed for large schools
 

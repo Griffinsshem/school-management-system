@@ -43,9 +43,11 @@ test("logging in, choosing and switching school, and logging out", async ({ page
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_B })).toBeVisible();
   await expect(page.locator("dt:has-text('Your role') + dd")).toHaveText("Teacher");
-  // A teacher may look at the school year (C1) and their own classes (C2).
+  // A teacher may look at the school year (C1), their own classes (C2) and
+  // take their attendance (D1).
   await expect(page.locator("dt:has-text('You can') + dd").getByRole("listitem")).toHaveText([
     "See the school year and terms",
+    "Take attendance for the classes you teach",
     "See the classes you teach",
   ]);
 

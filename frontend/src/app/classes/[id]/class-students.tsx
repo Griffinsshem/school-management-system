@@ -14,6 +14,7 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
+import { canSeeAttendance, kenyaToday, registerPath } from "@/lib/attendance";
 import type { ClassList as YearClasses } from "@/lib/classes";
 import { MAX_ENROL_AT_ONCE, type ClassList, type ClassStudent } from "@/lib/enrolments";
 import { MAX_SEARCH, type StudentPage } from "@/lib/students";
@@ -50,6 +51,7 @@ function Content({ me, classId }: { me: Me; classId: string }) {
       key={school.id}
       classId={classId}
       canManage={me.permissions.includes("enrolments.manage")}
+      attendance={canSeeAttendance(me)}
     />
   );
 }
@@ -65,7 +67,15 @@ function describeError(status: number, error: ApiErrorBody): string {
   return withReference(error);
 }
 
-function Students({ classId, canManage }: { classId: string; canManage: boolean }) {
+function Students({
+  classId,
+  canManage,
+  attendance,
+}: {
+  classId: string;
+  canManage: boolean;
+  attendance: boolean;
+}) {
   const path = `/school/classes/${classId}/students`;
   const [list, setList] = useState<ClassList | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -134,6 +144,16 @@ function Students({ classId, canManage }: { classId: string; canManage: boolean 
           <p className="text-zinc-600 dark:text-zinc-400">
             {count} student{count === 1 ? "" : "s"}
           </p>
+          {attendance && (
+            <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
+              <Link href={registerPath(classId, kenyaToday())} className="underline">
+                Today&apos;s register
+              </Link>
+              <Link href={`/classes/${classId}/attendance/summary`} className="underline">
+                Attendance summary
+              </Link>
+            </p>
+          )}
         </div>
         {canManage && !adding && (
           <button

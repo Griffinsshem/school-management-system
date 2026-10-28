@@ -3,6 +3,7 @@
 from flask import Blueprint
 
 from app.api.v1.academic_years import academic_years_bp
+from app.api.v1.attendance import attendance_bp
 from app.api.v1.auth import auth_bp
 from app.api.v1.classes import classes_bp
 from app.api.v1.enrolments import enrolments_bp
@@ -23,3 +24,4 @@ api_v1.register_blueprint(invitations_bp)
 api_v1.register_blueprint(academic_years_bp)
 api_v1.register_blueprint(classes_bp)
 api_v1.register_blueprint(enrolments_bp)
+api_v1.register_blueprint(attendance_bp)

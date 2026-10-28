@@ -30,6 +30,12 @@ CLASSES_MANAGE = "classes.manage"
 # Only the classes the user is a class teacher of (see app/api/v1/classes.py).
 CLASSES_READ_OWN = "classes.read_own"
 ENROLMENTS_MANAGE = "enrolments.manage"
+# Attendance (see app/api/v1/attendance.py): reading every class's registers,
+# taking and correcting any of them, or taking and correcting those of the
+# classes the user teaches (recent days only).
+ATTENDANCE_READ = "attendance.read"
+ATTENDANCE_RECORD = "attendance.record"
+ATTENDANCE_RECORD_OWN = "attendance.record_own"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -43,14 +49,18 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             CLASSES_READ,
             CLASSES_MANAGE,
             ENROLMENTS_MANAGE,
+            ATTENDANCE_READ,
+            ATTENDANCE_RECORD,
         }
     ),
-    "principal": frozenset({MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ, CLASSES_READ}),
+    "principal": frozenset(
+        {MEMBERS_READ, STUDENTS_READ, ACADEMICS_READ, CLASSES_READ, ATTENDANCE_READ}
+    ),
     # No student access until classes exist: a teacher should see only the
     # students they teach, not the whole school. School years and terms are
     # not personal data, so every staff role may see them. A teacher sees
-    # only their own classes.
-    "teacher": frozenset({ACADEMICS_READ, CLASSES_READ_OWN}),
+    # only their own classes, and takes their registers.
+    "teacher": frozenset({ACADEMICS_READ, CLASSES_READ_OWN, ATTENDANCE_RECORD_OWN}),
     "finance_officer": frozenset({ACADEMICS_READ}),
     # Registrars see every class and enrol students, but do not create classes.
     "registrar": frozenset(

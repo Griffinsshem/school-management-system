@@ -8,6 +8,10 @@ export const PRINCIPAL_EMAIL = "e2e.principal@example.com";
 export const TEACHER_EMAIL = "e2e.teacher@example.com";
 export const SCHOOL_A = "E2E School A";
 export const SCHOOL_B = "E2E School B";
+// School C and its two people exist for the attendance tests only.
+export const ATTENDANCE_ADMIN_EMAIL = "e2e.attendance.admin@example.com";
+export const ATTENDANCE_TEACHER_EMAIL = "e2e.attendance.teacher@example.com";
+export const SCHOOL_C = "E2E School C";
 
 // Next.js has its own (empty) role="alert" element for page announcements,
 // so error messages are looked up inside the page's main content.

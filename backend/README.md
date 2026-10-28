@@ -122,6 +122,10 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | POST   | `/api/v1/school/classes/{id}/students` | Needs `enrolments.manage`: enrol 1 to 100 students (`{"student_ids": [...]}`), all or none: `201`, `404`, `409` (`already_enrolled`) or `422` |
 | PATCH  | `/api/v1/school/classes/{id}/students/{student_id}` | Needs `enrolments.manage`: move to another class of the year (`{"class_id"}`): `200`, `404` or `422` |
 | DELETE | `/api/v1/school/classes/{id}/students/{student_id}` | Needs `enrolments.manage`: `200` or `404` |
+| GET    | `/api/v1/school/classes/{id}/attendance/{YYYY-MM-DD}` | Needs `attendance.read`, or `attendance.record_own` for a class the user teaches: `200` (the register, or a blank one with everyone present), `404` or `422` (not a term day up to today) |
+| PUT    | `/api/v1/school/classes/{id}/attendance/{YYYY-MM-DD}` | Needs `attendance.record`, or `attendance.record_own` for a class the user teaches (last 7 days only): save the whole register (`{"marks": [{"student_id", "status", "reason"}]}`), all or none: `201` (taken), `200` (corrected), `403` (`too_late_to_change`), `404`, `409` (`class_list_changed`, `register_students_differ`, `register_already_taken`) or `422` |
+| GET    | `/api/v1/school/classes/{id}/attendance?term={1-3}` | Same as reading a register: `200 {"class", "term", "registers", "students"}` with counts per day and per student, `404` or `422` |
+| GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
 | POST   | `/api/v1/school/invitations/{id}/revoke` | Needs `members.manage`: `200`, `404` or `409` (already accepted) |
@@ -217,6 +221,9 @@ every endpoint checks on the server).
 | `classes.manage`  | `school_admin`                           | Adding and changing classes, choosing class teachers |
 | `classes.read_own`| `teacher`                                | Seeing only the classes they are an active class teacher of, and their class lists |
 | `enrolments.manage`| `school_admin`, `registrar`             | Enrolling students in classes, moving and removing them |
+| `attendance.read`  | `school_admin`, `principal`             | Reading every class's registers, term summaries and the school's daily overview |
+| `attendance.record`| `school_admin`                          | Taking and correcting any class's register, for any term day up to today |
+| `attendance.record_own`| `teacher`                           | Reading, taking and correcting the registers of the classes they teach, for today and the previous 7 days |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number.
@@ -252,6 +259,11 @@ events but cannot change or delete them. Recorded actions:
 | `enrolment.moved`        | A student is moved to another class, or a move is refused (`404`) |
 | `enrolment.removed`      | A student is removed from a class, or a removal is refused (`404`) |
 | `class.students_read`    | A class list is refused (`404`): another school's class, or a class the teacher does not teach |
+| `attendance.taken`       | A register is saved for the first time (target: the register) |
+| `attendance.corrected`   | A saved register is changed (target: the register); nothing is recorded if no mark changed |
+| `attendance.mark_changed`| One student's mark is changed by a correction (one event per student) |
+| `attendance.saved`       | Saving a register is refused: another school's class or a class the teacher does not teach (`404`), or a day more than 7 days ago for a teacher (`403`) |
+| `attendance.read`        | Reading a register or summary is refused (`404`) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -363,10 +375,34 @@ An enrolment puts a student in a class for that class's school year.
 - Teachers get only `id`, `admission_number` and `full_name` for each
   student; staff who may read student records also get `is_active`.
 
+### Attendance
+
+A register is one class's attendance for one day, with one mark per student:
+`present`, `absent` or `late`.
+
+- Registers are taken for days inside a term of the class's school year, up
+  to today in Kenya (weekends included, for Saturday classes). One register
+  per class per day, one mark per student (both enforced by the database).
+- Every absence has a reason from a fixed list: `sick`, `permission` or
+  `unknown`. There is no free text about children. The database refuses any
+  other reason, and a reason on a mark that is not an absence.
+- A register is saved whole, all or nothing. A new register must cover
+  exactly the class's active students; a correction must cover exactly the
+  students it was taken for, so history stays as it was when students move
+  or leave (decision of 2026-10-27).
+- Teachers take and correct their own classes' registers for today and the
+  previous 7 days; after that only a school administrator can change them.
+- Nothing is deleted: the API's database user cannot delete or empty either
+  table. Corrections change marks and are audited. A student with marks
+  cannot be deleted.
+- Teachers and readers get only `id`, `admission_number` and `full_name` for
+  each student.
+
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
-`class_teachers` and `enrolments` tables are protected by a PostgreSQL Row-Level Security policy:
+`class_teachers`, `enrolments`, `attendance_registers` and
+`attendance_marks` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database
