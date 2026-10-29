@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { goToLogin } from "@/components/app-shell";
 import { ErrorMessage, Notice, inlineButtonClass, inputClass, labelClass, secondaryButtonClass } from "@/components/ui";
 import { api, withReference, type ApiErrorBody } from "@/lib/api";
+import { subjectMarksPath } from "@/lib/assessments";
 import type { Member } from "@/lib/people";
 import type { ClassSubject, ClassSubjects, Subject } from "@/lib/subjects";
 
@@ -25,10 +27,12 @@ export function ClassSubjectsSection({
   classId,
   className,
   canManage,
+  marks,
 }: {
   classId: string;
   className: string;
   canManage: boolean;
+  marks: boolean;
 }) {
   const path = `/school/classes/${classId}/subjects`;
   const [taken, setTaken] = useState<ClassSubject[] | null>(null);
@@ -127,6 +131,7 @@ export function ClassSubjectsSection({
               className={className}
               teachers={teachers}
               canManage={canManage}
+              marksHref={marks ? subjectMarksPath(classId, item.subject.id) : null}
               pending={pending}
               send={send}
             />
@@ -156,6 +161,7 @@ function SubjectItem({
   className,
   teachers,
   canManage,
+  marksHref,
   pending,
   send,
 }: {
@@ -164,6 +170,7 @@ function SubjectItem({
   className: string;
   teachers: Member[];
   canManage: boolean;
+  marksHref: string | null;
   pending: boolean;
   send: Send;
 }) {
@@ -210,6 +217,13 @@ function SubjectItem({
             {subject.code && <span className="font-normal text-zinc-600 dark:text-zinc-400"> ({subject.code})</span>}
             {!subject.is_active && <span className="font-normal text-zinc-600 dark:text-zinc-400"> (inactive)</span>}
           </p>
+          {marksHref && (
+            <p className="text-sm">
+              <Link href={marksHref} className="underline">
+                {subject.name} marks
+              </Link>
+            </p>
+          )}
           {item.teachers.length === 0 ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">No teacher yet.</p>
           ) : (

@@ -137,9 +137,18 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | PATCH  | `/api/v1/school/subjects/{id}` | Needs `subjects.manage`: change `name`, `code` (`null` removes it) or `is_active`: `200`, `404`, `409` or `422` |
 | GET    | `/api/v1/school/classes/{id}/subjects` | Needs `subjects.read`: `200 {"class", "subjects"}`, each with its `teachers`, or `404` |
 | POST   | `/api/v1/school/classes/{id}/subjects` | Needs `subjects.manage`: `{"subject_id"}` (an active subject): `201`, `404`, `409` (`already_taken`) or `422` |
-| DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}` | Needs `subjects.manage`: the class stops taking it, and its teachers there are removed: `200` or `404` |
+| DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}` | Needs `subjects.manage`: the class stops taking it, and its teachers there are removed: `200`, `404` or `409` (`has_assessments`) |
 | POST   | `/api/v1/school/classes/{id}/subjects/{subject_id}/teachers` | Needs `subjects.manage`: `{"membership_id"}` (an active teacher): `201`, `404`, `409` (`already_assigned`) or `422` |
 | DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}/teachers/{membership_id}` | Needs `subjects.manage`: `200` or `404` |
+| GET    | `/api/v1/school/classes/{id}/subjects/{subject_id}/assessments?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as its subject teacher or the class teacher: `200 {"class", "subject", "terms", "students", "can_record", "assessments"}` (the term is optional), or `404` |
+| POST   | `/api/v1/school/classes/{id}/subjects/{subject_id}/assessments` | Needs `marks.record`, or `marks.record_own` as its subject teacher: `{"term", "name", "max_score", "held_on"}`: `201`, `404`, `409` (`assessment_exists`) or `422` |
+| PATCH  | `/api/v1/school/assessments/{id}` | Same as adding: change `name`, `max_score` (not below a mark already entered) or `held_on`: `200`, `403` (`assessment_locked`), `404`, `409` or `422` |
+| DELETE | `/api/v1/school/assessments/{id}` | Same as adding, only while it has no marks: `200`, `403` (`assessment_locked`), `404` or `409` (`has_marks`) |
+| POST   | `/api/v1/school/assessments/{id}/lock` | Needs `marks.record`: only administrators can change it afterwards: `200` (the mark sheet) or `404` |
+| POST   | `/api/v1/school/assessments/{id}/unlock` | Needs `marks.record`: `200` (the mark sheet) or `404` |
+| GET    | `/api/v1/school/assessments/{id}/marks` | Same readers as the list: `200 {"class", "subject", "assessment", "can_record", "can_lock", "students"}`, each student with `score`, `did_not_sit` and `in_class`, or `404` |
+| PUT    | `/api/v1/school/assessments/{id}/marks` | Same as adding: `{"marks": [{"student_id", "score"?, "did_not_sit"?}]}`, 1 to 200 students; neither clears that mark; students not sent keep theirs: `200` (the mark sheet), `403` (`assessment_locked`), `404` or `422` |
+| GET    | `/api/v1/school/classes/{id}/marks?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as the class teacher: `200 {"class", "term", "students", "subjects"}`, every assessment of the term with its marks, or `404` |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -243,6 +252,9 @@ every endpoint checks on the server).
 | `guardians.manage` | `school_admin`, `registrar`             | Adding, linking, correcting and removing students' guardians |
 | `subjects.read`    | `school_admin`, `principal`             | Seeing the school's subjects, the subjects each class takes and their teachers |
 | `subjects.manage`  | `school_admin`                          | Adding and changing subjects, choosing each class's subjects and subject teachers |
+| `marks.read`       | `school_admin`, `principal`             | Reading every class's assessments and marks |
+| `marks.record`     | `school_admin`                          | Adding, changing, deleting, locking and unlocking any assessment, and entering any marks, locked or not |
+| `marks.record_own` | `teacher`                               | Adding assessments and entering marks for the subjects they teach, until locked, and reading every subject's marks in the classes they are class teacher of |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number. They
@@ -298,6 +310,15 @@ events but cannot change or delete them. Recorded actions:
 | `class_subjects.read`    | Reading a class's subjects is refused (`404`) |
 | `subject_teacher.added`  | A teacher is assigned to a class's subject (target: the class), or refused (`404`) |
 | `subject_teacher.removed`| A teacher is removed from a class's subject (target: the class), or refused (`404`) |
+| `assessment.created`     | An assessment is added (target: the assessment), or refused (`404`, target: the class) |
+| `assessment.updated`     | An assessment's name, maximum or date is changed (target: the assessment), or refused (`403`, `404`) |
+| `assessment.deleted`     | An assessment without marks is deleted (target: the assessment), or refused (`403`, `404`) |
+| `assessment.locked`      | An assessment is locked (target: the assessment), or refused (`404`) |
+| `assessment.unlocked`    | An assessment is unlocked (target: the assessment), or refused (`404`) |
+| `marks.saved`            | A save changes at least one mark (target: the assessment), or is refused (`403`, `404`) |
+| `mark.changed`           | One student's mark is added, changed or cleared (target: the student; the score is never recorded) |
+| `assessments.read`       | Reading a subject's assessments or a mark sheet is refused (`404`) |
+| `marks.read`             | Reading a class's marks overview is refused (`404`) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -476,13 +497,46 @@ subjects, and each subject a class takes can have teachers (decisions of
   false, the subject names in `my_subjects`) and its students' names and
   admission numbers. They do not take its attendance: registers stay with
   class teachers.
+- A subject that has assessments in a class cannot be removed from it
+  (`409`, since D4), so marks are never lost that way.
+
+### Assessments and marks
+
+A subject's marks in a class are kept per assessment (decisions of
+2026-10-29). Grades are not stored: grading scales come in D5 and will be
+worked out from the raw marks.
+
+- An assessment belongs to one subject a class takes and one term of the
+  class's school year. It has a name (up to 60 characters, used once per
+  subject and term, whatever the letter case), a maximum score (a whole
+  number from 1 to 1000) and the date it was done (inside the term, not in
+  the future). The database checks that the class, subject and term all
+  belong to the same school and year.
+- A mark is a score from 0 to the maximum with at most one decimal place,
+  or "did not sit"; never both and never neither (the database enforces
+  it). A student has at most one mark per assessment. Sending neither for a
+  student clears their mark; students not sent keep theirs.
+- The maximum cannot be lowered below a mark already entered, and an
+  assessment with marks cannot be deleted.
+- A mark sheet lists the class's active students and anyone who already
+  has a mark there (`in_class` false once they have left the class), so
+  marks are never hidden.
+- Subject teachers add assessments and enter marks for their subjects; the
+  class teacher reads every subject's marks in their class; school
+  administrators do everything; principals read. Registrars and others see
+  no marks. Anyone else gets `404`, as if the class did not exist.
+- An administrator can lock an assessment; teachers then read it but cannot
+  change it (`403 assessment_locked`) until it is unlocked. Administrators
+  can still correct it.
+- Every changed mark is audited, student by student, with who changed it;
+  scores themselves are never written to logs or the audit trail.
 
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
 `class_teachers`, `enrolments`, `attendance_registers`, `attendance_marks`,
-`guardians`, `student_guardians`, `subjects`, `class_subjects` and
-`subject_teachers` tables are protected by a PostgreSQL Row-Level Security policy:
+`guardians`, `student_guardians`, `subjects`, `class_subjects`,
+`subject_teachers`, `assessments` and `marks` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

@@ -55,6 +55,7 @@ from app.schemas.classes import (
     ClassTeacherOut,
     CreateClassRequest,
     GradeOut,
+    MySubjectOut,
     SchoolClassOut,
     UpdateClassRequest,
 )
@@ -142,9 +143,9 @@ def _teachers(classes: list[SchoolClass]) -> dict[uuid.UUID, list[ClassTeacherOu
 
 def _mine(classes: list[SchoolClass], memberships: set[uuid.UUID]) -> tuple[set, dict]:
     """Of these classes: those the memberships are class teachers of, and the
-    subjects (by name) they teach each one."""
+    subjects they teach each one (by name)."""
     ids = [c.id for c in classes]
-    subjects: dict[uuid.UUID, list[str]] = {class_id: [] for class_id in ids}
+    subjects: dict[uuid.UUID, list[MySubjectOut]] = {class_id: [] for class_id in ids}
     if not ids or not memberships:
         return set(), subjects
     class_teacher_of = set(
@@ -155,7 +156,7 @@ def _mine(classes: list[SchoolClass], memberships: set[uuid.UUID]) -> tuple[set,
         )
     )
     rows = db.session.execute(
-        select(ClassSubject.class_id, Subject.name)
+        select(ClassSubject.class_id, Subject.id, Subject.name)
         .join(Subject, ClassSubject.subject_id == Subject.id)
         .where(
             ClassSubject.class_id.in_(ids),
@@ -167,8 +168,8 @@ def _mine(classes: list[SchoolClass], memberships: set[uuid.UUID]) -> tuple[set,
         )
         .order_by(func.lower(Subject.name), Subject.id)
     )
-    for class_id, name in rows:
-        subjects[class_id].append(name)
+    for class_id, subject_id, name in rows:
+        subjects[class_id].append(MySubjectOut(id=subject_id, name=name))
     return class_teacher_of, subjects
 
 
@@ -177,7 +178,7 @@ def _class_out(
     teachers: list[ClassTeacherOut],
     *,
     is_class_teacher: bool = False,
-    my_subjects: list[str] | None = None,
+    my_subjects: list[MySubjectOut] | None = None,
 ) -> dict:
     return SchoolClassOut(
         id=school_class.id,

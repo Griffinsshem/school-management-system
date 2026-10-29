@@ -20,7 +20,7 @@ export type SchoolClass = {
   // About the logged-in user, in the class list only: whether they are an
   // active class teacher of the class, and the subjects they teach it.
   is_class_teacher: boolean;
-  my_subjects: string[];
+  my_subjects: { id: string; name: string }[];
 };
 
 export type Grade = { code: string; name: string };

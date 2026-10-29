@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians and subjects only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments and marks only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -356,6 +356,23 @@ to: names and admission numbers only, like a class teacher, and no student
 records, guardians or registers (decision of 2026-10-28). Only school
 administrators choose subject teachers, and a teacher loses the class as
 soon as they are removed or their membership is deactivated.
+
+### Marks are children's personal data
+
+Marks are information about children's school performance. Only the
+people who need them see them (decisions of 2026-10-29): the subject's
+teachers, the class teacher, principals and school administrators;
+registrars and other staff get none, and anyone else gets the same `404` as
+for a class that does not exist. Scores stay out of URLs, logs and the
+audit trail, which records only which student's mark changed and who
+changed it. Staging holds made-up marks for made-up students only.
+
+### Mark sheets: the last save wins, per student
+
+A mark sheet is locked while it is saved, so two teachers saving at the
+same moment take turns, and a change of maximum cannot slip in between.
+Each save only changes the students it sends, and the later save wins for a
+student both sent. Every change is in the audit trail.
 
 ### Student search is not indexed for large schools
 

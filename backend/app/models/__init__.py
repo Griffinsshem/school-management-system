@@ -1,6 +1,7 @@
 """Database models. Importing them here registers them for migrations."""
 
 from app.models.academic_year import AcademicYear, Term
+from app.models.assessment import Assessment, Mark
 from app.models.attendance import AttendanceMark, AttendanceRegister
 from app.models.audit_event import AuditEvent
 from app.models.enrolment import Enrolment
@@ -16,6 +17,7 @@ from app.models.subject import ClassSubject, Subject, SubjectTeacher
 from app.models.user import User
 
 __all__ = [
+    "Assessment",
     "AcademicYear",
     "AttendanceMark",
     "AttendanceRegister",
@@ -26,6 +28,7 @@ __all__ = [
     "Guardian",
     "Invitation",
     "LoginAttempt",
+    "Mark",
     "Membership",
     "School",
     "SchoolClass",

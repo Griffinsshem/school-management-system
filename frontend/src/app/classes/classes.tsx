@@ -362,7 +362,7 @@ function TeacherNames({ schoolClass }: { schoolClass: SchoolClass }) {
 function YouTeach({ schoolClass }: { schoolClass: SchoolClass }) {
   const parts = [
     ...(schoolClass.is_class_teacher ? ["Class teacher"] : []),
-    ...schoolClass.my_subjects,
+    ...schoolClass.my_subjects.map((subject) => subject.name),
   ];
   return <>{parts.join(", ")}</>;
 }

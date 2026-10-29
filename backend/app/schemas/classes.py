@@ -41,6 +41,11 @@ class GradeOut(BaseModel):
     name: str
 
 
+class MySubjectOut(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
 class SchoolClassOut(BaseModel):
     id: uuid.UUID
     academic_year_id: uuid.UUID
@@ -52,7 +57,7 @@ class SchoolClassOut(BaseModel):
     # About the logged-in user (filled in by the class list only): whether
     # they are an active class teacher of it, and the subjects they teach it.
     is_class_teacher: bool = False
-    my_subjects: list[str] = []
+    my_subjects: list[MySubjectOut] = []
 
 
 class CreateClassRequest(BaseModel):

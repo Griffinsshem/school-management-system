@@ -95,6 +95,8 @@ class ClassSubject(db.Model):
         UniqueConstraint("class_id", "subject_id", name="uq_class_subjects_class_subject"),
         # Lets subject teachers (and later marks) prove the same school.
         UniqueConstraint("id", "school_id", name="uq_class_subjects_id_school"),
+        # Lets assessments prove their subject is one this class takes (D4).
+        UniqueConstraint("id", "class_id", "school_id", name="uq_class_subjects_id_class_school"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

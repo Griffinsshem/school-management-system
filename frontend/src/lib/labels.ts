@@ -28,6 +28,9 @@ const PERMISSION_LABELS: Record<string, string> = {
   "guardians.manage": "Add and change students' guardians",
   "subjects.read": "See subjects and who teaches them",
   "subjects.manage": "Set up subjects and choose subject teachers",
+  "marks.read": "See every class's marks",
+  "marks.record": "Enter and correct any class's marks, and lock them",
+  "marks.record_own": "Enter marks for the subjects you teach",
 };
 
 // Every role a school can give, in the order they are offered.

@@ -18,6 +18,7 @@ import { kenyaToday, registerPath } from "@/lib/attendance";
 import type { ClassList as YearClasses } from "@/lib/classes";
 import { MAX_ENROL_AT_ONCE, type ClassList, type ClassStudent } from "@/lib/enrolments";
 import { MAX_SEARCH, type StudentPage } from "@/lib/students";
+import { canReadAllMarks, classMarksPath, subjectMarksPath } from "@/lib/assessments";
 import { canManageSubjects, canReadSubjects } from "@/lib/subjects";
 
 import { ClassSubjectsSection } from "./class-subjects";
@@ -57,6 +58,7 @@ function Content({ me, classId }: { me: Me; classId: string }) {
       everyRegister={me.permissions.includes("attendance.read")}
       ownRegisters={me.permissions.includes("attendance.record_own")}
       subjects={canReadSubjects(me) ? { canManage: canManageSubjects(me) } : null}
+      allMarks={canReadAllMarks(me)}
     />
   );
 }
@@ -74,7 +76,7 @@ function describeError(status: number, error: ApiErrorBody): string {
 
 // What a teacher (who sees only their own classes) does in this class: only
 // class teachers take its registers; subject teachers just see the list.
-type MyPart = { isClassTeacher: boolean; subjects: string[] };
+type MyPart = { isClassTeacher: boolean; subjects: { id: string; name: string }[] };
 
 function Students({
   classId,
@@ -82,12 +84,14 @@ function Students({
   everyRegister,
   ownRegisters,
   subjects,
+  allMarks,
 }: {
   classId: string;
   canManage: boolean;
   everyRegister: boolean;
   ownRegisters: boolean;
   subjects: { canManage: boolean } | null;
+  allMarks: boolean;
 }) {
   const path = `/school/classes/${classId}/students`;
   const [list, setList] = useState<ClassList | null>(null);
@@ -164,6 +168,8 @@ function Students({
 
   const count = list.students.length;
   const attendance = everyRegister || (myPart?.isClassTeacher ?? false);
+  // Every subject's marks: readers of all classes, and the class teacher.
+  const marksOverview = allMarks || (myPart?.isClassTeacher ?? false);
   return (
     <>
       <p className="mb-2">
@@ -178,16 +184,36 @@ function Students({
             {count} student{count === 1 ? "" : "s"}
           </p>
           {myPart && myPart.subjects.length > 0 && (
-            <p className="mt-1 text-sm">You teach {joinNames(myPart.subjects)} in this class.</p>
+            <>
+              <p className="mt-1 text-sm">
+                You teach {joinNames(myPart.subjects.map((s) => s.name))} in this class.
+              </p>
+              <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
+                {myPart.subjects.map((subject) => (
+                  <Link key={subject.id} href={subjectMarksPath(classId, subject.id)} className="underline">
+                    {subject.name} marks
+                  </Link>
+                ))}
+              </p>
+            </>
           )}
-          {attendance && (
+          {(attendance || marksOverview) && (
             <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
-              <Link href={registerPath(classId, kenyaToday())} className="underline">
-                Today&apos;s register
-              </Link>
-              <Link href={`/classes/${classId}/attendance/summary`} className="underline">
-                Attendance summary
-              </Link>
+              {attendance && (
+                <>
+                  <Link href={registerPath(classId, kenyaToday())} className="underline">
+                    Today&apos;s register
+                  </Link>
+                  <Link href={`/classes/${classId}/attendance/summary`} className="underline">
+                    Attendance summary
+                  </Link>
+                </>
+              )}
+              {marksOverview && (
+                <Link href={classMarksPath(classId)} className="underline">
+                  Marks overview
+                </Link>
+              )}
             </p>
           )}
         </div>
@@ -217,7 +243,12 @@ function Students({
       )}
 
       {subjects && (
-        <ClassSubjectsSection classId={classId} className={list.class.name} canManage={subjects.canManage} />
+        <ClassSubjectsSection
+          classId={classId}
+          className={list.class.name}
+          canManage={subjects.canManage}
+          marks={allMarks}
+        />
       )}
 
       <ErrorMessage message={error} />

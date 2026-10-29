@@ -13,6 +13,9 @@ from app.auth.permissions import (
     ENROLMENTS_MANAGE,
     GUARDIANS_MANAGE,
     GUARDIANS_READ,
+    MARKS_READ,
+    MARKS_RECORD,
+    MARKS_RECORD_OWN,
     MEMBERS_MANAGE,
     MEMBERS_READ,
     ROLE_PERMISSIONS,
@@ -56,6 +59,8 @@ def test_roles_get_only_what_they_are_given():
         GUARDIANS_MANAGE,
         SUBJECTS_READ,
         SUBJECTS_MANAGE,
+        MARKS_READ,
+        MARKS_RECORD,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -65,6 +70,7 @@ def test_roles_get_only_what_they_are_given():
         ATTENDANCE_READ,
         GUARDIANS_READ,
         SUBJECTS_READ,
+        MARKS_READ,
     }
     # Registrars see every class and enrol students, but do not create classes.
     assert ROLE_PERMISSIONS["registrar"] == {
@@ -77,8 +83,13 @@ def test_roles_get_only_what_they_are_given():
         GUARDIANS_MANAGE,
     }
     # Teachers get no student records; they see and take attendance for only
-    # their own classes.
-    assert ROLE_PERMISSIONS["teacher"] == {ACADEMICS_READ, CLASSES_READ_OWN, ATTENDANCE_RECORD_OWN}
+    # their own classes, and enter marks for their own subjects.
+    assert ROLE_PERMISSIONS["teacher"] == {
+        ACADEMICS_READ,
+        CLASSES_READ_OWN,
+        ATTENDANCE_RECORD_OWN,
+        MARKS_RECORD_OWN,
+    }
     assert ROLE_PERMISSIONS["finance_officer"] == {ACADEMICS_READ}
     for role in ("guardian", "student"):
         assert ROLE_PERMISSIONS[role] == frozenset()
@@ -100,6 +111,9 @@ def test_roles_get_only_what_they_are_given():
         GUARDIANS_MANAGE,
         SUBJECTS_READ,
         SUBJECTS_MANAGE,
+        MARKS_READ,
+        MARKS_RECORD,
+        MARKS_RECORD_OWN,
     }
 
 
@@ -125,6 +139,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "enrolments.manage",
                 "guardians.manage",
                 "guardians.read",
+                "marks.read",
+                "marks.record",
                 "members.manage",
                 "members.read",
                 "students.manage",
@@ -140,12 +156,16 @@ def test_an_unknown_permission_is_a_programming_error():
                 "attendance.read",
                 "classes.read",
                 "guardians.read",
+                "marks.read",
                 "members.read",
                 "students.read",
                 "subjects.read",
             ],
         ),
-        (["teacher"], ["academics.read", "attendance.record_own", "classes.read_own"]),
+        (
+            ["teacher"],
+            ["academics.read", "attendance.record_own", "classes.read_own", "marks.record_own"],
+        ),
         (["guardian"], []),
         (
             ["teacher", "principal"],
@@ -156,6 +176,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "classes.read",
                 "classes.read_own",
                 "guardians.read",
+                "marks.read",
+                "marks.record_own",
                 "members.read",
                 "students.read",
                 "subjects.read",
@@ -170,6 +192,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "enrolments.manage",
                 "guardians.manage",
                 "guardians.read",
+                "marks.read",
                 "members.read",
                 "students.manage",
                 "students.read",
@@ -203,7 +226,12 @@ def test_permissions_come_only_from_the_active_school(db_app, make_user, make_sc
 
     assert body["active_school"]["code"] == "school-b"
     # A teacher's, not School A's.
-    assert body["permissions"] == ["academics.read", "attendance.record_own", "classes.read_own"]
+    assert body["permissions"] == [
+        "academics.read",
+        "attendance.record_own",
+        "classes.read_own",
+        "marks.record_own",
+    ]
     assert client.get("/api/v1/school/members").status_code == 403
 
 

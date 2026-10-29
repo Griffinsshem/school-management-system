@@ -451,7 +451,8 @@ def _my_classes(client, year):
     response = client.get(CLASSES, query_string={"academic_year_id": year})
     assert response.status_code == 200
     return {
-        c["name"]: (c["is_class_teacher"], c["my_subjects"]) for c in response.get_json()["classes"]
+        c["name"]: (c["is_class_teacher"], [s["name"] for s in c["my_subjects"]])
+        for c in response.get_json()["classes"]
     }
 
 

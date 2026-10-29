@@ -26,7 +26,15 @@ from app.auth.permissions import SUBJECTS_MANAGE, SUBJECTS_READ, permission_requ
 from app.auth.schools import current_school
 from app.errors import ApiError
 from app.extensions import db
-from app.models import ClassSubject, Membership, SchoolClass, Subject, SubjectTeacher, User
+from app.models import (
+    Assessment,
+    ClassSubject,
+    Membership,
+    SchoolClass,
+    Subject,
+    SubjectTeacher,
+    User,
+)
 from app.models.school_class import TEACHER_ROLE
 from app.schemas import parse_json_body
 from app.schemas.subjects import (
@@ -282,6 +290,18 @@ def remove_class_subject(class_id: uuid.UUID, subject_id: uuid.UUID):
     if class_subject is None:
         db.session.rollback()
         raise ApiError(404, "not_found", NOT_TAKEN)
+
+    # Assessments (D4) keep their subject: removing it would lose marks.
+    if db.session.scalar(
+        select(Assessment.id).where(Assessment.class_subject_id == class_subject.id).limit(1)
+    ):
+        name = db.session.get(Subject, subject_id).name
+        db.session.rollback()
+        raise ApiError(
+            409,
+            "has_assessments",
+            f"{name} has assessments in this class, so it cannot be removed.",
+        )
 
     db.session.execute(
         delete(SubjectTeacher).where(SubjectTeacher.class_subject_id == class_subject.id)

@@ -81,6 +81,8 @@ class Term(db.Model):
             ondelete="RESTRICT",
         ),
         UniqueConstraint("academic_year_id", "number", name="uq_terms_year_number"),
+        # Lets assessments prove their term is in their class's year (D4).
+        UniqueConstraint("id", "academic_year_id", "school_id", name="uq_terms_id_year_school"),
         CheckConstraint("number BETWEEN 1 AND 3", name="number_1_to_3"),
         CheckConstraint("starts_on < ends_on", name="starts_before_ends"),
     )
