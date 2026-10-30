@@ -146,9 +146,11 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | DELETE | `/api/v1/school/assessments/{id}` | Same as adding, only while it has no marks: `200`, `403` (`assessment_locked`), `404` or `409` (`has_marks`) |
 | POST   | `/api/v1/school/assessments/{id}/lock` | Needs `marks.record`: only administrators can change it afterwards: `200` (the mark sheet) or `404` |
 | POST   | `/api/v1/school/assessments/{id}/unlock` | Needs `marks.record`: `200` (the mark sheet) or `404` |
-| GET    | `/api/v1/school/assessments/{id}/marks` | Same readers as the list: `200 {"class", "subject", "assessment", "can_record", "can_lock", "students"}`, each student with `score`, `did_not_sit` and `in_class`, or `404` |
+| GET    | `/api/v1/school/assessments/{id}/marks` | Same readers as the list: `200 {"class", "subject", "assessment", "can_record", "can_lock", "scale", "students"}`, each student with `score`, `did_not_sit`, `in_class` and `result` (`{"percent", "grade", "points"}` or `null`, since D5), or `404` |
 | PUT    | `/api/v1/school/assessments/{id}/marks` | Same as adding: `{"marks": [{"student_id", "score"?, "did_not_sit"?}]}`, 1 to 200 students; neither clears that mark; students not sent keep theirs: `200` (the mark sheet), `403` (`assessment_locked`), `404` or `422` |
-| GET    | `/api/v1/school/classes/{id}/marks?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as the class teacher: `200 {"class", "term", "students", "subjects"}`, every assessment of the term with its marks, or `404` |
+| GET    | `/api/v1/school/classes/{id}/marks?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as the class teacher: `200 {"class", "term", "students", "scale", "subjects"}`, every assessment of the term with its marks and their `result`, and per subject `term_results` (per student who sat something), or `404` |
+| GET    | `/api/v1/school/grading` | Needs `marks.read`, `marks.record` or `marks.record_own`: `200 {"cbc", "kcse", "default_kcse"}`, each scale's bands (`grade`, `min_percent`, `points`); `kcse.is_default` |
+| PUT    | `/api/v1/school/grading/kcse` | Needs `grading.manage`: `{"boundaries": {"A": 80, ..., "E": 0}}`, all 12 grades, whole numbers going down to `E` at 0: `200` (as GET) or `422` |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -255,6 +257,7 @@ every endpoint checks on the server).
 | `marks.read`       | `school_admin`, `principal`             | Reading every class's assessments and marks |
 | `marks.record`     | `school_admin`                          | Adding, changing, deleting, locking and unlocking any assessment, and entering any marks, locked or not |
 | `marks.record_own` | `teacher`                               | Adding assessments and entering marks for the subjects they teach, until locked, and reading every subject's marks in the classes they are class teacher of |
+| `grading.manage`   | `school_admin`                          | Changing the school's KCSE grade boundaries (anyone with a marks permission reads the scales) |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number. They
@@ -319,6 +322,7 @@ events but cannot change or delete them. Recorded actions:
 | `mark.changed`           | One student's mark is added, changed or cleared (target: the student; the score is never recorded) |
 | `assessments.read`       | Reading a subject's assessments or a mark sheet is refused (`404`) |
 | `marks.read`             | Reading a class's marks overview is refused (`404`) |
+| `grading.updated`        | A save changes the school's KCSE grade boundaries (target: the school) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -531,12 +535,38 @@ worked out from the raw marks.
 - Every changed mark is audited, student by student, with who changed it;
   scores themselves are never written to logs or the audit trail.
 
+### Grading scales and grades
+
+Grades are worked out from raw marks each time they are shown and never
+stored, so changing a scale regrades every mark at once (decisions of
+2026-10-29; rules in `app/grading.py`).
+
+- A mark's percentage is score / maximum x 100 rounded to a whole number,
+  halves up (89.5% shows as 90%). The grade comes from that rounded number,
+  so it always matches the percentage on screen.
+- Form classes (`form_1` to `form_4`) use KCSE grades A to E (12 to 1
+  points); every other class uses the KJSEA scale: EE1 from 90 (8 points),
+  EE2 75, ME1 58, ME2 41, AE1 31, AE2 21, BE1 11, BE2 0 (1 point). BE2
+  starts at 0 so that a score of zero still gets a grade. Senior school
+  (Grades 10 to 12) uses KJSEA until KNEC publishes its own scale.
+- KNEC publishes no fixed KCSE cut-offs, so each school sets its own
+  (`grade_boundaries`, one row per grade). Until it does, the default is
+  A 80, A- 75, B+ 70, B 65, B- 60, C+ 55, C 50, C- 45, D+ 40, D 35, D- 30,
+  E 0. Boundaries are whole numbers, strictly going down, and E starts at 0
+  (the database checks the range and E; the API checks the order). All 12
+  are saved together, one save per school at a time.
+- A subject's term result adds up the scores of the term's assessments a
+  student sat, against those assessments' maximums. "Did not sit" and
+  marks not entered are left out of both, and a student who sat nothing
+  has no term result. Weighting assessments is not done yet.
+- Grades go to exactly the people who can see the marks.
+
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
 `class_teachers`, `enrolments`, `attendance_registers`, `attendance_marks`,
 `guardians`, `student_guardians`, `subjects`, `class_subjects`,
-`subject_teachers`, `assessments` and `marks` tables are protected by a PostgreSQL Row-Level Security policy:
+`subject_teachers`, `assessments`, `marks` and `grade_boundaries` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

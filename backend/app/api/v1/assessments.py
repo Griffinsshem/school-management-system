@@ -28,7 +28,7 @@ from flask import Blueprint, current_app, g, jsonify
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from app import audit
+from app import audit, grading
 from app.api.v1 import academic_years as years_api
 from app.api.v1.enrolments import _teaches  # Active class teacher of the class.
 from app.auth.permissions import (
@@ -276,18 +276,26 @@ def _mark_json(mark: Mark | None) -> dict:
     }
 
 
+def _result(mark: Mark | None, max_score: int, bands) -> dict | None:
+    """The mark's percentage and grade (D5), or None without a score."""
+    return grading.graded(mark.score if mark else None, max_score, bands)
+
+
 def _sheet_json(assessment, school_class, subject, writes: bool) -> dict:
     marks = {
         mark.student_id: mark
         for mark in db.session.scalars(select(Mark).where(Mark.assessment_id == assessment.id))
     }
     term_number = _term_numbers(school_class)[assessment.term_id]
+    scale = grading.scale_for(school_class.grade)
+    bands = grading.bands_for(scale, school_class.school_id)
     return {
         "class": _class_json(school_class),
         "subject": _subject_json(subject),
         "assessment": _assessment_json(assessment, term_number, len(marks)),
         "can_record": writes,
         "can_lock": MARKS_RECORD in current_permissions(),
+        "scale": grading.scale_json(scale, bands),
         "students": [
             {
                 "id": str(student.id),
@@ -295,6 +303,7 @@ def _sheet_json(assessment, school_class, subject, writes: bool) -> dict:
                 "full_name": student.full_name,
                 "in_class": in_class,
                 **_mark_json(marks.get(student.id)),
+                "result": _result(marks.get(student.id), assessment.max_score, bands),
             }
             for student, in_class in _sheet_students([assessment.id], school_class.id)
         ],
@@ -631,10 +640,26 @@ def class_marks(class_id: uuid.UUID):
         )
     )
     ids = [a.id for a in assessments]
+    scale = grading.scale_for(school_class.grade)
+    bands = grading.bands_for(scale, school_class.school_id)
+    max_scores = {a.id: a.max_score for a in assessments}
     marks: dict[uuid.UUID, dict] = {a.id: {} for a in assessments}
+    # Per class subject and student: the (score, maximum) pairs they sat.
+    sat: dict[uuid.UUID, dict[str, list]] = {
+        class_subject_id: {} for class_subject_id, _ in subjects
+    }
+    subject_of = {a.id: a.class_subject_id for a in assessments}
     if ids:
         for mark in db.session.scalars(select(Mark).where(Mark.assessment_id.in_(ids))):
-            marks[mark.assessment_id][str(mark.student_id)] = _mark_json(mark)
+            student = str(mark.student_id)
+            marks[mark.assessment_id][student] = {
+                **_mark_json(mark),
+                "result": _result(mark, max_scores[mark.assessment_id], bands),
+            }
+            if mark.score is not None:
+                sat[subject_of[mark.assessment_id]].setdefault(student, []).append(
+                    (mark.score, max_scores[mark.assessment_id])
+                )
     by_subject: dict[uuid.UUID, list] = {class_subject_id: [] for class_subject_id, _ in subjects}
     for a in assessments:
         by_subject[a.class_subject_id].append(
@@ -660,8 +685,17 @@ def class_marks(class_id: uuid.UUID):
                 }
                 for student, in_class in _sheet_students(ids, school_class.id)
             ],
+            "scale": grading.scale_json(scale, bands),
             "subjects": [
-                {"subject": _subject_json(subject), "assessments": by_subject[class_subject_id]}
+                {
+                    "subject": _subject_json(subject),
+                    "assessments": by_subject[class_subject_id],
+                    # A term result for each student who sat something.
+                    "term_results": {
+                        student: grading.term_result(pairs, bands)
+                        for student, pairs in sat[class_subject_id].items()
+                    },
+                }
                 for class_subject_id, subject in subjects
             ],
         }

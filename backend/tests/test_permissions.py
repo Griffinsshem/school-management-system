@@ -11,6 +11,7 @@ from app.auth.permissions import (
     CLASSES_READ,
     CLASSES_READ_OWN,
     ENROLMENTS_MANAGE,
+    GRADING_MANAGE,
     GUARDIANS_MANAGE,
     GUARDIANS_READ,
     MARKS_READ,
@@ -61,6 +62,7 @@ def test_roles_get_only_what_they_are_given():
         SUBJECTS_MANAGE,
         MARKS_READ,
         MARKS_RECORD,
+        GRADING_MANAGE,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -114,6 +116,7 @@ def test_roles_get_only_what_they_are_given():
         MARKS_READ,
         MARKS_RECORD,
         MARKS_RECORD_OWN,
+        GRADING_MANAGE,
     }
 
 
@@ -137,6 +140,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "classes.manage",
                 "classes.read",
                 "enrolments.manage",
+                "grading.manage",
                 "guardians.manage",
                 "guardians.read",
                 "marks.read",

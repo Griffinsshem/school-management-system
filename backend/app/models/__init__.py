@@ -5,6 +5,7 @@ from app.models.assessment import Assessment, Mark
 from app.models.attendance import AttendanceMark, AttendanceRegister
 from app.models.audit_event import AuditEvent
 from app.models.enrolment import Enrolment
+from app.models.grading import GradeBoundary
 from app.models.guardian import Guardian, StudentGuardian
 from app.models.invitation import Invitation
 from app.models.login_attempt import LoginAttempt
@@ -25,6 +26,7 @@ __all__ = [
     "ClassSubject",
     "ClassTeacher",
     "Enrolment",
+    "GradeBoundary",
     "Guardian",
     "Invitation",
     "LoginAttempt",

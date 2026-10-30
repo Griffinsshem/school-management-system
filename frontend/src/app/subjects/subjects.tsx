@@ -119,7 +119,11 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
       <p className="mb-6 max-w-2xl">
         The subjects this school teaches. Choose which classes take each subject, and who teaches it, on
         each class&apos;s page. Subjects are never deleted: make one inactive when it is no longer
-        offered, and it stays on the classes that already take it.
+        offered, and it stays on the classes that already take it. Marks are graded on the scales on the{" "}
+        <Link href="/grading" className="underline">
+          Grading page
+        </Link>
+        .
       </p>
 
       {canManage && !editing && (

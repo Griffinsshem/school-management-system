@@ -20,6 +20,7 @@ import {
   type MarkSheet,
   type SheetStudent,
 } from "@/lib/assessments";
+import { SCALE_NAMES, formatResult, gradeFor } from "@/lib/grading";
 
 // One assessment's marks: entered by its subject teacher (or a school
 // administrator), read by the class teacher and the principal (D4).
@@ -147,6 +148,12 @@ function Sheet({ assessmentId }: { assessmentId: string }) {
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Done on {formatCalendarDate(assessment.held_on)}, out of {assessment.max_score}
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Graded on the{" "}
+            <Link href="/grading" className="underline">
+              {SCALE_NAMES[sheet.scale.kind]}
+            </Link>
           </p>
           {assessment.is_locked && (
             <p className="mt-1 text-sm font-medium">Locked: only school administrators can change these marks.</p>
@@ -304,6 +311,8 @@ function MarksForm({
       <ul className="mb-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
         {sheet.students.map((student) => {
           const row = rows[student.id];
+          const value = parseScore(row.text, max);
+          const grade = !row.didNotSit && typeof value === "number" ? gradeFor(value, max, sheet.scale) : null;
           return (
             <li key={student.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
               <span>
@@ -323,6 +332,9 @@ function MarksForm({
                   disabled={row.didNotSit}
                   onChange={(e) => update(student.id, { text: e.target.value })}
                 />
+                <span className="w-16 text-sm" data-testid="live-grade">
+                  {grade ? formatResult(grade) : ""}
+                </span>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -366,6 +378,7 @@ function ReadOnlyMarks({ sheet }: { sheet: MarkSheet }) {
               <th scope="col" className={thClass}>Admission no.</th>
               <th scope="col" className={thClass}>Name</th>
               <th scope="col" className={thClass}>Score</th>
+              <th scope="col" className={thClass}>Grade</th>
             </tr>
           </thead>
           <tbody>
@@ -383,6 +396,7 @@ function ReadOnlyMarks({ sheet }: { sheet: MarkSheet }) {
                       ? "Not entered"
                       : `${formatScore(s.score)} (${percent(s.score, max)})`}
                 </td>
+                <td className={tdClass}>{s.result ? `${s.result.grade} (${s.result.points})` : "—"}</td>
               </tr>
             ))}
           </tbody>

@@ -51,6 +51,9 @@ SUBJECTS_MANAGE = "subjects.manage"
 MARKS_READ = "marks.read"
 MARKS_RECORD = "marks.record"
 MARKS_RECORD_OWN = "marks.record_own"
+# Grading scales (see app/api/v1/grading.py): changing the school's KCSE
+# grade boundaries. Reading them comes with any of the marks permissions.
+GRADING_MANAGE = "grading.manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -72,6 +75,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             SUBJECTS_MANAGE,
             MARKS_READ,
             MARKS_RECORD,
+            GRADING_MANAGE,
         }
     ),
     "principal": frozenset(

@@ -527,8 +527,13 @@ def test_the_class_overview_shows_every_subject(school, midterm):
     assert list(subjects) == ["English", "Mathematics"]
     assert subjects["English"][0]["id"] == english["assessment"]["id"]
     assert subjects["Mathematics"][0]["marks"] == {
-        s["Amani"]: {"score": 25.0, "did_not_sit": False},
-        s["Baraka"]: {"score": None, "did_not_sit": True},
+        s["Amani"]: {
+            "score": 25.0,
+            "did_not_sit": False,
+            # Grade 4 uses the CBC scale: 25 out of 50 is 50%, ME2 (D5).
+            "result": {"percent": 50, "grade": "ME2", "points": 5},
+        },
+        s["Baraka"]: {"score": None, "did_not_sit": True, "result": None},
     }
 
 

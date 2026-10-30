@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments and marks only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks and grade boundaries only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -373,6 +373,17 @@ A mark sheet is locked while it is saved, so two teachers saving at the
 same moment take turns, and a change of maximum cannot slip in between.
 Each save only changes the students it sends, and the later save wins for a
 student both sent. Every change is in the audit trail.
+
+### Grades are worked out, never stored
+
+Grades are computed from marks whenever they are shown (D5), so there is no
+second copy of children's results to fall out of step or to protect
+separately; they reach only the people who can already see the marks. The
+only stored grading data is each school's KCSE boundaries, which are not
+personal data. Changing them regrades every Form mark in the school at
+once, so only school administrators can do it and each change is in the
+audit trail. The KJSEA bands are fixed in code and change only with a
+release.
 
 ### Student search is not indexed for large schools
 

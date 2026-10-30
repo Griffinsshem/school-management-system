@@ -73,6 +73,7 @@ export const config = {
     "/classes/:id/attendance/summary",
     "/classes/:id/marks",
     "/classes/:id/subjects/:subjectId/marks",
+    "/grading",
     "/people",
     "/school-year",
     "/students",

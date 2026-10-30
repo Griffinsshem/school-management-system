@@ -1,6 +1,7 @@
 // Assessments and marks as the API returns them (see backend/README.md).
 
 import { withReference, type ApiErrorBody, type Me } from "@/lib/api";
+import type { Result, Scale, TermResult } from "@/lib/grading";
 
 export type AssessmentTerm = { number: number; starts_on: string; ends_on: string };
 
@@ -33,6 +34,7 @@ export type SheetStudent = {
   in_class: boolean; // False for a student who has left but kept a mark.
   score: number | null;
   did_not_sit: boolean;
+  result: Result | null; // Percentage and grade (D5); null without a score.
 };
 
 export type MarkSheet = {
@@ -41,18 +43,22 @@ export type MarkSheet = {
   assessment: Assessment;
   can_record: boolean;
   can_lock: boolean;
+  scale: Scale;
   students: SheetStudent[];
 };
 
-export type OverviewMark = { score: number | null; did_not_sit: boolean };
+export type OverviewMark = { score: number | null; did_not_sit: boolean; result: Result | null };
 
 export type ClassMarks = {
   class: ClassRef;
   term: AssessmentTerm;
   students: { id: string; admission_number: string; full_name: string; in_class: boolean }[];
+  scale: Scale;
   subjects: {
     subject: SubjectRef;
     assessments: (Assessment & { marks: Record<string, OverviewMark> })[];
+    // Per student who sat something this term (D5).
+    term_results: Record<string, TermResult>;
   }[];
 };
 

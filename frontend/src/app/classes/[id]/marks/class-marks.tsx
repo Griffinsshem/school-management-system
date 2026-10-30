@@ -13,10 +13,10 @@ import {
   describeMarksError,
   formatScore,
   hasAnyMarksAccess,
-  percent,
   type ClassMarks,
   type OverviewMark,
 } from "@/lib/assessments";
+import { SCALE_NAMES, type TermResult } from "@/lib/grading";
 
 // A class's marks for one term, every subject (D4): for school
 // administrators, principals and the class teacher.
@@ -113,8 +113,18 @@ function Overview({ classId }: { classId: string }) {
     );
   }
 
-  const columns = marks
-    ? marks.subjects.flatMap((s) => s.assessments.map((a) => ({ subject: s.subject.name, assessment: a })))
+  // Each subject's assessments, then its term result (D5).
+  const columns: Column[] = marks
+    ? marks.subjects.flatMap((s): Column[] =>
+        s.assessments.length === 0
+          ? []
+          : [
+              ...s.assessments.map(
+                (a): Column => ({ kind: "assessment", key: a.id, subject: s.subject.name, assessment: a }),
+              ),
+              { kind: "term", key: `term-${s.subject.id}`, subject: s.subject.name, results: s.term_results },
+            ],
+      )
     : [];
 
   return (
@@ -165,7 +175,12 @@ function Overview({ classId }: { classId: string }) {
       ) : (
         <>
           <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-            Each mark with its percentage. Scroll the table sideways to see every assessment.
+            Each mark with its percentage and grade on the{" "}
+            <Link href="/grading" className="underline">
+              {SCALE_NAMES[marks.scale.kind]}
+            </Link>
+            . A subject&apos;s term total adds up the assessments each student sat. Scroll the table sideways to see
+            every assessment.
           </p>
           <div className="relative overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
@@ -175,16 +190,23 @@ function Overview({ classId }: { classId: string }) {
               <thead>
                 <tr>
                   <th scope="col" className={thClass}>Student</th>
-                  {columns.map(({ subject, assessment }) => (
-                    <th key={assessment.id} scope="col" className={thClass}>
-                      <Link href={`/assessments/${assessment.id}`} className="underline underline-offset-4">
-                        {subject}: {assessment.name}
-                      </Link>
-                      <span className="block font-normal text-zinc-600 dark:text-zinc-400">
-                        out of {assessment.max_score}
-                      </span>
-                    </th>
-                  ))}
+                  {columns.map((column) =>
+                    column.kind === "assessment" ? (
+                      <th key={column.key} scope="col" className={thClass}>
+                        <Link href={`/assessments/${column.assessment.id}`} className="underline underline-offset-4">
+                          {column.subject}: {column.assessment.name}
+                        </Link>
+                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">
+                          out of {column.assessment.max_score}
+                        </span>
+                      </th>
+                    ) : (
+                      <th key={column.key} scope="col" className={thClass}>
+                        {column.subject}: Term {marks.term.number}{" "}
+                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">total</span>
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -197,9 +219,13 @@ function Overview({ classId }: { classId: string }) {
                         {!student.in_class && ", no longer in this class"}
                       </span>
                     </th>
-                    {columns.map(({ assessment }) => (
-                      <td key={assessment.id} className={tdClass}>
-                        <Cell mark={assessment.marks[student.id]} max={assessment.max_score} />
+                    {columns.map((column) => (
+                      <td key={column.key} className={tdClass}>
+                        {column.kind === "assessment" ? (
+                          <Cell mark={column.assessment.marks[student.id]} />
+                        ) : (
+                          <TermCell result={column.results[student.id]} />
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -213,16 +239,34 @@ function Overview({ classId }: { classId: string }) {
   );
 }
 
-function Cell({ mark, max }: { mark: OverviewMark | undefined; max: number }) {
+type Column =
+  | { kind: "assessment"; key: string; subject: string; assessment: ClassMarks["subjects"][number]["assessments"][number] }
+  | { kind: "term"; key: string; subject: string; results: Record<string, TermResult> };
+
+function Cell({ mark }: { mark: OverviewMark | undefined }) {
   if (!mark) {
     return <span className="text-zinc-600 dark:text-zinc-400">Not entered</span>;
   }
-  if (mark.did_not_sit || mark.score === null) {
+  if (mark.did_not_sit || mark.score === null || !mark.result) {
     return <>Did not sit</>;
   }
   return (
     <>
-      {formatScore(mark.score)} <span className="text-zinc-600 dark:text-zinc-400">({percent(mark.score, max)})</span>
+      {formatScore(mark.score)} <span className="text-zinc-600 dark:text-zinc-400">({mark.result.percent}%)</span>{" "}
+      <span className="font-medium">{mark.result.grade}</span>
+    </>
+  );
+}
+
+function TermCell({ result }: { result: TermResult | undefined }) {
+  if (!result) {
+    return <span className="text-zinc-600 dark:text-zinc-400">—</span>;
+  }
+  return (
+    <>
+      {formatScore(result.score)} / {result.max_score}{" "}
+      <span className="text-zinc-600 dark:text-zinc-400">({result.percent}%)</span>{" "}
+      <span className="font-medium">{result.grade}</span>
     </>
   );
 }
