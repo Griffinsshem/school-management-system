@@ -45,6 +45,8 @@ from app.extensions import db
 
 MAX_ASSESSMENT_NAME_LENGTH = 60
 MAX_SCORE_LIMIT = 1000
+# An optional weight (D6), a whole percentage of the subject's term result.
+MAX_WEIGHT = 100
 
 
 class Assessment(db.Model):
@@ -83,6 +85,9 @@ class Assessment(db.Model):
         CheckConstraint("name = btrim(name) AND name <> ''", name="name_trimmed"),
         CheckConstraint(f"max_score BETWEEN 1 AND {MAX_SCORE_LIMIT}", name="max_score_range"),
         CheckConstraint(
+            f"weight IS NULL OR weight BETWEEN 1 AND {MAX_WEIGHT}", name="weight_range"
+        ),
+        CheckConstraint(
             "(is_locked AND locked_at IS NOT NULL AND locked_by_user_id IS NOT NULL)"
             " OR (NOT is_locked AND locked_at IS NULL AND locked_by_user_id IS NULL)",
             name="lock_recorded",
@@ -98,6 +103,7 @@ class Assessment(db.Model):
     name: Mapped[str] = mapped_column(String(MAX_ASSESSMENT_NAME_LENGTH))
     max_score: Mapped[int] = mapped_column(SmallInteger)
     held_on: Mapped[date] = mapped_column(Date)
+    weight: Mapped[int | None] = mapped_column(SmallInteger)
     is_locked: Mapped[bool] = mapped_column(default=False, server_default=false())
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     locked_by_user_id: Mapped[uuid.UUID | None] = mapped_column(

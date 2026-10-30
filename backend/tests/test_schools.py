@@ -79,6 +79,8 @@ def test_new_school_gets_safe_defaults(db_app):
 
         assert isinstance(school.id, uuid.UUID)
         assert school.is_active is True
+        # Class positions stay hidden until the school switches them on (D6).
+        assert school.show_class_positions is False
         assert school.county_name == "Nakuru"
         assert school.created_at.tzinfo is not None
 

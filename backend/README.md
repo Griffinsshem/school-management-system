@@ -134,23 +134,25 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | POST   | `/api/v1/school/guardians/lookup` | Needs `guardians.read`: find by phone (`{"phone"}`, in the body, never the URL): `200 {"guardian": {..., "students"}}` or `404` |
 | GET    | `/api/v1/school/subjects` | Needs `subjects.read`: `200 {"subjects"}`, every subject by name, inactive ones included |
 | POST   | `/api/v1/school/subjects` | Needs `subjects.manage`: `{"name", "code"?}`: `201`, `409` (`subject_exists`, `code_taken`) or `422` |
-| PATCH  | `/api/v1/school/subjects/{id}` | Needs `subjects.manage`: change `name`, `code` (`null` removes it) or `is_active`: `200`, `404`, `409` or `422` |
+| PATCH  | `/api/v1/school/subjects/{id}` | Needs `subjects.manage`: change `name`, `code` (`null` removes it), `is_active` or `kcse_category` (`mathematics`, `language` or `other`, since D6): `200`, `404`, `409` or `422` |
 | GET    | `/api/v1/school/classes/{id}/subjects` | Needs `subjects.read`: `200 {"class", "subjects"}`, each with its `teachers`, or `404` |
 | POST   | `/api/v1/school/classes/{id}/subjects` | Needs `subjects.manage`: `{"subject_id"}` (an active subject): `201`, `404`, `409` (`already_taken`) or `422` |
 | DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}` | Needs `subjects.manage`: the class stops taking it, and its teachers there are removed: `200`, `404` or `409` (`has_assessments`) |
 | POST   | `/api/v1/school/classes/{id}/subjects/{subject_id}/teachers` | Needs `subjects.manage`: `{"membership_id"}` (an active teacher): `201`, `404`, `409` (`already_assigned`) or `422` |
 | DELETE | `/api/v1/school/classes/{id}/subjects/{subject_id}/teachers/{membership_id}` | Needs `subjects.manage`: `200` or `404` |
 | GET    | `/api/v1/school/classes/{id}/subjects/{subject_id}/assessments?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as its subject teacher or the class teacher: `200 {"class", "subject", "terms", "students", "can_record", "assessments"}` (the term is optional), or `404` |
-| POST   | `/api/v1/school/classes/{id}/subjects/{subject_id}/assessments` | Needs `marks.record`, or `marks.record_own` as its subject teacher: `{"term", "name", "max_score", "held_on"}`: `201`, `404`, `409` (`assessment_exists`) or `422` |
-| PATCH  | `/api/v1/school/assessments/{id}` | Same as adding: change `name`, `max_score` (not below a mark already entered) or `held_on`: `200`, `403` (`assessment_locked`), `404`, `409` or `422` |
+| POST   | `/api/v1/school/classes/{id}/subjects/{subject_id}/assessments` | Needs `marks.record`, or `marks.record_own` as its subject teacher: `{"term", "name", "max_score", "held_on", "weight"?}` (`weight` a whole percentage from 1 to 100, or `null`, since D6): `201`, `404`, `409` (`assessment_exists`) or `422` |
+| PATCH  | `/api/v1/school/assessments/{id}` | Same as adding: change `name`, `max_score` (not below a mark already entered), `held_on` or `weight`: `200`, `403` (`assessment_locked`), `404`, `409` or `422` |
 | DELETE | `/api/v1/school/assessments/{id}` | Same as adding, only while it has no marks: `200`, `403` (`assessment_locked`), `404` or `409` (`has_marks`) |
 | POST   | `/api/v1/school/assessments/{id}/lock` | Needs `marks.record`: only administrators can change it afterwards: `200` (the mark sheet) or `404` |
 | POST   | `/api/v1/school/assessments/{id}/unlock` | Needs `marks.record`: `200` (the mark sheet) or `404` |
 | GET    | `/api/v1/school/assessments/{id}/marks` | Same readers as the list: `200 {"class", "subject", "assessment", "can_record", "can_lock", "scale", "students"}`, each student with `score`, `did_not_sit`, `in_class` and `result` (`{"percent", "grade", "points"}` or `null`, since D5), or `404` |
 | PUT    | `/api/v1/school/assessments/{id}/marks` | Same as adding: `{"marks": [{"student_id", "score"?, "did_not_sit"?}]}`, 1 to 200 students; neither clears that mark; students not sent keep theirs: `200` (the mark sheet), `403` (`assessment_locked`), `404` or `422` |
-| GET    | `/api/v1/school/classes/{id}/marks?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as the class teacher: `200 {"class", "term", "students", "scale", "subjects"}`, every assessment of the term with its marks and their `result`, and per subject `term_results` (per student who sat something), or `404` |
-| GET    | `/api/v1/school/grading` | Needs `marks.read`, `marks.record` or `marks.record_own`: `200 {"cbc", "kcse", "default_kcse"}`, each scale's bands (`grade`, `min_percent`, `points`); `kcse.is_default` |
+| GET    | `/api/v1/school/classes/{id}/marks?term=1` | Needs `marks.read`, `marks.record`, or `marks.record_own` as the class teacher: `200 {"class", "term", "students", "scale", "subjects"}`, every assessment of the term with its marks and their `result`, and per subject `term_results` (per student who sat something), `weighted` and `weight_total` (since D6), or `404` |
+| GET    | `/api/v1/school/classes/{id}/results?term=1` | Same readers as the overview: `200 {"class", "term", "scale", "show_positions", "subjects", "students"}`, each student with each subject's term result, their `overall` result (`total_points`, `subjects_counted`, `mean_points`, `grade`, `complete`, or `null`) and, when the school shows them, `position`; or `404` (D6) |
+| GET    | `/api/v1/school/grading` | Needs `marks.read`, `marks.record` or `marks.record_own`: `200 {"cbc", "kcse", "default_kcse", "show_class_positions"}`, each scale's bands (`grade`, `min_percent`, `points`); `kcse.is_default` |
 | PUT    | `/api/v1/school/grading/kcse` | Needs `grading.manage`: `{"boundaries": {"A": 80, ..., "E": 0}}`, all 12 grades, whole numbers going down to `E` at 0: `200` (as GET) or `422` |
+| PUT    | `/api/v1/school/grading/positions` | Needs `grading.manage`: `{"show_class_positions": true}` (a real `true` or `false`): `200` (as GET) or `422` (D6) |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -257,7 +259,7 @@ every endpoint checks on the server).
 | `marks.read`       | `school_admin`, `principal`             | Reading every class's assessments and marks |
 | `marks.record`     | `school_admin`                          | Adding, changing, deleting, locking and unlocking any assessment, and entering any marks, locked or not |
 | `marks.record_own` | `teacher`                               | Adding assessments and entering marks for the subjects they teach, until locked, and reading every subject's marks in the classes they are class teacher of |
-| `grading.manage`   | `school_admin`                          | Changing the school's KCSE grade boundaries (anyone with a marks permission reads the scales) |
+| `grading.manage`   | `school_admin`                          | Changing the school's KCSE grade boundaries and whether results show class positions (anyone with a marks permission reads both) |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number. They
@@ -322,7 +324,8 @@ events but cannot change or delete them. Recorded actions:
 | `mark.changed`           | One student's mark is added, changed or cleared (target: the student; the score is never recorded) |
 | `assessments.read`       | Reading a subject's assessments or a mark sheet is refused (`404`) |
 | `marks.read`             | Reading a class's marks overview is refused (`404`) |
-| `grading.updated`        | A save changes the school's KCSE grade boundaries (target: the school) |
+| `results.read`           | Reading a class's term results is refused (`404`) |
+| `grading.updated`        | A save changes the school's KCSE grade boundaries or whether class positions are shown (target: the school) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
 | `invitation.accepted`    | An invitation is accepted (the actor is the person joining), or reuse of an expired, revoked or used invitation is refused |
@@ -513,8 +516,8 @@ worked out from the raw marks.
 - An assessment belongs to one subject a class takes and one term of the
   class's school year. It has a name (up to 60 characters, used once per
   subject and term, whatever the letter case), a maximum score (a whole
-  number from 1 to 1000) and the date it was done (inside the term, not in
-  the future). The database checks that the class, subject and term all
+  number from 1 to 1000), the date it was done (inside the term, not in
+  the future) and, optionally, a weight (D6, below). The database checks that the class, subject and term all
   belong to the same school and year.
 - A mark is a score from 0 to the maximum with at most one decimal place,
   or "did not sit"; never both and never neither (the database enforces
@@ -558,8 +561,39 @@ stored, so changing a scale regrades every mark at once (decisions of
 - A subject's term result adds up the scores of the term's assessments a
   student sat, against those assessments' maximums. "Did not sit" and
   marks not entered are left out of both, and a student who sat nothing
-  has no term result. Weighting assessments is not done yet.
+  has no term result.
 - Grades go to exactly the people who can see the marks.
+
+### Weights and term results
+
+D6 (decisions of 2026-10-30; rules in `app/grading.py`):
+
+- An assessment may have a weight, a whole percentage from 1 to 100. A
+  subject's term result is weighted only when every one of the term's
+  assessments has a weight and they add up to exactly 100; otherwise it
+  adds up the raw marks as before, and the pages say why. Weighted, each
+  assessment's percentage counts by its weight; an assessment a student
+  did not sit is left out and the others are scaled up to 100. The raw
+  totals are still sent but are not the weighted percentage.
+- A class's term results show each student's subject results and an
+  overall result. Form classes get a KCSE-style mean grade: Mathematics,
+  the best language and the best five other subjects (seven in all), the
+  points added up and their mean rounded half up to whole points, then
+  graded (a mean of 9.5 becomes 10 points, B+). This follows common school
+  practice and is still to be confirmed with a real school. Each subject is
+  marked as Mathematics, a language or other (`subjects.kcse_category`,
+  default other); a student without Mathematics, without a language or
+  with fewer than seven results gets the mean of what they have, marked
+  incomplete. Other classes get the average of their subjects' KJSEA
+  points as a band, complete when they have a result in every subject
+  assessed that term.
+- Class positions are off unless a school administrator switches them on
+  (`schools.show_class_positions`). They rank students still in the class
+  with a complete result by total points; equal totals share a place (1, 2,
+  2, 4), and everyone else has no position.
+- Results go to the readers of the marks overview: school administrators,
+  principals and the class teacher. Subject teachers who are not the class
+  teacher get `404`.
 
 ### Database-level isolation (Row-Level Security)
 

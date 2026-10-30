@@ -397,3 +397,39 @@ def test_a_subject_with_assessments_cannot_be_removed_from_its_class(db_app, two
             FOREIGN_KEY_VIOLATION, IntegrityError, connection.execute,
             text("DELETE FROM class_subjects WHERE id = :id"), {"id": a["maths"]},
         )  # fmt: skip
+
+
+# Weights (D6).
+
+
+@pytest.mark.parametrize("weight", [None, 1, 30, 100])
+def test_a_weight_is_optional_and_from_1_to_100(db_app, two_schools, weight):
+    a = two_schools["a"]
+    with db_app.app_context(), db.engine.begin() as connection:
+        _in_school(connection, a["school"])
+        made = _assessment(connection, a, "Weighted", weight=weight)
+        kept = connection.execute(
+            text("SELECT weight FROM assessments WHERE id = :id"), {"id": made}
+        ).scalar_one()
+        assert kept == weight
+
+
+@pytest.mark.parametrize("weight", [0, 101, -30])
+def test_database_rejects_weights_outside_1_to_100(db_app, two_schools, weight):
+    a = two_schools["a"]
+    with db_app.app_context(), db.engine.connect() as connection:
+        _in_school(connection, a["school"])
+        _expect(
+            CHECK_VIOLATION, IntegrityError,
+            _assessment, connection, a, "Weighted", weight=weight,
+        )  # fmt: skip
+
+
+def test_existing_assessments_have_no_weight(db_app, two_schools):
+    a = two_schools["a"]
+    with db_app.app_context(), db.engine.connect() as connection:
+        _in_school(connection, a["school"])
+        weight = connection.execute(
+            text("SELECT weight FROM assessments WHERE id = :id"), {"id": a["assessment"]}
+        ).scalar_one()
+        assert weight is None

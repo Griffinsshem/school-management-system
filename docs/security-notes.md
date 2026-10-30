@@ -385,6 +385,17 @@ once, so only school administrators can do it and each change is in the
 audit trail. The KJSEA bands are fixed in code and change only with a
 release.
 
+### Class positions are off by default
+
+Ranking children can do harm, and Kenya stopped ranking candidates in
+national exams, so results pages show no positions unless a school
+administrator switches them on for the school (D6). The switch is audited,
+and positions reach only the people who can already see the class's
+results: administrators, principals and the class teacher. Subject-only
+teachers cannot read a class's results at all (`404`, audited as
+`results.read`). Results, like grades, are worked out each time and never
+stored.
+
 ### Student search is not indexed for large schools
 
 Search matches part of a name with `ILIKE`, which scans the school's

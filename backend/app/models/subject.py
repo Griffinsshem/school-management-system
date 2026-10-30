@@ -44,6 +44,10 @@ from app.models.school_class import TEACHER_ROLE
 
 MAX_SUBJECT_NAME_LENGTH = 60
 MAX_SUBJECT_CODE_LENGTH = 10
+# How a subject counts towards a KCSE mean grade (D6): Mathematics and one
+# language always count, then the best five others.
+KCSE_CATEGORIES = ("mathematics", "language", "other")
+_CATEGORY_LIST = ", ".join(f"'{c}'" for c in KCSE_CATEGORIES)
 
 
 class Subject(db.Model):
@@ -61,6 +65,7 @@ class Subject(db.Model):
         ),
         CheckConstraint("name = btrim(name) AND name <> ''", name="name_trimmed"),
         CheckConstraint("code IS NULL OR (code = btrim(code) AND code <> '')", name="code_trimmed"),
+        CheckConstraint(f"kcse_category IN ({_CATEGORY_LIST})", name="kcse_category_valid"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -68,6 +73,9 @@ class Subject(db.Model):
     name: Mapped[str] = mapped_column(String(MAX_SUBJECT_NAME_LENGTH))
     code: Mapped[str | None] = mapped_column(String(MAX_SUBJECT_CODE_LENGTH))
     is_active: Mapped[bool] = mapped_column(default=True, server_default=true())
+    kcse_category: Mapped[str] = mapped_column(
+        String(12), default="other", server_default=text("'other'")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

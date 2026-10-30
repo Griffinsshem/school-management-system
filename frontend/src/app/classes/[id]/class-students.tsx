@@ -19,6 +19,7 @@ import type { ClassList as YearClasses } from "@/lib/classes";
 import { MAX_ENROL_AT_ONCE, type ClassList, type ClassStudent } from "@/lib/enrolments";
 import { MAX_SEARCH, type StudentPage } from "@/lib/students";
 import { canReadAllMarks, classMarksPath, subjectMarksPath } from "@/lib/assessments";
+import { classResultsPath } from "@/lib/results";
 import { canManageSubjects, canReadSubjects } from "@/lib/subjects";
 
 import { ClassSubjectsSection } from "./class-subjects";
@@ -210,9 +211,14 @@ function Students({
                 </>
               )}
               {marksOverview && (
-                <Link href={classMarksPath(classId)} className="underline">
-                  Marks overview
-                </Link>
+                <>
+                  <Link href={classMarksPath(classId)} className="underline">
+                    Marks overview
+                  </Link>
+                  <Link href={classResultsPath(classId)} className="underline">
+                    Term results
+                  </Link>
+                </>
               )}
             </p>
           )}

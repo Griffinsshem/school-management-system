@@ -14,10 +14,12 @@ import {
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
 import {
+  KCSE_CATEGORY_LABELS,
   MAX_SUBJECT_CODE,
   MAX_SUBJECT_NAME,
   canManageSubjects,
   canReadSubjects,
+  type KcseCategory,
   type Subject,
 } from "@/lib/subjects";
 
@@ -162,6 +164,7 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
                 <th scope="col" className={thClass}>Subject</th>
                 <th scope="col" className={thClass}>Code</th>
                 <th scope="col" className={thClass}>Status</th>
+                <th scope="col" className={thClass}>KCSE mean grade</th>
                 {canManage && (
                   <th scope="col" className={thClass}>
                     <span className="sr-only">Actions</span>
@@ -177,6 +180,7 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
                   </th>
                   <td className={tdClass}>{subject.code ?? <span className="text-zinc-600 dark:text-zinc-400">None</span>}</td>
                   <td className={tdClass}>{subject.is_active ? "Active" : "Inactive"}</td>
+                  <td className={tdClass}>{KCSE_CATEGORY_LABELS[subject.kcse_category]}</td>
                   {canManage && (
                     <td className={tdClass}>
                       <button
@@ -238,6 +242,7 @@ function SubjectForm({
   const [name, setName] = useState(subject?.name ?? "");
   const [code, setCode] = useState(subject?.code ?? "");
   const [active, setActive] = useState(subject?.is_active ?? true);
+  const [category, setCategory] = useState<KcseCategory>(subject?.kcse_category ?? "other");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -260,6 +265,9 @@ function SubjectForm({
       }
       if (active !== subject.is_active) {
         body.is_active = active;
+      }
+      if (category !== subject.kcse_category) {
+        body.kcse_category = category;
       }
       if (Object.keys(body).length === 0) {
         onCancel();
@@ -315,6 +323,28 @@ function SubjectForm({
             />
           </div>
         </div>
+        {subject && (
+          <div className="mt-4 max-w-sm">
+            <label htmlFor="subject-category" className={labelClass}>
+              Counts in a Form student&apos;s KCSE mean grade as
+            </label>
+            <select
+              id="subject-category"
+              className={inputClass}
+              value={category}
+              onChange={(event) => setCategory(event.target.value as KcseCategory)}
+            >
+              {(Object.keys(KCSE_CATEGORY_LABELS) as KcseCategory[]).map((key) => (
+                <option key={key} value={key}>
+                  {KCSE_CATEGORY_LABELS[key]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Mathematics and the best language always count, then the best five other subjects.
+            </p>
+          </div>
+        )}
         {subject && (
           <label className="mt-4 flex items-center gap-2">
             <input

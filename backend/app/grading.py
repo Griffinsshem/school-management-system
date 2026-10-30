@@ -125,14 +125,96 @@ def graded(score: Decimal | None, max_score: int, bands: tuple[Band, ...]) -> di
     return {"percent": whole, "grade": band.grade, "points": band.points}
 
 
-def term_result(sat: list[tuple[Decimal, int]], bands: tuple[Band, ...]) -> dict | None:
-    """A subject's term result from the (score, maximum) pairs a student sat."""
+def uses_weights(weights: list[int | None]) -> bool:
+    """Whether a subject's term result is weighted (D6): only when every one
+    of the term's assessments has a weight and they add up to exactly 100."""
+    return bool(weights) and all(w is not None for w in weights) and sum(weights) == 100
+
+
+def term_result(
+    sat: list[tuple[Decimal, int, int | None]], bands: tuple[Band, ...], weighted: bool = False
+) -> dict | None:
+    """A subject's term result from the (score, maximum, weight) of each
+    assessment a student sat.
+
+    Unweighted: their scores added up, against those assessments' maximums.
+    Weighted: each assessment's percentage counts by its weight; weights of
+    assessments not sat are left out, so the others are scaled up.
+    """
     if not sat:
         return None
-    total = sum((score for score, _ in sat), Decimal(0))
-    out_of = sum(max_score for _, max_score in sat)
+    total = sum((score for score, _, _ in sat), Decimal(0))
+    out_of = sum(max_score for _, max_score, _ in sat)
+    if weighted:
+        weight_sat = sum(weight for _, _, weight in sat)
+        exact = sum(Decimal(weight) * score / max_score for score, max_score, weight in sat)
+        # A percentage of 100, as a score out of 100, so `graded` rounds it.
+        result = graded(exact * 100 / weight_sat, 100, bands)
+    else:
+        result = graded(total, out_of, bands)
+    return {"score": float(total), "max_score": out_of, "weighted": weighted, **result}
+
+
+# A student's overall result for a term (D6).
+
+KCSE_SUBJECTS_COUNTED = 7
+# KCSE points back to grades, best first (12 is A, 1 is E).
+KCSE_GRADE_BY_POINTS = {points: grade for grade, points in KCSE_GRADES.items()}
+CBC_BAND_BY_POINTS = {band.points: band.grade for band in CBC_BANDS}
+
+
+def _round_half_up(value: Decimal) -> int:
+    return int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def overall_kcse(results: list[tuple[str, int]]) -> dict | None:
+    """A KCSE-style mean grade from (subject category, points) per subject.
+
+    Mathematics and the best language always count, then the best five of
+    the rest (other languages included): seven in all. A student without
+    Mathematics, without a language or with fewer than seven results gets
+    the mean of what they have, marked incomplete.
+    """
+    if not results:
+        return None
+    pool = sorted(results, key=lambda r: -r[1])
+    counted: list[int] = []
+    for category in ("mathematics", "language"):
+        best = next((r for r in pool if r[0] == category), None)
+        if best is not None:
+            counted.append(best[1])
+            pool.remove(best)
+    has_core = len(counted) == 2
+    counted += [points for _, points in pool[: KCSE_SUBJECTS_COUNTED - len(counted)]]
+    total = sum(counted)
+    mean = _round_half_up(Decimal(total) / len(counted))
     return {
-        "score": float(total),
-        "max_score": out_of,
-        **graded(total, out_of, bands),
+        "total_points": total,
+        "subjects_counted": len(counted),
+        "mean_points": mean,
+        "grade": KCSE_GRADE_BY_POINTS[mean],
+        "complete": has_core and len(counted) == KCSE_SUBJECTS_COUNTED,
     }
+
+
+def overall_cbc(points: list[int], subjects_assessed: int) -> dict | None:
+    """Total and average points across subjects (CBC), the average shown as
+    its band. Complete when the student has a result in every subject that
+    was assessed this term."""
+    if not points:
+        return None
+    mean = _round_half_up(Decimal(sum(points)) / len(points))
+    return {
+        "total_points": sum(points),
+        "subjects_counted": len(points),
+        "mean_points": mean,
+        "grade": CBC_BAND_BY_POINTS[mean],
+        "complete": len(points) == subjects_assessed,
+    }
+
+
+def positions(scores: dict[str, int]) -> dict[str, int]:
+    """Class positions from each student's total points, ties sharing a
+    place (1, 2, 2, 4). Only students with a complete result are given."""
+    ordered = sorted(scores.values(), reverse=True)
+    return {student: ordered.index(total) + 1 for student, total in scores.items()}

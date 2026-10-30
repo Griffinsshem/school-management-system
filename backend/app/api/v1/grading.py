@@ -3,6 +3,8 @@
 - Everyone who can see marks sees the scales: the fixed CBC/KJSEA bands
   and the school's KCSE boundaries (the defaults until the school saves
   its own).
+- School administrators (`grading.manage`) also decide whether results
+  pages show class positions (D6; off unless switched on).
 - School administrators (`grading.manage`) save the KCSE boundaries, all
   12 together. They must go down from A to E, and E starts at 0, so every
   percentage gets exactly one grade. A save is audited: it re-grades every
@@ -26,7 +28,7 @@ from app.extensions import db
 from app.models import GradeBoundary, School
 from app.models.grading import KCSE_GRADES
 from app.schemas import parse_json_body
-from app.schemas.grading import SaveKcseBoundariesRequest
+from app.schemas.grading import SaveKcseBoundariesRequest, SavePositionsRequest
 
 grading_bp = Blueprint("grading", __name__, url_prefix="/school")
 
@@ -38,6 +40,7 @@ def _invalid(message: str) -> ApiError:
 
 def _grading_json(school_id) -> dict:
     boundaries, is_default = grading.school_kcse_boundaries(school_id)
+    school = db.session.get(School, school_id)
     return {
         "cbc": grading.scale_json(grading.CBC, grading.CBC_BANDS),
         "kcse": {
@@ -45,6 +48,7 @@ def _grading_json(school_id) -> dict:
             "is_default": is_default,
         },
         "default_kcse": grading.DEFAULT_KCSE_BOUNDARIES,
+        "show_class_positions": school.show_class_positions,
     }
 
 
@@ -107,4 +111,29 @@ def save_kcse_boundaries():
 
     if changed:
         current_app.logger.info("KCSE grade boundaries saved: school_id=%s", school_id)
+    return jsonify(body)
+
+
+@grading_bp.put("/grading/positions")
+@permission_required(GRADING_MANAGE)
+def save_positions():
+    data = parse_json_body(SavePositionsRequest)
+    school_id = current_school().id
+    school = db.session.scalar(select(School).where(School.id == school_id).with_for_update())
+    changed = school.show_class_positions != data.show_class_positions
+    if changed:
+        school.show_class_positions = data.show_class_positions
+        db.session.flush()
+        audit.record(
+            "grading.updated", school_id=school_id, target_type="school", target_id=school_id
+        )
+    body = _grading_json(school_id)
+    db.session.commit()
+
+    if changed:
+        current_app.logger.info(
+            "Class positions %s: school_id=%s",
+            "shown" if data.show_class_positions else "hidden",
+            school_id,
+        )
     return jsonify(body)

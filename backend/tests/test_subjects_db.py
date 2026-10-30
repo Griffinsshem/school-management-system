@@ -333,3 +333,35 @@ def test_the_api_user_can_remove_links_in_its_school(db_app, two_schools):
             text("DELETE FROM class_subjects WHERE id = :id"), {"id": a["class_subject"]}
         )
         assert (teachers.rowcount, subjects.rowcount) == (1, 1)
+
+
+# KCSE categories (D6).
+
+
+def test_a_new_subject_counts_as_other_until_changed(db_app, two_schools):
+    a = two_schools["a"]
+    with db_app.app_context(), db.engine.begin() as connection:
+        _in_school(connection, a["school"])
+        subject = _subject(connection, a["school"], "Agriculture")
+        connection.execute(
+            text("UPDATE subjects SET kcse_category = 'mathematics' WHERE name = 'Mathematics'")
+        )
+        rows = connection.execute(
+            text("SELECT name, kcse_category FROM subjects WHERE id = :id OR name = 'Mathematics'"),
+            {"id": subject},
+        ).all()
+        assert sorted(tuple(row) for row in rows) == [
+            ("Agriculture", "other"),
+            ("Mathematics", "mathematics"),
+        ]
+
+
+@pytest.mark.parametrize("category", ["", "Mathematics", "science", "languages"])
+def test_a_kcse_category_is_one_of_three(db_app, two_schools, category):
+    a = two_schools["a"]
+    with db_app.app_context(), db.engine.connect() as connection:
+        _in_school(connection, a["school"])
+        _expect(
+            CHECK_VIOLATION, IntegrityError, connection.execute,
+            text("UPDATE subjects SET kcse_category = :category"), {"category": category},
+        )  # fmt: skip

@@ -8,12 +8,15 @@ import type { Me } from "@/lib/api";
 export type Band = { grade: string; min_percent: number; points: number };
 export type Scale = { kind: "cbc" | "kcse"; bands: Band[] };
 export type Result = { percent: number; grade: string; points: number };
-export type TermResult = Result & { score: number; max_score: number };
+// `weighted` (D6): the percentage counts each assessment by its weight, so
+// `score` / `max_score` are only the raw totals.
+export type TermResult = Result & { score: number; max_score: number; weighted: boolean };
 
 export type Grading = {
   cbc: Scale;
   kcse: Scale & { is_default: boolean };
   default_kcse: Record<string, number>;
+  show_class_positions: boolean; // D6
 };
 
 export const SCALE_NAMES: Record<Scale["kind"], string> = {

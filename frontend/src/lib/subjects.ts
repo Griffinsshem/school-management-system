@@ -10,6 +10,16 @@ export type Subject = {
   // An inactive subject stays on the classes that already take it, but
   // cannot be added to more.
   is_active: boolean;
+  // How it counts towards a KCSE mean grade (D6).
+  kcse_category: KcseCategory;
+};
+
+export type KcseCategory = "mathematics" | "language" | "other";
+
+export const KCSE_CATEGORY_LABELS: Record<KcseCategory, string> = {
+  mathematics: "Mathematics",
+  language: "Language",
+  other: "Other subject",
 };
 
 export type SubjectTeacher = {

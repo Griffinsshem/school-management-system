@@ -14,7 +14,9 @@ import {
   defaultTerm,
   describeMarksError,
   hasAnyMarksAccess,
+  parseWeight,
   subjectMarksPath,
+  weighting,
   type Assessment,
   type AssessmentList,
   type AssessmentTerm,
@@ -176,11 +178,39 @@ function Assessments({ classId, subjectId }: { classId: string; subjectId: strin
           {shown.length === 0 ? (
             <p>No assessments in Term {current.number} yet.</p>
           ) : (
-            <AssessmentTable assessments={shown} students={list.students} />
+            <>
+              <WeightingNote assessments={shown} term={current.number} />
+              <AssessmentTable assessments={shown} students={list.students} />
+            </>
           )}
         </>
       )}
     </>
+  );
+}
+
+// How this term's result is worked out (D6), in the API's words.
+function WeightingNote({ assessments, term }: { assessments: Assessment[]; term: number }) {
+  const { weighted, total, any } = weighting(assessments);
+  if (weighted) {
+    return (
+      <p className="mb-3 text-sm">
+        The weights add up to 100%: Term {term} results count each assessment by its weight.
+      </p>
+    );
+  }
+  if (!any) {
+    return (
+      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+        Term {term} results add up the marks. To weight them, give every assessment a weight adding up to 100%.
+      </p>
+    );
+  }
+  return (
+    <p className="mb-3 text-sm font-medium">
+      The weights add up to {total}%{assessments.some((a) => a.weight === null) ? ", and some assessments have none" : ""}:
+      Term {term} results add up the marks until every assessment has a weight and they make 100%.
+    </p>
   );
 }
 
@@ -194,6 +224,7 @@ function AssessmentTable({ assessments, students }: { assessments: Assessment[];
             <th scope="col" className={thClass}>Assessment</th>
             <th scope="col" className={thClass}>Date</th>
             <th scope="col" className={thClass}>Out of</th>
+            <th scope="col" className={thClass}>Weight</th>
             <th scope="col" className={thClass}>Marks</th>
           </tr>
         </thead>
@@ -208,6 +239,7 @@ function AssessmentTable({ assessments, students }: { assessments: Assessment[];
               </th>
               <td className={tdClass}>{formatCalendarDate(a.held_on)}</td>
               <td className={tdClass}>{a.max_score}</td>
+              <td className={tdClass}>{a.weight === null ? "—" : `${a.weight}%`}</td>
               <td className={tdClass}>
                 {a.marks_entered} of {students}
               </td>
@@ -234,6 +266,7 @@ function AddAssessment({
   const [name, setName] = useState("");
   const [maxScore, setMaxScore] = useState("");
   const [heldOn, setHeldOn] = useState(today <= term.ends_on && today >= term.starts_on ? today : "");
+  const [weight, setWeight] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -259,10 +292,15 @@ function AddAssessment({
       setError("Choose the date it was done.");
       return;
     }
+    const parsedWeight = parseWeight(weight);
+    if (parsedWeight !== null && typeof parsedWeight === "object") {
+      setError(parsedWeight.error);
+      return;
+    }
     setPending(true);
     const response = await api<{ assessment: Assessment }>(path, {
       method: "POST",
-      body: { term: term.number, name, max_score: max, held_on: heldOn },
+      body: { term: term.number, name, max_score: max, held_on: heldOn, weight: parsedWeight },
     });
     setPending(false);
     if (response.status === 401) {
@@ -289,7 +327,7 @@ function AddAssessment({
       </h2>
       <form onSubmit={onSubmit} noValidate>
         <ErrorMessage message={error} />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <div>
             <label htmlFor="assessment-name" className={labelClass}>
               Name <span className="font-normal">(for example Mid-term)</span>
@@ -328,6 +366,19 @@ function AddAssessment({
               className={inputClass}
               value={heldOn}
               onChange={(e) => setHeldOn(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="assessment-weight" className={labelClass}>
+              Weight % <span className="font-normal">(optional)</span>
+            </label>
+            <input
+              id="assessment-weight"
+              inputMode="numeric"
+              autoComplete="off"
+              className={inputClass}
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
             />
           </div>
         </div>

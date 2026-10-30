@@ -99,9 +99,16 @@ def test_form_classes_use_kcse_and_the_rest_cbc(level, scale):
 
 def test_a_term_result_adds_up_only_what_was_sat():
     bands = grading.CBC_BANDS
-    result = grading.term_result([(Decimal("8"), 10), (Decimal("15"), 20)], bands)
+    result = grading.term_result([(Decimal("8"), 10, None), (Decimal("15"), 20, None)], bands)
 
-    assert result == {"score": 23.0, "max_score": 30, "percent": 77, "grade": "EE2", "points": 7}
+    assert result == {
+        "score": 23.0,
+        "max_score": 30,
+        "weighted": False,
+        "percent": 77,
+        "grade": "EE2",
+        "points": 7,
+    }
     assert grading.term_result([], bands) is None
 
 
@@ -368,7 +375,14 @@ def test_the_overview_grades_each_mark_and_each_subjects_term(db_app, school):
     assert cat_marks[baraka]["result"] is None
     # 23 out of 30 is 76.7%, shown as 77%: A- by default.
     assert maths["term_results"] == {
-        amani: {"score": 23.0, "max_score": 30, "percent": 77, "grade": "A-", "points": 11}
+        amani: {
+            "score": 23.0,
+            "max_score": 30,
+            "weighted": False,
+            "percent": 77,
+            "grade": "A-",
+            "points": 11,
+        }
     }
 
 

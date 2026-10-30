@@ -119,6 +119,15 @@ function Scales({ schoolName, canManage }: { schoolName: string; canManage: bool
         )}
       </section>
 
+      <Positions
+        shown={grading.show_class_positions}
+        canManage={canManage}
+        onSaved={(next, message) => {
+          setGrading(next);
+          setNotice(message);
+        }}
+      />
+
       <section aria-labelledby="cbc-heading">
         <h2 id="cbc-heading" className="mb-1 text-xl font-semibold">
           {SCALE_NAMES.cbc}
@@ -129,6 +138,78 @@ function Scales({ schoolName, canManage }: { schoolName: string; canManage: bool
         <BandTable caption="CBC performance levels" bands={grading.cbc.bands} />
       </section>
     </>
+  );
+}
+
+// Whether results pages rank students (D6): off unless an administrator
+// switches it on.
+function Positions({
+  shown,
+  canManage,
+  onSaved,
+}: {
+  shown: boolean;
+  canManage: boolean;
+  onSaved: (grading: Grading, message: string) => void;
+}) {
+  const [checked, setChecked] = useState(shown);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+    const response = await api<Grading>(`${GRADING}/positions`, {
+      method: "PUT",
+      body: { show_class_positions: checked },
+    });
+    setPending(false);
+    if (response.status === 401) {
+      goToLogin(PATH);
+    } else if (response.ok) {
+      onSaved(
+        response.data,
+        response.data.show_class_positions
+          ? "Class positions are now shown on term results."
+          : "Class positions are now hidden.",
+      );
+    } else {
+      setError(describeMarksError(response.status, response.error));
+    }
+  }
+
+  return (
+    <section aria-labelledby="positions-heading" className="mb-10">
+      <h2 id="positions-heading" className="mb-1 text-xl font-semibold">
+        Class positions
+      </h2>
+      <p className="mb-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+        Term results can rank students within their class. Kenya no longer ranks candidates in national exams,
+        so this is off unless the school chooses it.
+      </p>
+      {canManage ? (
+        <form onSubmit={onSubmit} noValidate>
+          <ErrorMessage message={error} />
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={checked}
+              onChange={(event) => setChecked(event.target.checked)}
+            />
+            <span>Show class positions on term results</span>
+          </label>
+          <button type="submit" className={`${secondaryButtonClass} mt-3`} disabled={pending || checked === shown}>
+            {pending ? "Saving..." : "Save"}
+          </button>
+        </form>
+      ) : (
+        <p className="text-sm font-medium">
+          {shown ? "Term results show class positions." : "Term results do not show class positions."}
+        </p>
+      )}
+    </section>
   );
 }
 

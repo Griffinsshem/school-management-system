@@ -10,9 +10,9 @@ import datetime as dt
 import uuid
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
 
-from app.models.assessment import MAX_ASSESSMENT_NAME_LENGTH, MAX_SCORE_LIMIT
+from app.models.assessment import MAX_ASSESSMENT_NAME_LENGTH, MAX_SCORE_LIMIT, MAX_WEIGHT
 
 # The largest mark sheet that can be saved at once (far above any real class).
 MAX_MARKS_PER_SHEET = 200
@@ -50,6 +50,9 @@ class CreateAssessmentRequest(BaseModel):
     name: str = Field(min_length=1, max_length=_NAME_INPUT)
     max_score: int = Field(ge=1, le=MAX_SCORE_LIMIT)
     held_on: dt.date
+    # A whole percentage of the subject's term result (D6), or none; a JSON
+    # whole number only ("30" or 30.5 is refused).
+    weight: StrictInt | None = Field(default=None, ge=1, le=MAX_WEIGHT)
 
     _check_name = field_validator("name")(_name)
 
@@ -62,6 +65,8 @@ class UpdateAssessmentRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=_NAME_INPUT)
     max_score: int | None = Field(default=None, ge=1, le=MAX_SCORE_LIMIT)
     held_on: dt.date | None = None
+    # `"weight": null` removes it.
+    weight: StrictInt | None = Field(default=None, ge=1, le=MAX_WEIGHT)
 
     @field_validator("name", "max_score", "held_on", mode="before")
     @classmethod
@@ -75,7 +80,7 @@ class UpdateAssessmentRequest(BaseModel):
     @model_validator(mode="after")
     def _check(self):
         if not self.model_fields_set:
-            raise ValueError("Send at least one of name, max_score and held_on.")
+            raise ValueError("Send at least one of name, max_score, held_on and weight.")
         return self
 
 

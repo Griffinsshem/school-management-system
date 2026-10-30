@@ -17,6 +17,7 @@ import {
   type OverviewMark,
 } from "@/lib/assessments";
 import { SCALE_NAMES, type TermResult } from "@/lib/grading";
+import { classResultsPath } from "@/lib/results";
 
 // A class's marks for one term, every subject (D4): for school
 // administrators, principals and the class teacher.
@@ -122,7 +123,13 @@ function Overview({ classId }: { classId: string }) {
               ...s.assessments.map(
                 (a): Column => ({ kind: "assessment", key: a.id, subject: s.subject.name, assessment: a }),
               ),
-              { kind: "term", key: `term-${s.subject.id}`, subject: s.subject.name, results: s.term_results },
+              {
+                kind: "term",
+                key: `term-${s.subject.id}`,
+                subject: s.subject.name,
+                weighted: s.weighted,
+                results: s.term_results,
+              },
             ],
       )
     : [];
@@ -133,6 +140,11 @@ function Overview({ classId }: { classId: string }) {
         <Link href={`/classes/${classId}`} className="text-sm underline">
           Back to {marks?.class.name ?? "the class"}
         </Link>
+        {term !== null && (
+          <Link href={classResultsPath(classId, term)} className="ml-4 text-sm underline">
+            Term results
+          </Link>
+        )}
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -203,7 +215,9 @@ function Overview({ classId }: { classId: string }) {
                     ) : (
                       <th key={column.key} scope="col" className={thClass}>
                         {column.subject}: Term {marks.term.number}{" "}
-                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">total</span>
+                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">
+                          {column.weighted ? "weighted" : "total"}
+                        </span>
                       </th>
                     ),
                   )}
@@ -241,7 +255,7 @@ function Overview({ classId }: { classId: string }) {
 
 type Column =
   | { kind: "assessment"; key: string; subject: string; assessment: ClassMarks["subjects"][number]["assessments"][number] }
-  | { kind: "term"; key: string; subject: string; results: Record<string, TermResult> };
+  | { kind: "term"; key: string; subject: string; weighted: boolean; results: Record<string, TermResult> };
 
 function Cell({ mark }: { mark: OverviewMark | undefined }) {
   if (!mark) {
@@ -261,6 +275,14 @@ function Cell({ mark }: { mark: OverviewMark | undefined }) {
 function TermCell({ result }: { result: TermResult | undefined }) {
   if (!result) {
     return <span className="text-zinc-600 dark:text-zinc-400">—</span>;
+  }
+  if (result.weighted) {
+    // The raw totals would not match a weighted percentage.
+    return (
+      <>
+        {result.percent}% <span className="font-medium">{result.grade}</span>
+      </>
+    );
   }
   return (
     <>

@@ -5,7 +5,7 @@ That they go down from A to E, with E at 0, is checked by
 app/api/v1/grading.py, which can then name the grades in its message.
 """
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 
 from app.models.grading import KCSE_GRADES
 
@@ -25,3 +25,11 @@ class SaveKcseBoundariesRequest(BaseModel):
         if any(not 0 <= percent <= 100 for percent in value.values()):
             raise ValueError("Each boundary must be a whole number from 0 to 100.")
         return value
+
+
+class SavePositionsRequest(BaseModel):
+    """Whether results pages show class positions (D6)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    show_class_positions: StrictBool

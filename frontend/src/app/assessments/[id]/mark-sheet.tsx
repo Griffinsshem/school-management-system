@@ -15,6 +15,7 @@ import {
   formatScore,
   hasAnyMarksAccess,
   parseScore,
+  parseWeight,
   percent,
   subjectMarksPath,
   type MarkSheet,
@@ -148,6 +149,7 @@ function Sheet({ assessmentId }: { assessmentId: string }) {
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Done on {formatCalendarDate(assessment.held_on)}, out of {assessment.max_score}
+            {assessment.weight !== null && `, weight ${assessment.weight}%`}
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Graded on the{" "}
@@ -423,6 +425,7 @@ function DetailsForm({
   const [name, setName] = useState(assessment.name);
   const [maxScore, setMaxScore] = useState(String(assessment.max_score));
   const [heldOn, setHeldOn] = useState(assessment.held_on);
+  const [weight, setWeight] = useState(assessment.weight === null ? "" : String(assessment.weight));
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -444,7 +447,12 @@ function DetailsForm({
       setError(`"Out of" must be a whole number from 1 to ${MAX_SCORE_LIMIT}.`);
       return;
     }
-    const body: Record<string, string | number> = {};
+    const parsedWeight = parseWeight(weight);
+    if (parsedWeight !== null && typeof parsedWeight === "object") {
+      setError(parsedWeight.error);
+      return;
+    }
+    const body: Record<string, string | number | null> = {};
     if (name.trim() !== assessment.name) {
       body.name = name;
     }
@@ -453,6 +461,9 @@ function DetailsForm({
     }
     if (heldOn !== assessment.held_on) {
       body.held_on = heldOn;
+    }
+    if (parsedWeight !== assessment.weight) {
+      body.weight = parsedWeight;
     }
     if (Object.keys(body).length === 0) {
       onCancel();
@@ -480,7 +491,7 @@ function DetailsForm({
       </h2>
       <form onSubmit={onSubmit} noValidate>
         <ErrorMessage message={error} />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <div>
             <label htmlFor="details-name" className={labelClass}>
               Name
@@ -517,6 +528,19 @@ function DetailsForm({
               className={inputClass}
               value={heldOn}
               onChange={(e) => setHeldOn(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="details-weight" className={labelClass}>
+              Weight % <span className="font-normal">(optional)</span>
+            </label>
+            <input
+              id="details-weight"
+              inputMode="numeric"
+              autoComplete="off"
+              className={inputClass}
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
             />
           </div>
         </div>

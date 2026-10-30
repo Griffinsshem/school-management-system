@@ -223,6 +223,7 @@ def _assessment_json(assessment: Assessment, term_number: int, marks_entered: in
         "name": assessment.name,
         "max_score": assessment.max_score,
         "held_on": assessment.held_on.isoformat(),
+        "weight": assessment.weight,
         "is_locked": assessment.is_locked,
         "marks_entered": marks_entered,
     }
@@ -404,6 +405,7 @@ def create_assessment(class_id: uuid.UUID, subject_id: uuid.UUID):
         name=data.name,
         max_score=data.max_score,
         held_on=data.held_on,
+        weight=data.weight,
         created_by_user_id=g.current_user.id,
     )
     db.session.add(assessment)
@@ -450,6 +452,8 @@ def update_assessment(assessment_id: uuid.UUID):
         assessment.max_score = data.max_score
     if "name" in data.model_fields_set:
         assessment.name = data.name
+    if "weight" in data.model_fields_set:
+        assessment.weight = data.weight
     _save(assessment)
     audit.record(
         "assessment.updated", school_id=school_id, target_type="assessment", target_id=assessment_id
@@ -607,9 +611,9 @@ def save_marks(assessment_id: uuid.UUID):
 # A class's marks for a term, every subject.
 
 
-@assessments_bp.get("/classes/<uuid:class_id>/marks")
-@permission_required(MARKS_READ, MARKS_RECORD, MARKS_RECORD_OWN)
-def class_marks(class_id: uuid.UUID):
+def _overview_class(class_id: uuid.UUID, action: str) -> tuple[SchoolClass, Term]:
+    """The class and term of a whole-class view (marks overview, results):
+    for readers of every class's marks and for its class teacher."""
     query = parse_query(RequiredTermQuery)
     school_class = _find_class(class_id)
     permissions = current_permissions()
@@ -619,11 +623,17 @@ def class_marks(class_id: uuid.UUID):
         or (MARKS_RECORD_OWN in permissions and _teaches(school_class))
     )
     if not allowed:
-        _refuse("marks.read", "class", class_id)
+        _refuse(action, "class", class_id)
     term = next((t for t in _terms(school_class) if t.number == query.term), None)
     if term is None:
         raise _invalid(f"{school_class.name}'s school year has no Term {query.term}.")
+    return school_class, term
 
+
+def _term_marks(school_class: SchoolClass, term: Term) -> dict:
+    """Everything about a class's term marks: its subjects, assessments, each
+    mark with its grade, each subject's term results (D5, weighted since D6)
+    and the students to show."""
     subjects = list(
         db.session.execute(
             select(ClassSubject.id, Subject)
@@ -642,61 +652,160 @@ def class_marks(class_id: uuid.UUID):
     ids = [a.id for a in assessments]
     scale = grading.scale_for(school_class.grade)
     bands = grading.bands_for(scale, school_class.school_id)
-    max_scores = {a.id: a.max_score for a in assessments}
+    by_id = {a.id: a for a in assessments}
     marks: dict[uuid.UUID, dict] = {a.id: {} for a in assessments}
-    # Per class subject and student: the (score, maximum) pairs they sat.
-    sat: dict[uuid.UUID, dict[str, list]] = {
-        class_subject_id: {} for class_subject_id, _ in subjects
-    }
-    subject_of = {a.id: a.class_subject_id for a in assessments}
+    # Per class subject and student: (score, maximum, weight) of each one sat.
+    sat: dict[uuid.UUID, dict[str, list]] = {cs_id: {} for cs_id, _ in subjects}
     if ids:
         for mark in db.session.scalars(select(Mark).where(Mark.assessment_id.in_(ids))):
             student = str(mark.student_id)
-            marks[mark.assessment_id][student] = {
+            assessment = by_id[mark.assessment_id]
+            marks[assessment.id][student] = {
                 **_mark_json(mark),
-                "result": _result(mark, max_scores[mark.assessment_id], bands),
+                "result": _result(mark, assessment.max_score, bands),
             }
             if mark.score is not None:
-                sat[subject_of[mark.assessment_id]].setdefault(student, []).append(
-                    (mark.score, max_scores[mark.assessment_id])
+                sat[assessment.class_subject_id].setdefault(student, []).append(
+                    (mark.score, assessment.max_score, assessment.weight)
                 )
-    by_subject: dict[uuid.UUID, list] = {class_subject_id: [] for class_subject_id, _ in subjects}
+    by_subject: dict[uuid.UUID, list[Assessment]] = {cs_id: [] for cs_id, _ in subjects}
     for a in assessments:
-        by_subject[a.class_subject_id].append(
+        by_subject[a.class_subject_id].append(a)
+    items = []
+    for cs_id, subject in subjects:
+        weights = [a.weight for a in by_subject[cs_id]]
+        weighted = grading.uses_weights(weights)
+        items.append(
             {
-                **_assessment_json(a, term.number, len(marks[a.id])),
-                "marks": marks[a.id],
+                "class_subject_id": cs_id,
+                "subject": subject,
+                "assessments": by_subject[cs_id],
+                "weighted": weighted,
+                "weight_total": sum(w for w in weights if w is not None),
+                "term_results": {
+                    student: grading.term_result(entries, bands, weighted)
+                    for student, entries in sat[cs_id].items()
+                },
             }
         )
+    return {
+        "scale": scale,
+        "bands": bands,
+        "marks": marks,
+        "subjects": items,
+        "students": _sheet_students(ids, school_class.id),
+    }
+
+
+def _term_json(term: Term) -> dict:
+    return {
+        "number": term.number,
+        "starts_on": term.starts_on.isoformat(),
+        "ends_on": term.ends_on.isoformat(),
+    }
+
+
+def _student_json(student: Student, in_class: bool) -> dict:
+    return {
+        "id": str(student.id),
+        "admission_number": student.admission_number,
+        "full_name": student.full_name,
+        "in_class": in_class,
+    }
+
+
+def _weighting_json(item: dict) -> dict:
+    return {"weighted": item["weighted"], "weight_total": item["weight_total"]}
+
+
+@assessments_bp.get("/classes/<uuid:class_id>/marks")
+@permission_required(MARKS_READ, MARKS_RECORD, MARKS_RECORD_OWN)
+def class_marks(class_id: uuid.UUID):
+    school_class, term = _overview_class(class_id, "marks.read")
+    data = _term_marks(school_class, term)
     return jsonify(
         {
             "class": _class_json(school_class),
-            "term": {
-                "number": term.number,
-                "starts_on": term.starts_on.isoformat(),
-                "ends_on": term.ends_on.isoformat(),
-            },
-            "students": [
-                {
-                    "id": str(student.id),
-                    "admission_number": student.admission_number,
-                    "full_name": student.full_name,
-                    "in_class": in_class,
-                }
-                for student, in_class in _sheet_students(ids, school_class.id)
-            ],
-            "scale": grading.scale_json(scale, bands),
+            "term": _term_json(term),
+            "students": [_student_json(s, in_class) for s, in_class in data["students"]],
+            "scale": grading.scale_json(data["scale"], data["bands"]),
             "subjects": [
                 {
-                    "subject": _subject_json(subject),
-                    "assessments": by_subject[class_subject_id],
+                    "subject": _subject_json(item["subject"]),
+                    "assessments": [
+                        {
+                            **_assessment_json(a, term.number, len(data["marks"][a.id])),
+                            "marks": data["marks"][a.id],
+                        }
+                        for a in item["assessments"]
+                    ],
+                    **_weighting_json(item),
                     # A term result for each student who sat something.
-                    "term_results": {
-                        student: grading.term_result(pairs, bands)
-                        for student, pairs in sat[class_subject_id].items()
-                    },
+                    "term_results": item["term_results"],
                 }
-                for class_subject_id, subject in subjects
+                for item in data["subjects"]
             ],
+        }
+    )
+
+
+# A class's term results (D6): each subject's result, the overall result and,
+# if the school shows them, class positions.
+
+
+@assessments_bp.get("/classes/<uuid:class_id>/results")
+@permission_required(MARKS_READ, MARKS_RECORD, MARKS_RECORD_OWN)
+def class_results(class_id: uuid.UUID):
+    school_class, term = _overview_class(class_id, "results.read")
+    data = _term_marks(school_class, term)
+    assessed = [item for item in data["subjects"] if item["assessments"]]
+    students = []
+    for student, in_class in data["students"]:
+        key = str(student.id)
+        results = {
+            str(item["subject"].id): item["term_results"][key]
+            for item in assessed
+            if key in item["term_results"]
+        }
+        if data["scale"] == grading.KCSE:
+            overall = grading.overall_kcse(
+                [
+                    (item["subject"].kcse_category, item["term_results"][key]["points"])
+                    for item in assessed
+                    if key in item["term_results"]
+                ]
+            )
+        else:
+            overall = grading.overall_cbc([r["points"] for r in results.values()], len(assessed))
+        students.append(
+            {**_student_json(student, in_class), "results": results, "overall": overall}
+        )
+
+    show_positions = current_school().show_class_positions
+    if show_positions:
+        ranked = grading.positions(
+            {
+                s["id"]: s["overall"]["total_points"]
+                for s in students
+                if s["in_class"] and s["overall"] and s["overall"]["complete"]
+            }
+        )
+        for s in students:
+            s["position"] = ranked.get(s["id"])
+    return jsonify(
+        {
+            "class": _class_json(school_class),
+            "term": _term_json(term),
+            "scale": grading.scale_json(data["scale"], data["bands"]),
+            "show_positions": show_positions,
+            "subjects": [
+                {
+                    **_subject_json(item["subject"]),
+                    "kcse_category": item["subject"].kcse_category,
+                    **_weighting_json(item),
+                }
+                for item in assessed
+            ],
+            "students": students,
         }
     )

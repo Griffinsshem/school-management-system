@@ -11,6 +11,7 @@ export type Assessment = {
   name: string;
   max_score: number;
   held_on: string; // "YYYY-MM-DD"
+  weight: number | null; // A whole percentage of the term result (D6).
   is_locked: boolean;
   marks_entered: number;
 };
@@ -59,10 +60,39 @@ export type ClassMarks = {
     assessments: (Assessment & { marks: Record<string, OverviewMark> })[];
     // Per student who sat something this term (D5).
     term_results: Record<string, TermResult>;
+    weighted: boolean; // D6
+    weight_total: number;
   }[];
 };
 
 export const MAX_ASSESSMENT_NAME = 60;
+export const MAX_WEIGHT = 100;
+
+// A typed weight: null when empty, a whole number from 1 to 100, or an error.
+export function parseWeight(text: string): number | null | { error: string } {
+  const value = text.trim();
+  if (value === "") {
+    return null;
+  }
+  if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > MAX_WEIGHT) {
+    return { error: "A weight is a whole number from 1 to 100, or left empty." };
+  }
+  return Number(value);
+}
+
+// How a subject's term result is worked out, from its assessments that
+// term (D6, the same rule as the API): weighted only when every one has a
+// weight and they add up to exactly 100.
+export function weighting(assessments: { weight: number | null }[]): {
+  weighted: boolean;
+  total: number;
+  any: boolean;
+} {
+  const weights = assessments.map((a) => a.weight);
+  const total = weights.reduce<number>((sum, w) => sum + (w ?? 0), 0);
+  const all = weights.length > 0 && weights.every((w) => w !== null);
+  return { weighted: all && total === 100, total, any: weights.some((w) => w !== null) };
+}
 export const MAX_SCORE_LIMIT = 1000;
 
 // Who may open a class's marks overview: readers of every class, and class

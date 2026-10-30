@@ -218,7 +218,7 @@ def update_subject(subject_id: uuid.UUID):
     school_id = current_school().id
     subject = _subject_for_change(subject_id, "subject.updated")
 
-    for field in ("name", "code", "is_active"):
+    for field in ("name", "code", "is_active", "kcse_category"):
         if field in data.model_fields_set:
             setattr(subject, field, getattr(data, field))
     _save_subject(subject)

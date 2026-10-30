@@ -6,6 +6,7 @@ it is unique regardless of letter case. An empty code means "no code".
 """
 
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -44,6 +45,7 @@ class SubjectOut(BaseModel):
     name: str
     code: str | None
     is_active: bool
+    kcse_category: str
 
 
 class CreateSubjectRequest(BaseModel):
@@ -64,8 +66,10 @@ class UpdateSubjectRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=_NAME_INPUT)
     code: str | None = Field(default=None, max_length=_CODE_INPUT)
     is_active: bool | None = None
+    # How the subject counts towards a KCSE mean grade (D6).
+    kcse_category: Literal["mathematics", "language", "other"] | None = None
 
-    @field_validator("name", "is_active", mode="before")
+    @field_validator("name", "is_active", "kcse_category", mode="before")
     @classmethod
     def _not_null(cls, value):
         if value is None:
@@ -78,7 +82,7 @@ class UpdateSubjectRequest(BaseModel):
     @model_validator(mode="after")
     def _check(self):
         if not self.model_fields_set:
-            raise ValueError("Send at least one of name, code and is_active.")
+            raise ValueError("Send at least one of name, code, is_active and kcse_category.")
         return self
 
 
