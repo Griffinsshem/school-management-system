@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks and grade boundaries only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries and report comments only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -395,6 +395,18 @@ results: administrators, principals and the class teacher. Subject-only
 teachers cannot read a class's results at all (`404`, audited as
 `results.read`). Results, like grades, are worked out each time and never
 stored.
+
+### Report card comments are children's personal data
+
+Class teachers' comments (D7) are free text about a child, so they get the
+same care as marks: Row-Level Security keeps them inside their school;
+only administrators and the class teacher can write them, and principals
+read them; every write is audited without the text; and the text never
+goes into logs (a test captures the logs to prove it). Comments are
+limited to 500 characters of plain text, shown as text, never as HTML.
+Once a report card is printed or saved as a PDF, it leaves the system's
+protection: who receives it is the school's responsibility. Comments stay
+editable after printing; there is no "final" lock yet.
 
 ### Student search is not indexed for large schools
 

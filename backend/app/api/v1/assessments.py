@@ -753,10 +753,10 @@ def class_marks(class_id: uuid.UUID):
 # if the school shows them, class positions.
 
 
-@assessments_bp.get("/classes/<uuid:class_id>/results")
-@permission_required(MARKS_READ, MARKS_RECORD, MARKS_RECORD_OWN)
-def class_results(class_id: uuid.UUID):
-    school_class, term = _overview_class(class_id, "results.read")
+def results_data(school_class: SchoolClass, term: Term) -> dict:
+    """A class's term results (D6): each student's subject results, overall
+    result and, when the school shows them, class position. Also used by
+    report cards (D7), so both always show the same numbers."""
     data = _term_marks(school_class, term)
     assessed = [item for item in data["subjects"] if item["assessments"]]
     students = []
@@ -792,20 +792,25 @@ def class_results(class_id: uuid.UUID):
         )
         for s in students:
             s["position"] = ranked.get(s["id"])
-    return jsonify(
-        {
-            "class": _class_json(school_class),
-            "term": _term_json(term),
-            "scale": grading.scale_json(data["scale"], data["bands"]),
-            "show_positions": show_positions,
-            "subjects": [
-                {
-                    **_subject_json(item["subject"]),
-                    "kcse_category": item["subject"].kcse_category,
-                    **_weighting_json(item),
-                }
-                for item in assessed
-            ],
-            "students": students,
-        }
-    )
+    return {
+        "class": _class_json(school_class),
+        "term": _term_json(term),
+        "scale": grading.scale_json(data["scale"], data["bands"]),
+        "show_positions": show_positions,
+        "subjects": [
+            {
+                **_subject_json(item["subject"]),
+                "kcse_category": item["subject"].kcse_category,
+                **_weighting_json(item),
+            }
+            for item in assessed
+        ],
+        "students": students,
+    }
+
+
+@assessments_bp.get("/classes/<uuid:class_id>/results")
+@permission_required(MARKS_READ, MARKS_RECORD, MARKS_RECORD_OWN)
+def class_results(class_id: uuid.UUID):
+    school_class, term = _overview_class(class_id, "results.read")
+    return jsonify(results_data(school_class, term))

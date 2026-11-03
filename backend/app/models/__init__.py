@@ -10,6 +10,7 @@ from app.models.guardian import Guardian, StudentGuardian
 from app.models.invitation import Invitation
 from app.models.login_attempt import LoginAttempt
 from app.models.membership import Membership
+from app.models.report_comment import ReportComment
 from app.models.school import School
 from app.models.school_class import ClassTeacher, SchoolClass
 from app.models.session import UserSession
@@ -32,6 +33,7 @@ __all__ = [
     "LoginAttempt",
     "Mark",
     "Membership",
+    "ReportComment",
     "School",
     "SchoolClass",
     "Student",

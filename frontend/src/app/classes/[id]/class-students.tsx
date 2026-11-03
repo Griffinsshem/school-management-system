@@ -19,6 +19,7 @@ import type { ClassList as YearClasses } from "@/lib/classes";
 import { MAX_ENROL_AT_ONCE, type ClassList, type ClassStudent } from "@/lib/enrolments";
 import { MAX_SEARCH, type StudentPage } from "@/lib/students";
 import { canReadAllMarks, classMarksPath, subjectMarksPath } from "@/lib/assessments";
+import { reportCardsPath } from "@/lib/report-cards";
 import { classResultsPath } from "@/lib/results";
 import { canManageSubjects, canReadSubjects } from "@/lib/subjects";
 
@@ -217,6 +218,9 @@ function Students({
                   </Link>
                   <Link href={classResultsPath(classId)} className="underline">
                     Term results
+                  </Link>
+                  <Link href={reportCardsPath(classId)} className="underline">
+                    Report cards
                   </Link>
                 </>
               )}

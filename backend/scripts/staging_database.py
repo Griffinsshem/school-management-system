@@ -61,6 +61,7 @@ RLS_TABLES = (
     "assessments",
     "marks",
     "grade_boundaries",
+    "report_comments",
 )
 # Placeholder until the Vercel address is known (replace it in .env.staging).
 PLACEHOLDER_ORIGIN = "https://staging.example.invalid"

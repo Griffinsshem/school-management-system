@@ -19,6 +19,14 @@
   }
 }
 
+/* Paper is white: print dark text on it, even when the screen is dark. */
+@media print {
+  :root {
+    --background: #ffffff;
+    --foreground: #171717;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

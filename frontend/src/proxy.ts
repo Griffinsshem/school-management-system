@@ -72,6 +72,8 @@ export const config = {
     "/classes/:id/attendance",
     "/classes/:id/attendance/summary",
     "/classes/:id/marks",
+    "/classes/:id/report-cards",
+    "/classes/:id/report-cards/:studentId",
     "/classes/:id/results",
     "/classes/:id/subjects/:subjectId/marks",
     "/grading",

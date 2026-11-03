@@ -10,6 +10,7 @@ import { api, withReference, type Me } from "@/lib/api";
 import type { AcademicYearList } from "@/lib/academic-years";
 import { classMarksPath, describeMarksError, hasAnyMarksAccess } from "@/lib/assessments";
 import { SCALE_NAMES, type TermResult } from "@/lib/grading";
+import { reportCardsPath } from "@/lib/report-cards";
 import { classResultsPath, type ClassResults, type Overall } from "@/lib/results";
 
 // A class's term results (D6): each subject's result, the overall result
@@ -117,9 +118,14 @@ function Results({ classId }: { classId: string }) {
           Back to {results?.class.name ?? "the class"}
         </Link>
         {term !== null && (
-          <Link href={classMarksPath(classId, term)} className="text-sm underline">
-            Marks overview
-          </Link>
+          <>
+            <Link href={classMarksPath(classId, term)} className="text-sm underline">
+              Marks overview
+            </Link>
+            <Link href={reportCardsPath(classId, term)} className="text-sm underline">
+              Report cards
+            </Link>
+          </>
         )}
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">

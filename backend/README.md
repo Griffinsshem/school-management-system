@@ -153,6 +153,9 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/grading` | Needs `marks.read`, `marks.record` or `marks.record_own`: `200 {"cbc", "kcse", "default_kcse", "show_class_positions"}`, each scale's bands (`grade`, `min_percent`, `points`); `kcse.is_default` |
 | PUT    | `/api/v1/school/grading/kcse` | Needs `grading.manage`: `{"boundaries": {"A": 80, ..., "E": 0}}`, all 12 grades, whole numbers going down to `E` at 0: `200` (as GET) or `422` |
 | PUT    | `/api/v1/school/grading/positions` | Needs `grading.manage`: `{"show_class_positions": true}` (a real `true` or `false`): `200` (as GET) or `422` (D6) |
+| GET    | `/api/v1/school/classes/{id}/report-cards?term=1` | Same readers as the results: `200` with the results (as above) plus `school`, `year`, `can_comment`, `position_out_of` (when positions are shown) and, per student, `attendance` (`present`, `late`, `absent`, `days_recorded`) and `comment` (`text`, `updated_at`, `updated_by`, or `null`); or `404` (D7) |
+| GET    | `/api/v1/school/classes/{id}/report-cards/{student_id}?term=1` | Same: one card as `student`, or `404` if the student is not on the class's results (D7) |
+| PUT    | `/api/v1/school/classes/{id}/report-cards/{student_id}/comment?term=1` | Needs `marks.record`, or `marks.record_own` as the class teacher: `{"comment": "..."}`, plain text up to 500 characters (`""` clears it): `200` (the card), `403`, `404` or `422` (D7) |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -325,6 +328,9 @@ events but cannot change or delete them. Recorded actions:
 | `assessments.read`       | Reading a subject's assessments or a mark sheet is refused (`404`) |
 | `marks.read`             | Reading a class's marks overview is refused (`404`) |
 | `results.read`           | Reading a class's term results is refused (`404`) |
+| `report_cards.read`      | Reading a class's report cards, or one card, is refused (`404`) |
+| `report_comment.saved`   | A report card comment is written or changed (target: the student; the text is never recorded), or writing one is refused (`404`) |
+| `report_comment.cleared` | A report card comment is cleared (target: the student) |
 | `grading.updated`        | A save changes the school's KCSE grade boundaries or whether class positions are shown (target: the school) |
 | `invitation.created`     | An invitation is created |
 | `invitation.revoked`     | An invitation is revoked, or a revocation is refused (`404`) |
@@ -595,12 +601,35 @@ D6 (decisions of 2026-10-30; rules in `app/grading.py`):
   principals and the class teacher. Subject teachers who are not the class
   teacher get `404`.
 
+### Report cards and comments
+
+D7 (decisions of 2026-11-02):
+
+- A report card is one student's term in one class: each subject's result,
+  the overall result (mean grade for Form classes) and, when the school
+  shows positions, "position X of N", where N counts the students with a
+  position. It uses the same numbers as the results page and the same
+  students (the class's active students and anyone with a mark there).
+- Attendance on a card counts this class's registers inside the term's
+  dates only: days present, late and absent, out of the days recorded.
+- Only the class teacher's comment is stored (`report_comments`, one per
+  student, class and term). It is plain text of 1 to 500 characters with
+  no whitespace at either end (the database checks both); the API trims it
+  and turns Windows line endings into line breaks, keeps line breaks and
+  tabs and refuses other control characters. `""` clears it (the row is
+  deleted); a comment of only spaces is refused, so a stray space never
+  deletes one. Saving the same text again changes nothing.
+- School administrators and the class teacher write comments; principals
+  read them; subject-only teachers and everyone else get `404`.
+- Report cards are printed from the browser (one per page, without the
+  menu or buttons); there is no PDF made on the server.
+
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
 `class_teachers`, `enrolments`, `attendance_registers`, `attendance_marks`,
 `guardians`, `student_guardians`, `subjects`, `class_subjects`,
-`subject_teachers`, `assessments`, `marks` and `grade_boundaries` tables are protected by a PostgreSQL Row-Level Security policy:
+`subject_teachers`, `assessments`, `marks`, `grade_boundaries` and `report_comments` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

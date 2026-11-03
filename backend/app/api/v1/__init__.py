@@ -13,6 +13,7 @@ from app.api.v1.guardians import guardians_bp
 from app.api.v1.health import health_bp
 from app.api.v1.invitations import invitations_bp, school_invitations_bp
 from app.api.v1.platform import platform_bp
+from app.api.v1.report_cards import report_cards_bp
 from app.api.v1.school import school_bp
 from app.api.v1.students import students_bp
 from app.api.v1.subjects import subjects_bp
@@ -33,3 +34,4 @@ api_v1.register_blueprint(guardians_bp)
 api_v1.register_blueprint(subjects_bp)
 api_v1.register_blueprint(assessments_bp)
 api_v1.register_blueprint(grading_bp)
+api_v1.register_blueprint(report_cards_bp)
