@@ -14,6 +14,7 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
+import { confirmLeave, useUnsavedChanges } from "@/lib/unsaved-changes";
 import {
   REASONS,
   STATUSES,
@@ -111,6 +112,14 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
   const [version, setVersion] = useState(0);
   // Someone changed the class or the register meanwhile: offer a reload.
   const [stale, setStale] = useState(false);
+  // Marks chosen but not saved (D8).
+  const unsaved =
+    register !== null &&
+    register.marks.some((mark) => {
+      const now = draft[mark.student.id];
+      return now !== undefined && (now.status !== mark.status || now.reason !== mark.reason);
+    });
+  useUnsavedChanges(unsaved);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,7 +147,7 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
 
   function showDay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isDate(dayText)) {
+    if (isDate(dayText) && confirmLeave()) {
       router.push(registerPath(classId, dayText));
     }
   }

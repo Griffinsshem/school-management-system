@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { ErrorMessage, secondaryButtonClass } from "@/components/ui";
 import { api, withReference, type Me } from "@/lib/api";
+import { confirmLeave } from "@/lib/unsaved-changes";
 
 // The frame of every page that needs a login: it asks the API who is logged
 // in, sends the person to the login page if nobody is (or the session has
@@ -65,6 +66,9 @@ export function AppShell({
   }, [path]);
 
   async function logOut() {
+    if (!confirmLeave()) {
+      return; // Unsaved work on the page (D8).
+    }
     setError(null);
     setPending(true);
     loggingOut = true;
@@ -107,34 +111,36 @@ export function AppShell({
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {/* Two rows on purpose (D8): the name of the app and the account on
+            top, the menu below, so a long menu never wraps unpredictably. */}
+        <div className="mx-auto max-w-4xl px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <p className="font-semibold">School Management System</p>
-            <nav aria-label="Main">
-              <ul className="flex flex-wrap gap-x-4 gap-y-1">
-                {links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      aria-current={link.href === path ? "page" : undefined}
-                      className="rounded px-1 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 aria-[current=page]:font-semibold aria-[current=page]:underline"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <span className="sr-only">Logged in as </span>
+                {me.user.full_name}
+              </p>
+              <button type="button" className={secondaryButtonClass} onClick={logOut} disabled={pending}>
+                Log out
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="sr-only">Logged in as </span>
-              {me.user.full_name}
-            </p>
-            <button type="button" className={secondaryButtonClass} onClick={logOut} disabled={pending}>
-              Log out
-            </button>
-          </div>
+          <nav aria-label="Main" className="mt-2">
+            <ul className="-mx-1 flex flex-wrap gap-x-3 gap-y-1">
+              {links.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={link.href === path ? "page" : undefined}
+                    className="rounded px-1 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 aria-[current=page]:font-semibold aria-[current=page]:underline"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </header>
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">

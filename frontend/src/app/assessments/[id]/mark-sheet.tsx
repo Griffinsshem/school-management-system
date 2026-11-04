@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AppShell, goToLogin } from "@/components/app-shell";
 import { ErrorMessage, Notice, inlineButtonClass, inputClass, labelClass, secondaryButtonClass } from "@/components/ui";
 import { api, withReference, type Me } from "@/lib/api";
+import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { formatCalendarDate } from "@/lib/academic-years";
 import {
   MAX_ASSESSMENT_NAME,
@@ -260,6 +261,11 @@ function MarksForm({
 }) {
   const max = sheet.assessment.max_score;
   const [rows, setRows] = useState<Record<string, Row>>(() => initialRows(sheet.students));
+  // Scores typed but not saved (D8).
+  const saved = initialRows(sheet.students);
+  useUnsavedChanges(
+    sheet.students.some((s) => rows[s.id].text !== saved[s.id].text || rows[s.id].didNotSit !== saved[s.id].didNotSit),
+  );
   const [problems, setProblems] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 

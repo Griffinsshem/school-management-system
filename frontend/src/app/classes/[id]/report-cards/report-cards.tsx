@@ -18,6 +18,7 @@ import {
   type OneReportCard,
   type ReportCard,
 } from "@/lib/report-cards";
+import { confirmLeave, useUnsavedChanges } from "@/lib/unsaved-changes";
 import { classResultsPath } from "@/lib/results";
 
 import { useTerm } from "./use-term";
@@ -138,6 +139,10 @@ function Cards({ classId }: { classId: string }) {
               value={term}
               onChange={(event) => {
                 const next = Number(event.target.value);
+                if (!confirmLeave()) {
+                  event.target.value = String(term); // Stay on this term.
+                  return;
+                }
                 setData(null);
                 setTerm(next);
                 router.replace(reportCardsPath(classId, next));
@@ -262,6 +267,7 @@ function CommentForm({
 }) {
   const saved = card.comment?.text ?? "";
   const [text, setText] = useState(saved);
+  useUnsavedChanges(text !== saved); // D8
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
