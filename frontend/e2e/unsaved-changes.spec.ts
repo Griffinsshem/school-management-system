@@ -204,7 +204,10 @@ test("changes the person agreed to lose do not come back", async ({ page }) => {
   const c = await smallClass(page);
   const openClass = async () => {
     await menu(page, "Classes").click();
-    await page.getByRole("link", { name: new RegExp(c.id) }).first().click();
+    // Wait for the Classes page: until it arrives, the page being left may
+    // have its own link to the class.
+    await expect(page.getByRole("heading", { level: 1, name: "Classes" })).toBeVisible();
+    await page.getByRole("main").getByRole("link", { name: new RegExp(c.id) }).first().click();
   };
 
   // Marks.
