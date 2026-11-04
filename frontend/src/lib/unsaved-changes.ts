@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 // A warning before unsaved work is lost (D8). A page calls
-// useUnsavedChanges(dirty) with whether it has typed, unsaved changes. While
-// any page part is dirty:
+// useUnsavedChanges(dirty, discard) with whether it has typed, unsaved
+// changes, and how to put back what is saved. While any page part is dirty:
 // - following a link inside the app asks first (confirmLeave below);
 // - code that leaves or reloads the page in another way (Log out, a term or
 //   date selector) calls confirmLeave() and stops if it returns false;
@@ -16,8 +16,8 @@ import { useEffect } from "react";
 export const LEAVE_MESSAGE = "You have unsaved changes. Leave this page and lose them?";
 
 // One entry per page part with unsaved changes (several comment boxes can
-// be dirty at once, but the person is asked once).
-const dirtyParts = new Set<symbol>();
+// be dirty at once, but the person is asked once), with how to discard them.
+const dirtyParts = new Map<symbol, () => void>();
 let listening = false;
 
 export function hasUnsavedChanges(): boolean {
@@ -25,7 +25,9 @@ export function hasUnsavedChanges(): boolean {
 }
 
 // True when it is fine to leave: nothing is unsaved, or the person agreed to
-// lose it. Agreeing forgets the changes, so leaving does not ask again.
+// lose it. Agreeing discards the changes there and then: leaving does not ask
+// again, and a page Next.js keeps in the background (cacheComponents) shows
+// what is saved when the person comes back, not the discarded typing.
 export function confirmLeave(): boolean {
   if (!hasUnsavedChanges()) {
     return true;
@@ -33,7 +35,11 @@ export function confirmLeave(): boolean {
   if (!window.confirm(LEAVE_MESSAGE)) {
     return false;
   }
+  const discards = [...dirtyParts.values()];
   dirtyParts.clear();
+  for (const discard of discards) {
+    discard();
+  }
   return true;
 }
 
@@ -80,14 +86,19 @@ function listen() {
   window.addEventListener("click", onClick, true);
 }
 
-export function useUnsavedChanges(dirty: boolean) {
+export function useUnsavedChanges(dirty: boolean, discard: () => void) {
+  // The latest discard, which sees the page's current saved values.
+  const latestDiscard = useRef(discard);
+  useEffect(() => {
+    latestDiscard.current = discard;
+  });
   useEffect(() => {
     if (!dirty) {
       return;
     }
     listen();
     const part = Symbol("unsaved");
-    dirtyParts.add(part);
+    dirtyParts.set(part, () => latestDiscard.current());
     return () => {
       dirtyParts.delete(part);
     };

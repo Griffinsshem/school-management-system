@@ -267,7 +267,7 @@ function CommentForm({
 }) {
   const saved = card.comment?.text ?? "";
   const [text, setText] = useState(saved);
-  useUnsavedChanges(text !== saved); // D8
+  useUnsavedChanges(text !== saved, () => setText(saved)); // D8
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

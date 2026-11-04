@@ -119,7 +119,7 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
       const now = draft[mark.student.id];
       return now !== undefined && (now.status !== mark.status || now.reason !== mark.reason);
     });
-  useUnsavedChanges(unsaved);
+  useUnsavedChanges(unsaved, () => register && setDraft(draftFrom(register)));
 
   useEffect(() => {
     let cancelled = false;

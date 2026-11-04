@@ -265,6 +265,7 @@ function MarksForm({
   const saved = initialRows(sheet.students);
   useUnsavedChanges(
     sheet.students.some((s) => rows[s.id].text !== saved[s.id].text || rows[s.id].didNotSit !== saved[s.id].didNotSit),
+    () => setRows(saved),
   );
   const [problems, setProblems] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

@@ -197,6 +197,58 @@ test("an unsaved comment asks before the term changes, and before the tab closes
   await expect.poll(() => closing).toEqual(["beforeunload: "]);
 });
 
+// Next.js keeps visited pages alive in the background (cacheComponents), so
+// "lose them" must really discard the typing, not just stop asking.
+test("changes the person agreed to lose do not come back", async ({ page }) => {
+  await logInAsAdmin(page);
+  const c = await smallClass(page);
+  const openClass = async () => {
+    await menu(page, "Classes").click();
+    await page.getByRole("link", { name: new RegExp(c.id) }).first().click();
+  };
+
+  // Marks.
+  await page.goto(`/assessments/${c.assessmentId}`);
+  const score = page.getByLabel(new RegExp(`^Score for Amani ${c.id}`));
+  await score.fill("7");
+  let asked = answerNextQuestion(page, true);
+  await menu(page, "Classes").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Classes" })).toBeVisible();
+  expect(asked).toEqual([`confirm: ${LEAVE}`]);
+  await openClass();
+  await page.getByRole("link", { name: `Mathematics ${c.id} marks` }).first().click();
+  await page.getByRole("link", { name: "Quiz" }).click();
+  await expect(score).toHaveValue("");
+
+  // A report card comment.
+  await openClass();
+  await page.getByRole("link", { name: "Report cards" }).first().click();
+  const box = page.getByLabel(`Comment for Amani ${c.id}`);
+  await box.fill("Draft");
+  asked = answerNextQuestion(page, true);
+  await openClass();
+  expect(asked).toEqual([`confirm: ${LEAVE}`]);
+  await page.getByRole("link", { name: "Report cards" }).first().click();
+  await expect(box).toHaveValue("");
+
+  // A register.
+  await openClass();
+  await page.getByRole("link", { name: "Today's register" }).first().click();
+  const amani = page.getByRole("group", { name: new RegExp(`^Amani ${c.id}`) });
+  await amani.getByLabel("Late").check();
+  asked = answerNextQuestion(page, true);
+  await openClass();
+  expect(asked).toEqual([`confirm: ${LEAVE}`]);
+  await page.getByRole("link", { name: "Today's register" }).first().click();
+  await expect(amani.getByLabel("Present")).toBeChecked();
+
+  // Nothing is unsaved any more, so nothing asks.
+  const none = noQuestions(page);
+  await menu(page, "Classes").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Classes" })).toBeVisible();
+  expect(none).toEqual([]);
+});
+
 test("nothing asks when nothing was changed", async ({ page }) => {
   await logInAsAdmin(page);
   const c = await smallClass(page);
