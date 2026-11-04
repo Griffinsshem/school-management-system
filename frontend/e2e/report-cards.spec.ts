@@ -261,10 +261,44 @@ test("a subject teacher has no report cards; others' cards are not found", async
   await expect(page.getByRole("heading", { level: 1, name: "Report cards not found" })).toBeVisible();
 });
 
+// Everything on the page stays inside the screen, except inside a box that
+// scrolls sideways itself (such as the subject table).
+async function offScreen(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const scrolls = (el: Element | null): boolean => {
+      for (let e = el; e && e !== document.body; e = e.parentElement) {
+        if (["auto", "scroll"].includes(getComputedStyle(e).overflowX)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    const outside: string[] = [];
+    if (document.documentElement.scrollWidth > width) {
+      outside.push(`page is ${document.documentElement.scrollWidth}px wide`);
+    }
+    for (const el of Array.from(document.querySelectorAll("main *"))) {
+      const box = el.getBoundingClientRect();
+      if (box.width > 0 && box.right > width + 0.5 && !scrolls(el.parentElement)) {
+        outside.push(`${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 30)}" ends at ${Math.round(box.right)}px`);
+      }
+    }
+    return outside;
+  });
+}
+
+// At 320 px (the narrowest common phone), with a wide font such as some
+// computers and phones use instead of Arial, and a comment with a very long
+// unbroken word (a pasted address, say).
 test("report cards fit a phone screen without sideways scrolling", async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 740 });
   await logInAs(page, ATTENDANCE_ADMIN_EMAIL);
   const c = await gradeFive(page, "class");
+  const comment = await call(page, "PUT", `/school/classes/${c.classId}/report-cards/${c.students.Amani}/comment?term=1`, {
+    comment: `See ${"x".repeat(120)} for the reading list.`,
+  });
+  expect(comment.status).toBe(200);
+  await page.setViewportSize({ width: 320, height: 740 });
 
   for (const path of [
     `/classes/${c.classId}/report-cards?term=1`,
@@ -273,9 +307,7 @@ test("report cards fit a phone screen without sideways scrolling", async ({ page
   ]) {
     await page.goto(path);
     await expect(page.getByText(`Amani ${c.id}`).first()).toBeVisible();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow, path).toBe(0);
+    await page.addStyleTag({ content: 'body { font-family: "DejaVu Sans", Verdana, sans-serif !important; }' });
+    expect(await offScreen(page), path).toEqual([]);
   }
 });

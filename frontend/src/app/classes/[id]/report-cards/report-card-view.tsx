@@ -18,7 +18,7 @@ export function ReportCardView({ data, card }: { data: CardContext; card: Report
   return (
     <article
       aria-labelledby={headingId}
-      className="rounded-lg border border-zinc-300 p-4 sm:p-6 dark:border-zinc-700 print:rounded-none print:border-0 print:p-0"
+      className="min-w-0 rounded-lg border border-zinc-300 p-4 break-words sm:p-6 dark:border-zinc-700 print:rounded-none print:border-0 print:p-0"
     >
       <header className="mb-4 border-b border-zinc-300 pb-3 dark:border-zinc-700">
         <p className="text-lg font-semibold">{data.school.name}</p>
@@ -34,47 +34,51 @@ export function ReportCardView({ data, card }: { data: CardContext; card: Report
         </p>
       </header>
 
-      <table className="mb-4 w-full border-collapse text-left text-sm">
-        <caption className="sr-only">Subject results</caption>
-        <thead>
-          <tr>
-            <th scope="col" className={thClass}>
-              Subject
-            </th>
-            <th scope="col" className={thClass}>
-              Percentage
-            </th>
-            <th scope="col" className={thClass}>
-              Grade
-            </th>
-            <th scope="col" className={thClass}>
-              Points
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.subjects.length === 0 && (
+      {/* Its own sideways scroll on narrow screens or with wide fonts, so it
+          never pushes the card or the page wider. */}
+      <div className="mb-4 overflow-x-auto">
+        <table className="w-full border-collapse text-left text-sm">
+          <caption className="sr-only">Subject results</caption>
+          <thead>
             <tr>
-              <td colSpan={4} className={tdClass}>
-                No assessments this term.
-              </td>
+              <th scope="col" className={thClass}>
+                Subject
+              </th>
+              <th scope="col" className={thClass}>
+                Percentage
+              </th>
+              <th scope="col" className={thClass}>
+                Grade
+              </th>
+              <th scope="col" className={thClass}>
+                Points
+              </th>
             </tr>
-          )}
-          {data.subjects.map((subject) => {
-            const result = card.results[subject.id];
-            return (
-              <tr key={subject.id}>
-                <th scope="row" className={`${tdClass} font-normal`}>
-                  {subject.name}
-                </th>
-                <td className={tdClass}>{result ? `${result.percent}%` : "—"}</td>
-                <td className={`${tdClass} font-medium`}>{result ? result.grade : "—"}</td>
-                <td className={tdClass}>{result ? result.points : "—"}</td>
+          </thead>
+          <tbody>
+            {data.subjects.length === 0 && (
+              <tr>
+                <td colSpan={4} className={tdClass}>
+                  No assessments this term.
+                </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            )}
+            {data.subjects.map((subject) => {
+              const result = card.results[subject.id];
+              return (
+                <tr key={subject.id}>
+                  <th scope="row" className={`${tdClass} font-normal`}>
+                    {subject.name}
+                  </th>
+                  <td className={tdClass}>{result ? `${result.percent}%` : "—"}</td>
+                  <td className={`${tdClass} font-medium`}>{result ? result.grade : "—"}</td>
+                  <td className={tdClass}>{result ? result.points : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <dl className="mb-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
         <dt className="font-medium">{kcse ? "Mean grade" : "Overall"}</dt>
@@ -125,5 +129,5 @@ function printedOn(): string {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "Africa/Nairobi" }).format(new Date());
 }
 
-const thClass = "border-b border-zinc-400 px-2 py-1.5 font-medium";
-const tdClass = "border-b border-zinc-200 px-2 py-1.5 dark:border-zinc-800";
+const thClass = "border-b border-zinc-400 px-1.5 py-1.5 font-medium sm:px-2";
+const tdClass = "border-b border-zinc-200 px-1.5 py-1.5 sm:px-2 dark:border-zinc-800";

@@ -177,7 +177,7 @@ function Cards({ classId }: { classId: string }) {
           )}
           <ul className="space-y-4">
             {data.students.map((card) => (
-              <li key={card.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+              <li key={card.id} className="min-w-0 rounded-lg border border-zinc-200 p-4 break-words dark:border-zinc-800">
                 <StudentRow
                   data={data}
                   card={card}
