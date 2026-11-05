@@ -32,6 +32,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   "marks.record": "Enter and correct any class's marks, and lock them",
   "marks.record_own": "Enter marks for the subjects you teach",
   "grading.manage": "Set the school's KCSE grade boundaries",
+  "fees.read": "See fees and bills",
+  "fees.manage": "Set fees, issue bills and correct them",
 };
 
 // Every role a school can give, in the order they are offered.

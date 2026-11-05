@@ -29,6 +29,7 @@ import {
   type Relationship,
   type StudentGuardians,
 } from "@/lib/guardians";
+import { billPath, canSeeFees, formatKes, type StudentBills } from "@/lib/fees";
 import { formatBirthDate, type Student } from "@/lib/students";
 
 // The menu marks "Students" as the current page.
@@ -62,6 +63,7 @@ function Content({ me, studentId }: { me: Me; studentId: string }) {
       studentId={studentId}
       readGuardians={canReadGuardians(me)}
       manageGuardians={canManageGuardians(me)}
+      readFees={canSeeFees(me)}
     />
   );
 }
@@ -83,10 +85,12 @@ function StudentView({
   studentId,
   readGuardians,
   manageGuardians,
+  readFees,
 }: {
   studentId: string;
   readGuardians: boolean;
   manageGuardians: boolean;
+  readFees: boolean;
 }) {
   const [student, setStudent] = useState<Student | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -148,7 +152,59 @@ function StudentView({
         <dd>{student.is_active ? "Active" : "Inactive"}</dd>
       </dl>
       {readGuardians && <Guardians studentId={studentId} canManage={manageGuardians} />}
+      {readFees && <Fees studentId={studentId} />}
     </>
+  );
+}
+
+// The student's bills, newest term first (E1).
+function Fees({ studentId }: { studentId: string }) {
+  const [data, setData] = useState<StudentBills | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<StudentBills>(`/school/students/${studentId}/bills`).then((response) => {
+      if (cancelled) {
+        return;
+      }
+      if (response.status === 401) {
+        goToLogin(`/students/${studentId}`);
+      } else if (response.ok) {
+        setData(response.data);
+      } else {
+        setError(withReference(response.error));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId]);
+
+  return (
+    <section aria-labelledby="fees-heading" className="mt-8">
+      <h2 id="fees-heading" className="mb-3 text-xl font-semibold">
+        Fees
+      </h2>
+      <ErrorMessage message={error} />
+      {!data ? (
+        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+      ) : data.bills.length === 0 ? (
+        <p>No bills yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {data.bills.map((bill) => (
+            <li key={bill.id}>
+              <Link href={billPath(bill.id)} className="underline">
+                Term {bill.term.number}, {bill.year.name}
+                <span className="sr-only"> bill</span>
+              </Link>
+              : {formatKes(bill.total_kes)} ({bill.class_name})
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

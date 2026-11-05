@@ -101,7 +101,7 @@ which would otherwise silently fill in any missing staging value.
 `check` connects as `sms_app` and must show only `ok` lines: an encrypted
 connection; not a superuser; cannot bypass Row-Level Security; member of no
 other role; cannot create tables; every table owned by `sms_migrator`;
-Row-Level Security on for students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries and report comments; audit events cannot be
+Row-Level Security on for students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries, report comments, fee structures, fee items, bills and bill lines; audit events, bills and bill lines cannot be
 changed or deleted. Run it after every migration.
 
 Neon's proxy ends TLS before the database, so the database's own
@@ -124,6 +124,12 @@ principal and a teacher) and 15 students whose surname is "Demo". It refuses
 any database not named `sms_staging`, runs once, and asks for one password
 for all demo accounts at a hidden prompt. Use a password used nowhere else:
 staging is public.
+
+A finance officer (E1) is added by hand, through the app: as the demo school
+administrator, invite `finance.demo@example.com` with the role Finance officer
+on the People page, open the invitation link it shows once in a private window
+(so the administrator stays logged in elsewhere), and create the account there
+with its own password (typed into the page, never shared).
 
 ## API (Render)
 

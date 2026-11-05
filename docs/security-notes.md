@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries and report comments only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries, report comments, fee structures and bills only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -407,6 +407,33 @@ limited to 500 characters of plain text, shown as text, never as HTML.
 Once a report card is printed or saved as a PDF, it leaves the system's
 protection: who receives it is the school's responsibility. Comments stay
 editable after printing; there is no "final" lock yet.
+
+### Fees are personal financial information
+
+What a family owes (E1) gets the same care as marks: Row-Level Security
+keeps fee structures and bills inside their school; only administrators
+and finance officers change them, and principals read them; teachers and
+registrars get `403`. Every change is audited with ids only, and names and
+amounts never go into logs (a test captures the logs to prove it).
+
+- Bills cannot be rewritten, even by a bug in the API: its database user
+  has no `UPDATE` or `DELETE` on `bills` and `bill_lines`, so a correction is
+  always a new, visible line with a reason, who added it and when. The
+  staging check (`scripts/staging_database.py check`) confirms this on the
+  real database. The schema owner (`sms_migrator`) could still change them:
+  its password stays with the people who run migrations.
+- That a structure is not changed once bills are issued, that a bill's
+  total never goes below 0 and that a structure has at most 30 items are
+  checked by the API, not the database.
+- Guardians' contacts on bills: a finance officer sees the name,
+  relationship, phone and email of a billed student's guardians, for fee
+  follow-up only (decision of 2026-11-04). It is the smallest access that
+  serves that purpose: read-only, only for students with a bill, and
+  without the guardian pages' search by phone, which would reveal every
+  student linked to a number. If reminders are sent from the system later,
+  this note must be revisited.
+- Amounts are whole shillings sent as JSON integers; decimals, text and
+  booleans are refused, so nothing is guessed or rounded.
 
 ### Student search is not indexed for large schools
 

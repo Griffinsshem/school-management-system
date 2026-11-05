@@ -11,6 +11,8 @@ from app.auth.permissions import (
     CLASSES_READ,
     CLASSES_READ_OWN,
     ENROLMENTS_MANAGE,
+    FEES_MANAGE,
+    FEES_READ,
     GRADING_MANAGE,
     GUARDIANS_MANAGE,
     GUARDIANS_READ,
@@ -63,6 +65,8 @@ def test_roles_get_only_what_they_are_given():
         MARKS_READ,
         MARKS_RECORD,
         GRADING_MANAGE,
+        FEES_READ,
+        FEES_MANAGE,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -73,6 +77,7 @@ def test_roles_get_only_what_they_are_given():
         GUARDIANS_READ,
         SUBJECTS_READ,
         MARKS_READ,
+        FEES_READ,
     }
     # Registrars see every class and enrol students, but do not create classes.
     assert ROLE_PERMISSIONS["registrar"] == {
@@ -92,7 +97,8 @@ def test_roles_get_only_what_they_are_given():
         ATTENDANCE_RECORD_OWN,
         MARKS_RECORD_OWN,
     }
-    assert ROLE_PERMISSIONS["finance_officer"] == {ACADEMICS_READ}
+    # Finance officers see students only inside the fee pages (E1).
+    assert ROLE_PERMISSIONS["finance_officer"] == {ACADEMICS_READ, FEES_READ, FEES_MANAGE}
     for role in ("guardian", "student"):
         assert ROLE_PERMISSIONS[role] == frozenset()
     assert ALL_PERMISSIONS == {
@@ -117,6 +123,8 @@ def test_roles_get_only_what_they_are_given():
         MARKS_RECORD,
         MARKS_RECORD_OWN,
         GRADING_MANAGE,
+        FEES_READ,
+        FEES_MANAGE,
     }
 
 
@@ -140,6 +148,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "classes.manage",
                 "classes.read",
                 "enrolments.manage",
+                "fees.manage",
+                "fees.read",
                 "grading.manage",
                 "guardians.manage",
                 "guardians.read",
@@ -159,6 +169,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "academics.read",
                 "attendance.read",
                 "classes.read",
+                "fees.read",
                 "guardians.read",
                 "marks.read",
                 "members.read",
@@ -171,6 +182,7 @@ def test_an_unknown_permission_is_a_programming_error():
             ["academics.read", "attendance.record_own", "classes.read_own", "marks.record_own"],
         ),
         (["guardian"], []),
+        (["finance_officer"], ["academics.read", "fees.manage", "fees.read"]),
         (
             ["teacher", "principal"],
             [
@@ -179,6 +191,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "attendance.record_own",
                 "classes.read",
                 "classes.read_own",
+                "fees.read",
                 "guardians.read",
                 "marks.read",
                 "marks.record_own",
@@ -194,6 +207,7 @@ def test_an_unknown_permission_is_a_programming_error():
                 "attendance.read",
                 "classes.read",
                 "enrolments.manage",
+                "fees.read",
                 "guardians.manage",
                 "guardians.read",
                 "marks.read",

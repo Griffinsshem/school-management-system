@@ -50,6 +50,7 @@ TEACHER_EMAIL = "e2e.teacher@example.com"
 # School C, for the attendance tests only.
 ATTENDANCE_ADMIN_EMAIL = "e2e.attendance.admin@example.com"
 ATTENDANCE_TEACHER_EMAIL = "e2e.attendance.teacher@example.com"
+FINANCE_EMAIL = "e2e.finance@example.com"  # School C's finance officer (E1).
 PASSWORD = "e2e only password"  # noqa: S105
 
 
@@ -91,10 +92,13 @@ def reset_and_seed(app) -> None:
             full_name="E2E Attendance Teacher",
             password_hash=password_hash,
         )
+        finance = User(
+            email=FINANCE_EMAIL, full_name="E2E Finance Officer", password_hash=password_hash
+        )
         school_c = School(code="e2e-school-c", name="E2E School C", county_code=30)
         db.session.add_all(
             [admin, principal, teacher, school_a, school_b]
-            + [attendance_admin, attendance_teacher, school_c]
+            + [attendance_admin, attendance_teacher, finance, school_c]
         )
         db.session.flush()
         db.session.add_all(
@@ -105,6 +109,7 @@ def reset_and_seed(app) -> None:
                 Membership(user_id=teacher.id, school_id=school_a.id, role="teacher"),
                 Membership(user_id=attendance_admin.id, school_id=school_c.id, role="school_admin"),
                 Membership(user_id=attendance_teacher.id, school_id=school_c.id, role="teacher"),
+                Membership(user_id=finance.id, school_id=school_c.id, role="finance_officer"),
             ]
         )
         db.session.commit()

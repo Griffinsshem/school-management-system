@@ -42,6 +42,9 @@ To test from a phone on the same network, run
 | `/` | Your active school, role and permissions; choose or switch school; log out. Needs a login. |
 | `/students` | The school's students: search by name or admission number, 50 per page (`students.read`). School admins and registrars (`students.manage`) also add, edit and deactivate students. Needs a login. |
 | `/people` | The school's members and invitations (`members.read`). School admins (`members.manage`) also invite people, withdraw invitations and remove members. Needs a login. |
+| `/fees` | Fees for a school year and term (`?year=&term=`, today's term by default): each grade with classes that year, its fee structure and how many students are billed (`fees.read`). |
+| `/fees/{year}/{term}/{grade}` | A grade's fees for a term: the fee structure, edited until bills are issued (`fees.manage`), issuing bills after a confirmation, and the bills. |
+| `/fees/bills/{id}` | One bill: its lines and total, the guardians to contact, and (`fees.manage`) adding an optional item or an adjustment. |
 | `/invitations/accept#token=...` | Accept an invitation: create an account, or log in and accept. The token is removed from the address bar at once. |
 
 ## Checks
@@ -91,13 +94,22 @@ and dark mode, plus error messages, notices, open forms and the logged-out
 pages. Results axe marks "needs review" fail the test too. Each problem is
 printed as one line with the page, the rule and what to fix. No rule is
 switched off; if one ever must be, do it for that one element only, with
-the reason written in the test. New pages belong in its list.
+the reason written in the test. New pages belong in its list. The check
+itself is in `e2e/axe.ts`, shared with `e2e/fees.spec.ts`, which checks the
+fee pages in each state (open form, errors, confirmation, issued, bill).
 
-Phone-width tests run at 320 px. The report card test also forces a wide
-font and a long unbroken word, and checks that every element stays on
+`e2e/fees.spec.ts` (E1) gives each test a school year of its own, far in the
+future, so the bills it issues never reach other tests' students. It logs
+in as School C's finance officer (`e2e.finance@example.com`, created by
+`e2e_server.py`) as well as the administrator and teacher.
+
+Phone-width tests run at 320 px. The report card and fee tests also force a
+wide font and a long unbroken word, and check that every element stays on
 screen, not only that the page does not scroll sideways: test machines draw
 Arial with a narrow font, so a page-width check alone can pass while real
-phones overflow.
+phones overflow. The fee test also uses the longest class stream (20) and
+admission numbers (30) a school can enter; without them, its tables fit
+even with their safety net removed, and the test would prove nothing.
 
 ## Smoke checks against staging
 

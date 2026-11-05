@@ -106,6 +106,7 @@ export function AppShell({
     { href: "/subjects", label: "Subjects", show: me.permissions.includes("subjects.read") },
     { href: "/students", label: "Students", show: me.permissions.includes("students.read") },
     { href: "/people", label: "People", show: me.permissions.includes("members.read") },
+    { href: "/fees", label: "Fees", show: me.permissions.includes("fees.read") },
   ].filter((link) => link.show);
 
   return (

@@ -1,15 +1,13 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { problems } from "./axe";
 import { ATTENDANCE_ADMIN_EMAIL, ATTENDANCE_TEACHER_EMAIL, SCHOOL_C, logIn } from "./helpers";
 
 // Automatic accessibility checks (D8): every main page, as a school
 // administrator and as a class teacher, in light and dark mode, plus error
 // messages, notices and open forms, checked against WCAG 2.1 level A and AA
-// with axe-core. No rule is switched off; if one ever must be, say why here.
+// with axe-core (see axe.ts). The fee pages are checked in fees.spec.ts.
 // In E2E School C (see marks.spec.ts). All names are made up.
-
-const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 type Json = Record<string, unknown>;
 
@@ -96,19 +94,6 @@ async function smallClass(page: Page) {
   });
   expect(exam.status).toBe(201);
   return { id, classId, students, assessmentId: (exam.json.assessment as { id: string }).id };
-}
-
-// The problems axe finds on the page as it is now, one readable line each:
-// empty when the page passes. Results axe marks "needs review" count too
-// (some rules, such as duplicate IDs used by screen-reader links, are only
-// ever reported that way), so nothing slips through unseen.
-async function problems(page: Page): Promise<string[]> {
-  const result = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-  const lines = (results: typeof result.violations, kind: string) =>
-    results.flatMap((r) =>
-      r.nodes.map((n) => `${r.id} (${kind}): ${n.target.join(" ")}: ${(n.failureSummary ?? "").replace(/\s+/g, " ")}`),
-    );
-  return [...lines(result.violations, "fails"), ...lines(result.incomplete, "needs review")];
 }
 
 // A class taught by the teacher, with a mark, ready for every page.

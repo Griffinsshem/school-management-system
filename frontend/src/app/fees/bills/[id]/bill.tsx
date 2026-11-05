@@ -1,0 +1,363 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+
+import { AppShell, goToLogin } from "@/components/app-shell";
+import { ErrorMessage, Notice, inlineButtonClass, inputClass, labelClass } from "@/components/ui";
+import { api, withReference, type Me } from "@/lib/api";
+import {
+  MAX_ADJUSTMENT_REASON,
+  billPath,
+  canSeeFees,
+  describeFeesError,
+  formatDayOf,
+  formatKes,
+  gradeFeesPath,
+  parseAmount,
+  type Bill,
+} from "@/lib/fees";
+import { relationshipLabel, type Relationship } from "@/lib/guardians";
+import { useUnsavedChanges } from "@/lib/unsaved-changes";
+
+import { NoFeesAccess, tdClass, thClass } from "../../fees";
+
+// One student's bill for a term (E1): its fees and adjustments, the total,
+// the guardians to contact about it, and (for those who manage fees) adding
+// an optional item or an adjustment. Nothing on a bill is ever changed.
+
+export function BillPage() {
+  const { id } = useParams<{ id: string }>();
+  return <AppShell path="/fees">{(me) => <Content me={me} billId={id} />}</AppShell>;
+}
+
+function Content({ me, billId }: { me: Me; billId: string }) {
+  const school = me.active_school;
+  if (!school || !canSeeFees(me)) {
+    return <NoFeesAccess me={me} title="Bill" />;
+  }
+  return <BillView key={school.id} billId={billId} />;
+}
+
+function BillView({ billId }: { billId: string }) {
+  const [bill, setBill] = useState<Bill | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<Bill>(`/school/fees/bills/${billId}`).then((response) => {
+      if (cancelled) {
+        return;
+      }
+      if (response.status === 401) {
+        goToLogin(billPath(billId));
+      } else if (response.status === 404) {
+        setNotFound(true);
+      } else if (response.ok) {
+        setBill(response.data);
+      } else {
+        setError(withReference(response.error));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [billId]);
+
+  if (notFound) {
+    return (
+      <section>
+        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Bill not found</h1>
+        <p>
+          This bill does not exist, or it is not in this school.{" "}
+          <Link href="/fees" className="underline">
+            Back to fees
+          </Link>
+          .
+        </p>
+      </section>
+    );
+  }
+  if (!bill) {
+    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+  }
+
+  function changed(next: Bill, message: string) {
+    setBill(next);
+    setNotice(message);
+  }
+
+  return (
+    <>
+      <p className="mb-2">
+        <Link href={gradeFeesPath(bill.year.id, bill.term.number, bill.grade.code)} className="text-sm underline">
+          Back to {bill.grade.name} fees
+        </Link>
+      </p>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight break-words">Bill for {bill.student.full_name}</h1>
+      <p className="mb-6 break-words text-zinc-600 dark:text-zinc-400">
+        Admission no. {bill.student.admission_number}, {bill.class_name}, Term {bill.term.number} of {bill.year.name}
+      </p>
+
+      {notice && <Notice>{notice}</Notice>}
+
+      <section aria-labelledby="lines-heading" className="mb-8 max-w-3xl">
+        <h2 id="lines-heading" className="mb-3 text-xl font-semibold">
+          What is owed
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <caption className="sr-only">Bill lines</caption>
+            <thead>
+              <tr>
+                <th scope="col" className={thClass}>
+                  Item or reason
+                </th>
+                <th scope="col" className={thClass}>
+                  Amount
+                </th>
+                <th scope="col" className={thClass}>
+                  Added
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {bill.lines.length === 0 && (
+                <tr>
+                  <td colSpan={3} className={tdClass}>
+                    No fees on this bill.
+                  </td>
+                </tr>
+              )}
+              {bill.lines.map((line) => (
+                <tr key={line.id}>
+                  <th scope="row" className={`${tdClass} font-normal break-words`}>
+                    {line.kind === "adjustment" ? `Adjustment: ${line.description}` : line.description}
+                  </th>
+                  <td className={`${tdClass} whitespace-nowrap`}>{formatKes(line.amount_kes)}</td>
+                  <td className={tdClass}>
+                    {line.created_at && formatDayOf(line.created_at)}
+                    {line.created_by && `, ${line.created_by}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row" className="px-2 py-2 text-base font-semibold">
+                  Total
+                </th>
+                <td className="px-2 py-2 text-base font-semibold whitespace-nowrap">{formatKes(bill.total_kes)}</td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      {bill.can_manage && (
+        <div className="mb-8 grid max-w-3xl gap-8 md:grid-cols-2">
+          <AddOptionalItem bill={bill} onAdded={(next, name) => changed(next, `${name} added to the bill.`)} />
+          <AddAdjustment bill={bill} onAdded={(next) => changed(next, "Adjustment saved.")} />
+        </div>
+      )}
+
+      <Guardians bill={bill} />
+    </>
+  );
+}
+
+function AddOptionalItem({ bill, onAdded }: { bill: Bill; onAdded: (next: Bill, name: string) => void }) {
+  const [chosen, setChosen] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const items = bill.optional_items;
+
+  async function add(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    const item = items.find((i) => i.id === chosen);
+    if (!item) {
+      setError("Choose an optional item.");
+      return;
+    }
+    setPending(true);
+    const response = await api<Bill>(`/school/fees/bills/${bill.id}/items`, {
+      method: "POST",
+      body: { fee_item_id: item.id },
+    });
+    setPending(false);
+    if (response.status === 401) {
+      goToLogin(billPath(bill.id));
+    } else if (response.ok) {
+      setChosen("");
+      onAdded(response.data, item.name);
+    } else {
+      setError(describeFeesError(response.status, response.error));
+    }
+  }
+
+  return (
+    <section aria-labelledby="optional-heading">
+      <h2 id="optional-heading" className="mb-3 text-lg font-semibold">
+        Add an optional item
+      </h2>
+      {items.length === 0 ? (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          No optional items left to add for {bill.grade.name} this term.
+        </p>
+      ) : (
+        <form onSubmit={add} noValidate>
+          <ErrorMessage message={error} />
+          <label htmlFor="optional-item" className={labelClass}>
+            Optional item
+          </label>
+          <select
+            id="optional-item"
+            className={`${inputClass} mb-3`}
+            value={chosen}
+            onChange={(event) => setChosen(event.target.value)}
+          >
+            <option value="">Choose an item</option>
+            {items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} ({formatKes(item.amount_kes)})
+              </option>
+            ))}
+          </select>
+          <button type="submit" className={inlineButtonClass} disabled={pending}>
+            {pending ? "Adding..." : "Add to bill"}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function AddAdjustment({ bill, onAdded }: { bill: Bill; onAdded: (next: Bill) => void }) {
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  useUnsavedChanges(amount.trim() !== "" || reason.trim() !== "", () => {
+    setAmount("");
+    setReason("");
+  });
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    const value = parseAmount(amount, { allowNegative: true });
+    const problems = [];
+    if (typeof value === "string") {
+      problems.push(value);
+    } else if (bill.total_kes + value < 0) {
+      problems.push(`A bill's total cannot go below 0: it can be reduced by at most ${formatKes(bill.total_kes)}.`);
+    }
+    if (!reason.trim()) {
+      problems.push("Enter a reason.");
+    }
+    if (problems.length > 0) {
+      setError(problems.join(" "));
+      return;
+    }
+    setPending(true);
+    const response = await api<Bill>(`/school/fees/bills/${bill.id}/adjustments`, {
+      method: "POST",
+      body: { amount_kes: value, reason: reason.trim() },
+    });
+    setPending(false);
+    if (response.status === 401) {
+      goToLogin(billPath(bill.id));
+    } else if (response.ok) {
+      setAmount("");
+      setReason("");
+      onAdded(response.data);
+    } else {
+      setError(describeFeesError(response.status, response.error));
+    }
+  }
+
+  return (
+    <section aria-labelledby="adjustment-heading">
+      <h2 id="adjustment-heading" className="mb-3 text-lg font-semibold">
+        Add an adjustment
+      </h2>
+      <form onSubmit={save} noValidate>
+        <ErrorMessage message={error} />
+        <label htmlFor="adjustment-amount" className={labelClass}>
+          Amount (KES)
+        </label>
+        <p id="adjustment-amount-hint" className="mb-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Put a minus sign in front to reduce the bill, for example -5000 for a bursary.
+        </p>
+        <input
+          id="adjustment-amount"
+          className={`${inputClass} mb-3`}
+          inputMode="text"
+          aria-describedby="adjustment-amount-hint"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+        />
+        <label htmlFor="adjustment-reason" className={labelClass}>
+          Reason
+        </label>
+        <input
+          id="adjustment-reason"
+          className={`${inputClass} mb-3`}
+          maxLength={MAX_ADJUSTMENT_REASON}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+        <button type="submit" className={inlineButtonClass} disabled={pending}>
+          {pending ? "Saving..." : "Save adjustment"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function Guardians({ bill }: { bill: Bill }) {
+  return (
+    <section aria-labelledby="guardians-heading" className="max-w-3xl">
+      <h2 id="guardians-heading" className="mb-1 text-xl font-semibold">
+        Guardians to contact
+      </h2>
+      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">For questions about this bill only.</p>
+      {bill.guardians.length === 0 ? (
+        <p className="text-sm">No guardians are recorded for {bill.student.full_name}.</p>
+      ) : (
+        <ul className="space-y-3">
+          {bill.guardians.map((guardian) => (
+            <li key={guardian.phone} className="rounded-lg border border-zinc-200 p-3 break-words dark:border-zinc-800">
+              <p className="font-medium">
+                {guardian.full_name}
+                <span className="ml-2 text-sm font-normal text-zinc-600 dark:text-zinc-400">
+                  {relationshipLabel(guardian.relationship as Relationship)}
+                  {guardian.is_primary && ", main contact"}
+                </span>
+              </p>
+              <p className="text-sm">
+                Phone:{" "}
+                <a href={`tel:${guardian.phone}`} className="underline">
+                  {guardian.phone}
+                </a>
+              </p>
+              {guardian.email && (
+                <p className="text-sm">
+                  Email:{" "}
+                  <a href={`mailto:${guardian.email}`} className="underline">
+                    {guardian.email}
+                  </a>
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

@@ -12,6 +12,8 @@ export const SCHOOL_B = "E2E School B";
 export const ATTENDANCE_ADMIN_EMAIL = "e2e.attendance.admin@example.com";
 export const ATTENDANCE_TEACHER_EMAIL = "e2e.attendance.teacher@example.com";
 export const SCHOOL_C = "E2E School C";
+// School C's finance officer, for the fee tests (E1).
+export const FINANCE_EMAIL = "e2e.finance@example.com";
 
 // Next.js has its own (empty) role="alert" element for page announcements,
 // so error messages are looked up inside the page's main content.

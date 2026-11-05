@@ -5,6 +5,7 @@ from app.models.assessment import Assessment, Mark
 from app.models.attendance import AttendanceMark, AttendanceRegister
 from app.models.audit_event import AuditEvent
 from app.models.enrolment import Enrolment
+from app.models.fees import Bill, BillLine, FeeItem, FeeStructure
 from app.models.grading import GradeBoundary
 from app.models.guardian import Guardian, StudentGuardian
 from app.models.invitation import Invitation
@@ -24,9 +25,13 @@ __all__ = [
     "AttendanceMark",
     "AttendanceRegister",
     "AuditEvent",
+    "Bill",
+    "BillLine",
     "ClassSubject",
     "ClassTeacher",
     "Enrolment",
+    "FeeItem",
+    "FeeStructure",
     "GradeBoundary",
     "Guardian",
     "Invitation",

@@ -156,6 +156,14 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/classes/{id}/report-cards?term=1` | Same readers as the results: `200` with the results (as above) plus `school`, `year`, `can_comment`, `position_out_of` (when positions are shown) and, per student, `attendance` (`present`, `late`, `absent`, `days_recorded`) and `comment` (`text`, `updated_at`, `updated_by`, or `null`); or `404` (D7) |
 | GET    | `/api/v1/school/classes/{id}/report-cards/{student_id}?term=1` | Same: one card as `student`, or `404` if the student is not on the class's results (D7) |
 | PUT    | `/api/v1/school/classes/{id}/report-cards/{student_id}/comment?term=1` | Needs `marks.record`, or `marks.record_own` as the class teacher: `{"comment": "..."}`, plain text up to 500 characters (`""` clears it): `200` (the card), `403`, `404` or `422` (D7) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}` | Needs `fees.read`: `200 {"term", "year", "can_manage", "grades"}`, each grade with classes that year with `classes`, `students` (active, enrolled), `billed` and its `structure` (`items`, `compulsory_total_kes`, `issued`, or `null`); or `404` (E1) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.read`: `200 {"term", "year", "grade", "can_manage", "structure", "bills", "not_billed"}` (the structure's `items`, `compulsory_total_kes`, `issued_at`/`issued_by`, `updated_at`/`updated_by`, or `null`), or `404` (no classes of that grade that year) (E1) |
+| PUT    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.manage`: `{"items": [{"name", "amount_kes", "is_optional"?}]}`, 0 to 30 items, the whole list in order; names 1 to 60 characters, unique ignoring case; amounts whole shillings (JSON integers) from 1 to 1,000,000: `200` (as GET), `404`, `409` (`structure_issued`) or `422` (E1) |
+| POST   | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/issue` | Needs `fees.manage`: bill every active student enrolled in the grade's classes that year who has no bill this term, with the compulsory items: `200 {"billed": N, ...}` (as GET), `404` or `422` (`no_fee_items`) (E1) |
+| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`) and `can_manage`; or `404` (E1) |
+| POST   | `/api/v1/school/fees/bills/{id}/items` | Needs `fees.manage`: `{"fee_item_id"}`, an optional item of the bill's structure: `201` (the bill), `404`, `409` (`item_already_on_bill`) or `422` (`not_an_optional_item`) (E1) |
+| POST   | `/api/v1/school/fees/bills/{id}/adjustments` | Needs `fees.manage`: `{"amount_kes", "reason"}`, a whole number from -1,000,000 to 1,000,000 but not 0, and a one-line reason of 1 to 200 characters: `201` (the bill), `404` or `422` (`total_below_zero`, or invalid) (E1) |
+| GET    | `/api/v1/school/students/{id}/bills` | Needs `fees.read`: `200 {"student", "bills"}`, newest term first, each with `term`, `year`, `class_name` and `total_kes`; or `404` (E1) |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -263,11 +271,19 @@ every endpoint checks on the server).
 | `marks.record`     | `school_admin`                          | Adding, changing, deleting, locking and unlocking any assessment, and entering any marks, locked or not |
 | `marks.record_own` | `teacher`                               | Adding assessments and entering marks for the subjects they teach, until locked, and reading every subject's marks in the classes they are class teacher of |
 | `grading.manage`   | `school_admin`                          | Changing the school's KCSE grade boundaries and whether results show class positions (anyone with a marks permission reads both) |
+| `fees.read`        | `school_admin`, `principal`, `finance_officer` | Reading fee structures and bills, with the contacts of billed students' guardians on each bill |
+| `fees.manage`      | `school_admin`, `finance_officer`       | Setting fee structures, issuing bills, adding optional items and adjustments |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number. They
 get no guardian (parent) data at all: contact goes through the office
 (decision of 2026-10-28).
+
+Finance officers see students only inside the fee pages (E1): a bill shows
+the student's name, admission number and class, and the guardians'
+contacts for fee follow-up (decision of 2026-11-04). They have no
+`students.read` or `guardians.read`, so not the student or guardian pages,
+nor the search by phone. Teachers and registrars see no fees.
 
 A school always keeps at least one active `school_admin`: deactivating the
 last one is refused with `409`.
@@ -624,12 +640,48 @@ D7 (decisions of 2026-11-02):
 - Report cards are printed from the browser (one per page, without the
   menu or buttons); there is no PDF made on the server.
 
+### Fee structures and bills
+
+E1 (decisions of 2026-11-04):
+
+- A fee structure is one grade's fees for one term (`fee_structures`, one
+  per grade and term; `fee_items`, up to 30): named items in whole Kenyan
+  shillings, each compulsory or optional. Amounts are integers, never
+  decimals, so nothing is rounded.
+- Issuing bills gives every active student enrolled in that grade's classes
+  that school year a bill for the term (`bills`, at most one per student and
+  term, so issuing again bills only students who joined since). A bill
+  starts with a copy of each compulsory item (`bill_lines`, kind `fee`), so
+  later changes elsewhere never change it. A student billed in another
+  grade this term (moved since) is not billed again.
+- Once bills are issued, the structure can no longer be changed (`409`).
+  Single bills are corrected instead: an optional item (boarding,
+  transport) is added once, and adjustments (kind `adjustment`) add a
+  signed amount with a reason, such as a bursary. A bill's total is the sum
+  of its lines and never goes below 0; one change to a student's bills runs
+  at a time (the student's row is locked), so two adjustments cannot
+  together pass below it.
+- Bills and bill lines are never changed or deleted: the API's database
+  user has no `UPDATE` or `DELETE` on them, and structures are never
+  deleted. Items can be replaced until bills are issued; issued items are
+  kept by the bill lines' foreign keys.
+- The database also checks that a line's item belongs to its bill's own
+  structure, that a bill's structure is for its term, and that its class is
+  in the term's year.
+- Every change is audited (`fee_structure.saved`, `fee_bills.issued`,
+  `bill.item_added`, `bill.adjusted`), with ids only; the bill lines
+  themselves record each amount, who added it and when. Logs carry ids and
+  counts, never names or amounts.
+- Payments, receipts, balances carried to the next term and statements to
+  parents are not part of E1.
+
 ### Database-level isolation (Row-Level Security)
 
 The `students`, `invitations`, `academic_years`, `terms`, `classes`,
 `class_teachers`, `enrolments`, `attendance_registers`, `attendance_marks`,
 `guardians`, `student_guardians`, `subjects`, `class_subjects`,
-`subject_teachers`, `assessments`, `marks`, `grade_boundaries` and `report_comments` tables are protected by a PostgreSQL Row-Level Security policy:
+`subject_teachers`, `assessments`, `marks`, `grade_boundaries`, `report_comments`,
+`fee_structures`, `fee_items`, `bills` and `bill_lines` tables are protected by a PostgreSQL Row-Level Security policy:
 the API's database user (`sms_app`) can only see or write rows of the school
 set for the current transaction. The app sets it from the session's active
 school (`app/school_context.py`); with no active school, the database

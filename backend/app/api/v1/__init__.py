@@ -8,6 +8,7 @@ from app.api.v1.attendance import attendance_bp
 from app.api.v1.auth import auth_bp
 from app.api.v1.classes import classes_bp
 from app.api.v1.enrolments import enrolments_bp
+from app.api.v1.fees import fees_bp
 from app.api.v1.grading import grading_bp
 from app.api.v1.guardians import guardians_bp
 from app.api.v1.health import health_bp
@@ -35,3 +36,4 @@ api_v1.register_blueprint(subjects_bp)
 api_v1.register_blueprint(assessments_bp)
 api_v1.register_blueprint(grading_bp)
 api_v1.register_blueprint(report_cards_bp)
+api_v1.register_blueprint(fees_bp)

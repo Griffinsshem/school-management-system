@@ -62,7 +62,14 @@ RLS_TABLES = (
     "marks",
     "grade_boundaries",
     "report_comments",
+    "fee_structures",
+    "fee_items",
+    "bills",
+    "bill_lines",
 )
+# Tables the API's user can only add to: the audit trail, and what families
+# owe (E1).
+APPEND_ONLY_TABLES = ("audit_events", "bills", "bill_lines")
 # Placeholder until the Vercel address is known (replace it in .env.staging).
 PLACEHOLDER_ORIGIN = "https://staging.example.invalid"
 
@@ -310,12 +317,15 @@ def run_checks(database_url: str, expect_tables: bool = True, require_tls: bool 
             rls = {name: enabled for name, _, enabled in tables}
             for name in RLS_TABLES:
                 check(rls.get(name), f"Row-Level Security is on for {name}")
-            if "audit_events" in rls:
-                can_edit = conn.execute(
-                    "SELECT has_table_privilege('audit_events', 'UPDATE') "
-                    "OR has_table_privilege('audit_events', 'DELETE')"
-                ).fetchone()[0]
-                check(not can_edit, "audit events cannot be changed or deleted")
+            for name in APPEND_ONLY_TABLES:
+                if name in rls:
+                    can_edit = conn.execute(
+                        "SELECT has_table_privilege(%s, 'UPDATE') "
+                        "OR has_table_privilege(%s, 'DELETE')",
+                        (name, name),
+                    ).fetchone()[0]
+                    label = name.replace("_", " ")
+                    check(not can_edit, f"{label} cannot be changed or deleted")
             version = conn.execute("SELECT version_num FROM alembic_version").fetchone()
             print(f"Database: {database}, migration {version[0] if version else 'none'}")
         else:

@@ -54,6 +54,12 @@ MARKS_RECORD_OWN = "marks.record_own"
 # Grading scales (see app/api/v1/grading.py): changing the school's KCSE
 # grade boundaries. Reading them comes with any of the marks permissions.
 GRADING_MANAGE = "grading.manage"
+# School fees (see app/api/v1/fees.py): reading fee structures and bills
+# (with the contacts of billed students' guardians, for fee follow-up), or
+# also setting structures, issuing bills and adjusting them. Decisions of
+# 2026-11-04: teachers and registrars get neither.
+FEES_READ = "fees.read"
+FEES_MANAGE = "fees.manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -76,6 +82,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             MARKS_READ,
             MARKS_RECORD,
             GRADING_MANAGE,
+            FEES_READ,
+            FEES_MANAGE,
         }
     ),
     "principal": frozenset(
@@ -88,6 +96,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             GUARDIANS_READ,
             SUBJECTS_READ,
             MARKS_READ,
+            FEES_READ,
         }
     ),
     # No student access until classes exist: a teacher should see only the
@@ -98,7 +107,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "teacher": frozenset(
         {ACADEMICS_READ, CLASSES_READ_OWN, ATTENDANCE_RECORD_OWN, MARKS_RECORD_OWN}
     ),
-    "finance_officer": frozenset({ACADEMICS_READ}),
+    # Finance officers see students only inside the fee pages (E1).
+    "finance_officer": frozenset({ACADEMICS_READ, FEES_READ, FEES_MANAGE}),
     # Registrars see every class and enrol students, but do not create classes.
     "registrar": frozenset(
         {
