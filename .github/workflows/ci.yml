@@ -194,3 +194,17 @@ jobs:
       - name: Browser tests
         working-directory: frontend
         run: npx playwright test
+
+      # Only when a browser test fails: keep its trace (a step-by-step
+      # recording: screenshots, page snapshots, network) and error context,
+      # so a failure that only happens here can be diagnosed afterwards
+      # (npx playwright show-trace). The data in it is the fake test data;
+      # anyone who can see this public repository can download it, for 7 days.
+      - name: Keep traces of failed browser tests
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-traces
+          path: frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

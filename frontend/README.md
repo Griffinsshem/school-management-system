@@ -120,7 +120,9 @@ use the test database. The tests rebuild `.next/` for port 5001, so run
 `npm run build` again before using `npm start` yourself.
 
 After a failure, `npx playwright show-trace` with the path printed in the
-output replays it step by step.
+output replays it step by step. When browser tests fail on GitHub Actions,
+the traces are kept for 7 days as a download named `playwright-traces` on
+the run's page; `gh run download <run id> -n playwright-traces` fetches them.
 
 `e2e/accessibility.spec.ts` (D8) checks every main page with axe-core
 (`@axe-core/playwright`, a development-only package) against WCAG 2.1
