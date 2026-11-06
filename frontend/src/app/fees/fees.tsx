@@ -23,10 +23,10 @@ export function NoFeesAccess({ me, title }: { me: Me; title: string }) {
   const school = me.active_school;
   return (
     <section>
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">{title}</h1>
       <p>
         {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-        <Link href="/" className="underline">
+        <Link href="/" className="text-link underline underline-offset-2">
           Go to the home page
         </Link>
         .
@@ -71,9 +71,9 @@ function TermPicker() {
   if (!list) {
     return (
       <>
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Fees</h1>
+        <h1 className="mb-6 text-[1.9375rem] leading-tight font-bold tracking-tight">Fees</h1>
         <ErrorMessage message={error} />
-        {!error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>}
+        {!error && <p className="text-muted">Loading...</p>}
       </>
     );
   }
@@ -81,10 +81,10 @@ function TermPicker() {
   if (years.length === 0) {
     return (
       <>
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Fees</h1>
+        <h1 className="mb-6 text-[1.9375rem] leading-tight font-bold tracking-tight">Fees</h1>
         <p>
           No school year with terms yet. Fees are set per term: an administrator sets up the year on the{" "}
-          <Link href="/school-year" className="underline">
+          <Link href="/school-year" className="text-link underline underline-offset-2">
             School year
           </Link>{" "}
           page first.
@@ -113,7 +113,7 @@ function TermPicker() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Fees</h1>
+        <h1 className="text-[1.9375rem] leading-tight font-bold tracking-tight">Fees</h1>
         <div className="flex flex-wrap gap-3">
           <div>
             <label htmlFor="year" className={labelClass}>
@@ -180,7 +180,7 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
   }, [yearId, term]);
 
   if (!data) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
   if (data.grades.length === 0) {
     return (
@@ -191,7 +191,7 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
   }
   return (
     <>
-      <p className="mb-4 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 max-w-2xl text-sm text-muted">
         Each grade has one fee structure per term.{" "}
         {data.can_manage
           ? "Open a grade to set its fees and issue bills to its students."
@@ -210,7 +210,7 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
               <th scope="col" className={thClass}>
                 Fee structure
               </th>
-              <th scope="col" className={thClass}>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
                 Compulsory fees
               </th>
               <th scope="col" className={thClass}>
@@ -222,7 +222,7 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
             {data.grades.map((row) => (
               <tr key={row.grade}>
                 <th scope="row" className={`${tdClass} font-normal`}>
-                  <Link href={gradeFeesPath(yearId, term, row.grade)} className="font-medium underline">
+                  <Link href={gradeFeesPath(yearId, term, row.grade)} className="font-medium text-link underline underline-offset-2">
                     {row.name}
                     <span className="sr-only"> fees</span>
                   </Link>
@@ -232,7 +232,7 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
                     ? "Not set"
                     : `${row.structure.issued ? "Issued" : "Draft"}, ${row.structure.items} item${row.structure.items === 1 ? "" : "s"}`}
                 </td>
-                <td className={tdClass}>{row.structure ? formatKes(row.structure.compulsory_total_kes) : "—"}</td>
+                <td className={`${tdClass} ${amountClass}`}>{row.structure ? formatKes(row.structure.compulsory_total_kes) : "—"}</td>
                 <td className={tdClass}>
                   {row.billed} of {row.students}
                 </td>
@@ -245,5 +245,7 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
   );
 }
 
-export const thClass = "border-b border-zinc-400 px-2 py-2 font-medium";
-export const tdClass = "border-b border-zinc-200 px-2 py-2 dark:border-zinc-800";
+export const thClass = "border-b border-rule-strong px-2 py-2 font-medium";
+// Money: right-aligned so the figures line up, and never split over two lines.
+export const amountClass = "text-right whitespace-nowrap";
+export const tdClass = "border-b border-rule px-2 py-2";

@@ -39,13 +39,48 @@ To test from a phone on the same network, run
 | Address | What it does |
 |---------|--------------|
 | `/login` | Log in. `?next=` (a path on this site only) says where to go afterwards. |
-| `/` | Your active school, role and permissions; choose or switch school; log out. Needs a login. |
+| `/` | Your active school and role, and links to the pages your role can open, grouped by area (classes and teaching, students and staff, calendar and grading, fees). What your role allows is folded under a closed heading. Choose or switch school. Needs a login. |
 | `/students` | The school's students: search by name or admission number, 50 per page (`students.read`). School admins and registrars (`students.manage`) also add, edit and deactivate students. Needs a login. |
 | `/people` | The school's members and invitations (`members.read`). School admins (`members.manage`) also invite people, withdraw invitations and remove members. Needs a login. |
 | `/fees` | Fees for a school year and term (`?year=&term=`, today's term by default): each grade with classes that year, its fee structure and how many students are billed (`fees.read`). |
 | `/fees/{year}/{term}/{grade}` | A grade's fees for a term: the fee structure, edited until bills are issued (`fees.manage`), issuing bills after a confirmation, and the bills. |
 | `/fees/bills/{id}` | One bill: its lines and total, the guardians to contact, and (`fees.manage`) adding an optional item or an adjustment. |
 | `/invitations/accept#token=...` | Accept an invitation: create an account, or log in and accept. The token is removed from the address bar at once. |
+
+## Look and feel
+
+Every logged-in page has the same frame (`src/components/app-shell.tsx`):
+a dark band with the school's name, the person's name and Log out, and the
+menu below it. The page being shown is underlined in red. On a phone the menu
+folds away behind a **Menu** button, which says whether it is open
+(`aria-expanded`) and closes again when a page is chosen. Who sees which menu
+link is decided once, in `menuLinks`, which the home page uses too.
+
+Colours have names, defined once in `src/app/globals.css` with a light,
+a dark and a printed value: `ink` (text), `muted` (secondary text), `paper`
+and `surface` (backgrounds), `rule` and `rule-strong` (lines), `field`
+(input borders), `band`, `action` (main buttons), `link`, `margin` (the
+thin red line), `ok`, `warn` and `danger`. Pages use these names
+(`text-muted`, `border-rule`, `bg-action`, ...), never Tailwind's own colours
+such as `text-zinc-600`, so a colour changes in one place and dark mode
+needs no `dark:` classes. Every text colour meets WCAG AA contrast on the
+backgrounds it is used on. A new colour must be checked the same way, and
+the accessibility tests will fail if it is not good enough.
+
+Shared pieces live in `src/components/ui.tsx`: buttons (`buttonClass`,
+`inlineButtonClass`, `secondaryButtonClass`, `dangerButtonClass` for the
+"Yes, remove" of a confirmation), `inputClass`, `ErrorMessage` and `Notice`.
+On the fee pages, money uses `amountClass` (right-aligned, never split over
+two lines), and every table lines its figures up (`tabular-nums`).
+
+The typeface is Atkinson Hyperlegible Next, made for readers with low vision
+(0 and O, 1, l and I are easy to tell apart). It comes from the
+`@fontsource-variable/atkinson-hyperlegible-next` package (free, SIL Open
+Font License) and is served from this site, so no page asks Google or any
+other server for fonts.
+
+Printed report cards keep dark text and the same greys on white paper, even
+when the screen is in dark mode.
 
 ## Checks
 
@@ -90,13 +125,18 @@ output replays it step by step.
 `e2e/accessibility.spec.ts` (D8) checks every main page with axe-core
 (`@axe-core/playwright`, a development-only package) against WCAG 2.1
 level A and AA: as a school administrator and as a class teacher, in light
-and dark mode, plus error messages, notices, open forms and the logged-out
-pages. Results axe marks "needs review" fail the test too. Each problem is
+and dark mode, plus error messages, notices, open forms, a confirmation with its red
+button, and the logged-out pages. Results axe marks "needs review" fail the test too. Each problem is
 printed as one line with the page, the rule and what to fix. No rule is
 switched off; if one ever must be, do it for that one element only, with
 the reason written in the test. New pages belong in its list. The check
 itself is in `e2e/axe.ts`, shared with `e2e/fees.spec.ts`, which checks the
 fee pages in each state (open form, errors, confirmation, issued, bill).
+
+The home page repeats the menu's links, so a test that means the menu
+clicks inside it: `page.getByRole("navigation", { name: "Main" })`. The list
+of what a role allows starts closed; `openRoleAllows(page)` in
+`e2e/helpers.ts` opens it before a test reads it.
 
 `e2e/fees.spec.ts` (E1) gives each test a school year of its own, far in the
 future, so the bills it issues never reach other tests' students. It logs

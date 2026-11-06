@@ -8,6 +8,7 @@ import {
   errorMessage,
   logIn,
   logInToSchoolA,
+  openRoleAllows,
 } from "./helpers";
 
 test("a logged-out visitor is sent to the login page", async ({ page }) => {
@@ -30,6 +31,7 @@ test("a wrong password shows one generic message", async ({ page }) => {
 test("logging in, choosing and switching school, and logging out", async ({ page, context }) => {
   await logInToSchoolA(page);
   await expect(page.locator("dt:has-text('Your role') + dd")).toContainText("School administrator");
+  await openRoleAllows(page);
   await expect(page.getByText("Invite and remove members")).toBeVisible();
 
   // The session cookie is HttpOnly: page scripts cannot read it.
@@ -45,6 +47,7 @@ test("logging in, choosing and switching school, and logging out", async ({ page
   await expect(page.locator("dt:has-text('Your role') + dd")).toHaveText("Teacher");
   // A teacher may look at the school year (C1), their own classes (C2) and
   // take their attendance (D1) and enter marks for their subjects (D4).
+  await openRoleAllows(page);
   await expect(page.locator("dt:has-text('You can') + dd").getByRole("listitem")).toHaveText([
     "See the school year and terms",
     "Take attendance for the classes you teach",
@@ -86,7 +89,7 @@ test("logging out while a page is still loading goes to the plain login page", a
     await route.fulfill({ response });
   });
   const yearsRequested = page.waitForRequest("**/api/v1/school/academic-years");
-  await page.getByRole("link", { name: "School year" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "School year" }).click();
   await yearsRequested;
   await page.getByRole("button", { name: "Log out" }).click();
 
@@ -108,7 +111,7 @@ test("nothing private stays in the tab after login and logout", async ({ page })
   expect(passwords.every((value) => value === "")).toBe(true);
 
   await page.getByRole("button", { name: new RegExp(SCHOOL_A) }).click();
-  await page.getByRole("link", { name: "People" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "People" }).click();
   await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page).toHaveURL("/login");
@@ -170,4 +173,38 @@ test(`the school list shows ${SCHOOL_A} and ${SCHOOL_B}`, async ({ page }) => {
   await expect(choices).toHaveCount(2);
   await expect(choices.nth(0)).toContainText(SCHOOL_A);
   await expect(choices.nth(1)).toContainText(SCHOOL_B);
+});
+
+test("the home page groups the pages a role can open, with its permissions folded away", async ({ page }) => {
+  await logInToSchoolA(page);
+  const main = page.getByRole("main");
+  const areas = main.getByRole("heading", { level: 2 });
+  const links = main.getByRole("listitem").getByRole("link");
+
+  // An administrator: every area.
+  await expect(areas).toHaveText(["Classes and teaching", "Students and staff", "Calendar and grading", "Fees"]);
+  await expect(links).toHaveText([
+    "Classes",
+    "Attendance",
+    "Subjects",
+    "Students",
+    "People",
+    "School year",
+    "Grading",
+    "Fees",
+  ]);
+  // The full list of permissions is there, but closed until asked for.
+  const allowed = main.getByText("Invite and remove members");
+  await expect(allowed).toBeHidden();
+  await main.getByText("What your role allows", { exact: true }).click();
+  await expect(allowed).toBeVisible();
+
+  // A teacher (School B): only the pages a teacher can open.
+  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B });
+  await page.getByRole("button", { name: "Switch" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: SCHOOL_B })).toBeVisible();
+  await expect(areas).toHaveText(["Classes and teaching", "Calendar and grading"]);
+  await expect(links).toHaveText(["Classes", "Attendance", "School year", "Grading"]);
+  await links.getByText("Attendance", { exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Attendance" })).toBeVisible();
 });

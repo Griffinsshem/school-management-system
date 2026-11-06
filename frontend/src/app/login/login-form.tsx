@@ -85,7 +85,7 @@ export function LoginForm() {
       <button type="submit" className={buttonClass} disabled={pending}>
         {pending ? "Logging in..." : "Log in"}
       </button>
-      <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mt-4 text-sm text-muted">
         New here? You join a school by invitation: ask the school for a link.
       </p>
     </form>

@@ -37,10 +37,10 @@ function Content({ me, classId }: { me: Me; classId: string }) {
   if (!school || !hasAnyMarksAccess(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Report cards</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Report cards</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -54,14 +54,14 @@ function Content({ me, classId }: { me: Me; classId: string }) {
 export function CardsNotFound({ single = false }: { single?: boolean }) {
   return (
     <section>
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight">
+      <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">
         {single ? "Report card not found" : "Report cards not found"}
       </h1>
       <p>
         {single
           ? "This student has no report card in this class, or you cannot see it."
           : "This class does not exist, or you are not its class teacher."}{" "}
-        <Link href="/classes" className="underline">
+        <Link href="/classes" className="text-link underline underline-offset-2">
           Back to the classes
         </Link>
         .
@@ -114,19 +114,19 @@ function Cards({ classId }: { classId: string }) {
   return (
     <>
       <p className="mb-2 flex flex-wrap gap-x-4">
-        <Link href={`/classes/${classId}`} className="text-sm underline">
+        <Link href={`/classes/${classId}`} className="text-sm text-link underline underline-offset-2">
           Back to {data?.class.name ?? "the class"}
         </Link>
         {term !== null && (
-          <Link href={classResultsPath(classId, term)} className="text-sm underline">
+          <Link href={classResultsPath(classId, term)} className="text-sm text-link underline underline-offset-2">
             Term results
           </Link>
         )}
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">Report cards</h1>
-          {data && <p className="text-zinc-600 dark:text-zinc-400">{data.class.name}</p>}
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Report cards</h1>
+          {data && <p className="text-muted">{data.class.name}</p>}
         </div>
         {term !== null && (
           <div>
@@ -161,7 +161,7 @@ function Cards({ classId }: { classId: string }) {
       <ErrorMessage message={error} />
 
       {!data ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : data.students.length === 0 ? (
         <p>No students in {data.class.name} yet.</p>
       ) : (
@@ -175,14 +175,14 @@ function Cards({ classId }: { classId: string }) {
             </Link>
           </div>
           {data.can_comment && (
-            <p className="mb-4 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mb-4 max-w-2xl text-sm text-muted">
               Write each student&apos;s comment below, up to {MAX_COMMENT_LENGTH} characters. It appears on their
               report card for Term {data.term.number}. Leave a comment empty and save to remove it.
             </p>
           )}
           <ul className="space-y-4">
             {data.students.map((card) => (
-              <li key={card.id} className="min-w-0 rounded-lg border border-zinc-200 p-4 break-words dark:border-zinc-800">
+              <li key={card.id} className="min-w-0 rounded-lg border border-rule p-4 break-words">
                 <StudentRow
                   data={data}
                   card={card}
@@ -222,12 +222,12 @@ function StudentRow({
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="font-semibold">
           {card.full_name}
-          <span className="ml-2 text-sm font-normal text-zinc-600 dark:text-zinc-400">
+          <span className="ml-2 text-sm font-normal text-muted">
             {card.admission_number}
             {!card.in_class && ", no longer in this class"}
           </span>
         </h2>
-        <Link href={reportCardPath(classId, card.id, data.term.number)} className="text-sm underline">
+        <Link href={reportCardPath(classId, card.id, data.term.number)} className="text-sm text-link underline underline-offset-2">
           View report card<span className="sr-only"> of {card.full_name}</span>
         </Link>
       </div>
@@ -248,7 +248,7 @@ function StudentRow({
       ) : card.comment ? (
         <p className="text-sm whitespace-pre-line">{card.comment.text}</p>
       ) : (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">No comment yet.</p>
+        <p className="text-sm text-muted">No comment yet.</p>
       )}
     </>
   );
@@ -325,7 +325,7 @@ function CommentForm({
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <p
           id={countId}
-          className={`text-sm ${tooLong ? "font-medium text-red-800 dark:text-red-300" : "text-zinc-600 dark:text-zinc-400"}`}
+          className={`text-sm ${tooLong ? "font-semibold text-danger-ink" : "text-muted"}`}
         >
           {length} of {MAX_COMMENT_LENGTH} characters
           {card.comment && `. Last changed by ${card.comment.updated_by}`}

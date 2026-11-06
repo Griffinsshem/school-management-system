@@ -37,10 +37,10 @@ function ClassesContent({ me }: { me: Me }) {
   if (!school) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Classes</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Classes</h1>
         <p>
           Choose a school first on the{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             home page
           </Link>
           .
@@ -51,7 +51,7 @@ function ClassesContent({ me }: { me: Me }) {
   if (!seesAll && !seesOwn) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Classes</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Classes</h1>
         <p>You do not have access to this page in {school.name}.</p>
       </section>
     );
@@ -121,8 +121,8 @@ function ClassesPage({
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">{schoolName}</p>
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">{title}</h1>
+          <p className="text-muted">{schoolName}</p>
         </div>
         {years && yearId && (
           <div>
@@ -148,14 +148,14 @@ function ClassesPage({
       <ErrorMessage message={error} />
 
       {!years ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : !yearId ? (
         <p>
           No school years yet.{" "}
           {canManage && (
             <>
               Add one on the{" "}
-              <Link href="/school-year" className="underline">
+              <Link href="/school-year" className="text-link underline underline-offset-2">
                 School year
               </Link>{" "}
               page first.
@@ -242,7 +242,7 @@ function YearClasses({
     editing?.mode === "edit" ? list?.classes.find((c) => c.id === editing.classId) : undefined;
 
   if (!list) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   return (
@@ -306,7 +306,7 @@ function YearClasses({
                   <th scope="row" className={`${tdClass} font-medium`}>
                     <Link
                       href={`/classes/${schoolClass.id}`}
-                      className="underline underline-offset-4 hover:no-underline"
+                      className="text-link underline underline-offset-4 hover:no-underline"
                     >
                       {schoolClass.name}
                     </Link>
@@ -344,7 +344,7 @@ function YearClasses({
 
 function TeacherNames({ schoolClass }: { schoolClass: SchoolClass }) {
   if (schoolClass.teachers.length === 0) {
-    return <span className="text-zinc-600 dark:text-zinc-400">None yet</span>;
+    return <span className="text-muted">None yet</span>;
   }
   return (
     <ul>
@@ -368,7 +368,7 @@ function YouTeach({ schoolClass }: { schoolClass: SchoolClass }) {
 }
 
 function FormerTeacher() {
-  return <span className="text-zinc-600 dark:text-zinc-400"> (no longer a teacher here)</span>;
+  return <span className="text-muted"> (no longer a teacher here)</span>;
 }
 
 // A form in a bordered panel whose heading takes focus when it opens.
@@ -380,7 +380,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section
       aria-labelledby="class-panel-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2
         id="class-panel-heading"
@@ -501,7 +501,7 @@ function AddClassForm({
 
   return (
     <Panel title={`Add a class to ${yearName}`}>
-      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 text-sm text-muted">
         Only the grades that exist in {yearName} are offered.
       </p>
       <form onSubmit={onSubmit} noValidate>
@@ -622,7 +622,7 @@ function EditClassPanel({
 
       <h3 className="mt-6 mb-2 font-semibold">Class teachers</h3>
       {schoolClass.teachers.length === 0 ? (
-        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">None yet.</p>
+        <p className="mb-3 text-sm text-muted">None yet.</p>
       ) : (
         <ul className="mb-3 grid gap-2">
           {schoolClass.teachers.map((teacher) => (
@@ -669,7 +669,7 @@ function EditClassPanel({
           </button>
         </form>
       ) : (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-muted">
           {teachers.length === 0
             ? "This school has no active teachers yet. Invite them on the People page."
             : "Every active teacher is already a class teacher of this class."}
@@ -679,5 +679,5 @@ function EditClassPanel({
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

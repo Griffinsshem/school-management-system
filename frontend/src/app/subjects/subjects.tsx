@@ -35,10 +35,10 @@ function Content({ me }: { me: Me }) {
   if (!school || !canReadSubjects(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Subjects</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Subjects</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -115,14 +115,14 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
   return (
     <>
       <div className="mb-6">
-        <h1 className="mb-1 text-2xl font-semibold tracking-tight">Subjects</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">{schoolName}</p>
+        <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Subjects</h1>
+        <p className="text-muted">{schoolName}</p>
       </div>
       <p className="mb-6 max-w-2xl">
         The subjects this school teaches. Choose which classes take each subject, and who teaches it, on
         each class&apos;s page. Subjects are never deleted: make one inactive when it is no longer
         offered, and it stays on the classes that already take it. Marks are graded on the scales on the{" "}
-        <Link href="/grading" className="underline">
+        <Link href="/grading" className="text-link underline underline-offset-2">
           Grading page
         </Link>
         .
@@ -152,7 +152,7 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
       {notice && <Notice>{notice}</Notice>}
 
       {!subjects ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : subjects.length === 0 ? (
         <p>No subjects yet.</p>
       ) : (
@@ -178,7 +178,7 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
                   <th scope="row" className={`${tdClass} font-medium`}>
                     {subject.name}
                   </th>
-                  <td className={tdClass}>{subject.code ?? <span className="text-zinc-600 dark:text-zinc-400">None</span>}</td>
+                  <td className={tdClass}>{subject.code ?? <span className="text-muted">None</span>}</td>
                   <td className={tdClass}>{subject.is_active ? "Active" : "Inactive"}</td>
                   <td className={tdClass}>{KCSE_CATEGORY_LABELS[subject.kcse_category]}</td>
                   {canManage && (
@@ -213,7 +213,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section
       aria-labelledby="subject-panel-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2
         id="subject-panel-heading"
@@ -340,7 +340,7 @@ function SubjectForm({
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-muted">
               Mathematics and the best language always count, then the best five other subjects.
             </p>
           </div>
@@ -369,5 +369,5 @@ function SubjectForm({
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

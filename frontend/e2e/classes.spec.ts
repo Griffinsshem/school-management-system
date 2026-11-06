@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PRINCIPAL_EMAIL, TEACHER_EMAIL, errorMessage, logIn, logInToSchoolA } from "./helpers";
+import { PRINCIPAL_EMAIL, TEACHER_EMAIL, errorMessage, logIn, logInToSchoolA, openRoleAllows } from "./helpers";
 
 // A past school year, so it never overlaps the years the school-year tests
 // create around today. In 2025 Kenya had Grades up to 9 and Forms 2 to 4.
@@ -41,7 +41,7 @@ function stream(): string {
 }
 
 async function openClasses(page: Page, heading = "Classes") {
-  await page.getByRole("link", { name: "Classes" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Classes" }).click();
   await expect(page).toHaveURL("/classes");
   await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
 }
@@ -138,6 +138,7 @@ test("a teacher sees only the classes they teach", async ({ page }) => {
   await page.getByRole("button", { name: "Log out" }).click();
 
   await logIn(page, TEACHER_EMAIL);
+  await openRoleAllows(page);
   await expect(page.getByText("See the classes you teach")).toBeVisible();
   await openClasses(page, "My classes");
   await page.getByLabel("School year").selectOption({ label: YEAR.name });
@@ -151,6 +152,7 @@ test("a teacher sees only the classes they teach", async ({ page }) => {
 test("a principal sees every class but cannot change them", async ({ page }) => {
   await page.goto("/login");
   await logIn(page, PRINCIPAL_EMAIL);
+  await openRoleAllows(page);
   await expect(page.getByText("See every class and its class teachers")).toBeVisible();
   await openClasses(page);
   // Wait for the classes themselves: buttons appear only once they load.
@@ -228,6 +230,7 @@ test("a logged-out visitor is sent to the login page from a class list", async (
 
 test("an administrator adds students to a class, moves one and removes one", async ({ page }) => {
   await logInToSchoolA(page);
+  await openRoleAllows(page);
   await expect(page.getByText("Add students to classes and move them")).toBeVisible();
   const yearId = await year2025(page);
   const name = stream();

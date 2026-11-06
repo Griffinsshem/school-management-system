@@ -337,7 +337,7 @@ function CreateAccount({ token, email }: { token: string; email: string }) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <p id="password-hint" className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <p id="password-hint" className="mt-1 text-sm text-muted">
           {MIN_PASSWORD} to {MAX_PASSWORD} characters. A short sentence is easy to remember.
         </p>
       </div>

@@ -1,6 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { ATTENDANCE_ADMIN_EMAIL, ATTENDANCE_TEACHER_EMAIL, SCHOOL_C, errorMessage, logIn } from "./helpers";
+import {
+  ATTENDANCE_ADMIN_EMAIL,
+  ATTENDANCE_TEACHER_EMAIL,
+  SCHOOL_C,
+  errorMessage,
+  logIn,
+  openRoleAllows,
+} from "./helpers";
 
 // Assessments and marks (D4), in E2E School C, whose school year is around
 // today (marks can only be dated inside a term, up to today). Each test makes
@@ -128,8 +135,9 @@ test("a subject teacher adds an assessment and enters marks; a lock stops change
   await logOut(page);
 
   await logInAs(page, ATTENDANCE_TEACHER_EMAIL);
+  await openRoleAllows(page);
   await expect(page.getByText("Enter marks for the subjects you teach")).toBeVisible();
-  await page.getByRole("link", { name: "Classes" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Classes" }).click();
   await page.getByRole("row", { name: new RegExp(`^${c.className}\\b`) }).getByRole("link").click();
   await expect(page.getByText(`You teach ${c.subject} in this class.`)).toBeVisible();
   await expect(page.getByRole("link", { name: "Marks overview" })).toHaveCount(0);
@@ -204,7 +212,7 @@ test("the class teacher reads every subject's marks but changes none", async ({ 
   await logOut(page);
 
   await logInAs(page, ATTENDANCE_TEACHER_EMAIL);
-  await page.getByRole("link", { name: "Classes" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Classes" }).click();
   await page.getByRole("row", { name: new RegExp(`^${c.className}\\b`) }).getByRole("link").click();
   await page.getByRole("link", { name: "Marks overview" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Marks overview" })).toBeVisible();

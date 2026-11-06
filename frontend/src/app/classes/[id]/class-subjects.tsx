@@ -4,7 +4,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { goToLogin } from "@/components/app-shell";
-import { ErrorMessage, Notice, inlineButtonClass, inputClass, labelClass, secondaryButtonClass } from "@/components/ui";
+import {
+  dangerButtonClass,
+  ErrorMessage,
+  inlineButtonClass,
+  inputClass,
+  labelClass,
+  Notice,
+  secondaryButtonClass,
+} from "@/components/ui";
 import { api, withReference, type ApiErrorBody } from "@/lib/api";
 import { subjectMarksPath } from "@/lib/assessments";
 import type { Member } from "@/lib/people";
@@ -118,7 +126,7 @@ export function ClassSubjectsSection({
       {notice && <Notice>{notice}</Notice>}
 
       {!taken ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : taken.length === 0 ? (
         <p className="mb-3">{className} takes no subjects yet.</p>
       ) : (
@@ -209,23 +217,23 @@ function SubjectItem({
   }
 
   return (
-    <li aria-label={subject.name} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+    <li aria-label={subject.name} className="rounded-lg border border-rule p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-medium">
             {subject.name}
-            {subject.code && <span className="font-normal text-zinc-600 dark:text-zinc-400"> ({subject.code})</span>}
-            {!subject.is_active && <span className="font-normal text-zinc-600 dark:text-zinc-400"> (inactive)</span>}
+            {subject.code && <span className="font-normal text-muted"> ({subject.code})</span>}
+            {!subject.is_active && <span className="font-normal text-muted"> (inactive)</span>}
           </p>
           {marksHref && (
             <p className="text-sm">
-              <Link href={marksHref} className="underline">
+              <Link href={marksHref} className="text-link underline underline-offset-2">
                 {subject.name} marks
               </Link>
             </p>
           )}
           {item.teachers.length === 0 ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">No teacher yet.</p>
+            <p className="text-sm text-muted">No teacher yet.</p>
           ) : (
             <ul className="text-sm">
               {item.teachers.map((teacher) => (
@@ -233,7 +241,7 @@ function SubjectItem({
                   <span>
                     {teacher.full_name}
                     {!teacher.is_active && (
-                      <span className="text-zinc-600 dark:text-zinc-400"> (no longer a teacher here)</span>
+                      <span className="text-muted"> (no longer a teacher here)</span>
                     )}
                   </span>
                   {canManage && (
@@ -282,7 +290,7 @@ function SubjectItem({
             <button
               ref={yesRef}
               type="button"
-              className="rounded-md bg-red-700 px-3 py-1 font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"
+              className={dangerButtonClass}
               onClick={() => send(path, "DELETE", undefined, `${className} no longer takes ${subject.name}.`)}
               disabled={pending}
             >
@@ -356,7 +364,7 @@ function AddSubject({
 
   if (addable.length === 0) {
     return (
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-muted">
         {hasSubjects
           ? "This class already takes every active subject."
           : "This school has no subjects yet. Add them on the Subjects page."}

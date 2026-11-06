@@ -7,8 +7,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <main className="flex flex-1 items-start justify-center px-4 py-12 sm:items-center">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">{title}</h1>
+      <div className="w-full max-w-md rounded-lg border border-rule border-t-4 border-t-band bg-surface p-6 sm:p-8">
+        <p className="mb-1 text-sm text-muted">School Management System</p>
+        <h1 className="mb-6 text-[1.9375rem] leading-tight font-bold tracking-tight">{title}</h1>
         {children}
       </div>
     </main>
@@ -32,7 +33,7 @@ export function ErrorMessage({ message }: { message: string | null }) {
       ref={ref}
       role="alert"
       tabIndex={-1}
-      className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 focus:outline-none dark:border-red-800 dark:bg-red-950 dark:text-red-100"
+      className="mb-4 rounded-md border-l-4 border-danger bg-danger-soft px-3 py-2 text-danger-ink focus:outline-none"
     >
       {message}
     </div>
@@ -43,7 +44,7 @@ export function Notice({ children }: { children: ReactNode }) {
   return (
     <div
       role="status"
-      className="mb-4 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100"
+      className="mb-4 rounded-md border-l-4 border-ok bg-ok-soft px-3 py-2 text-ink"
     >
       {children}
     </div>
@@ -51,12 +52,12 @@ export function Notice({ children }: { children: ReactNode }) {
 }
 
 export const inputClass =
-  "block w-full rounded-md border border-zinc-400 bg-white px-3 py-2 text-base text-zinc-900 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/40 read-only:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100 dark:read-only:bg-zinc-800";
+  "block w-full rounded-md border border-field bg-surface px-3 py-2 text-base text-ink focus:border-action focus:outline-none focus:ring-2 focus:ring-action/40 read-only:bg-readonly";
 
 export const labelClass = "mb-1 block text-sm font-medium";
 
 const primaryButtonBase =
-  "inline-flex items-center justify-center rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center rounded-md bg-action px-4 py-2 font-semibold text-on-action hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-60";
 
 // Full width: the main button of a small form (log in, create account).
 export const buttonClass = `${primaryButtonBase} w-full`;
@@ -65,4 +66,9 @@ export const buttonClass = `${primaryButtonBase} w-full`;
 export const inlineButtonClass = primaryButtonBase;
 
 export const secondaryButtonClass =
-  "inline-flex items-center justify-center rounded-md border border-zinc-400 px-4 py-2 font-medium hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:hover:bg-zinc-800";
+  "inline-flex items-center justify-center rounded-md border border-field px-4 py-2 font-semibold hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-60";
+
+// The "Yes, remove" button of a confirmation that removes or ends something
+// (a student from a class, an invitation). Compact: it sits in the row.
+export const dangerButtonClass =
+  "inline-flex items-center justify-center rounded-md bg-danger px-3 py-1 font-semibold text-white hover:bg-danger-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60";

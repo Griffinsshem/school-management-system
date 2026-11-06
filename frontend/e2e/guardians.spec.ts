@@ -1,6 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PRINCIPAL_EMAIL, SCHOOL_A, TEACHER_EMAIL, errorMessage, logIn, logInToSchoolA } from "./helpers";
+import {
+  PRINCIPAL_EMAIL,
+  SCHOOL_A,
+  TEACHER_EMAIL,
+  errorMessage,
+  logIn,
+  logInToSchoolA,
+  openRoleAllows,
+} from "./helpers";
 
 // Clearly fake guardians in E2E School A. Each test makes its own students
 // and phone numbers (in the 0700 range), so tests do not depend on each other.
@@ -139,7 +147,7 @@ test("students link to their page from the student list", async ({ page }) => {
   const name = unique();
   await newStudent(page, `Chausiku ${name}`);
 
-  await page.getByRole("link", { name: "Students" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Students" }).click();
   await page.getByRole("searchbox").fill(name);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("link", { name: `Chausiku ${name}` }).click();
@@ -162,6 +170,7 @@ test("a principal sees guardians but cannot change them", async ({ page }) => {
   await expect(page).toHaveURL("/login");
 
   await logIn(page, PRINCIPAL_EMAIL);
+  await openRoleAllows(page);
   await expect(page.getByText("See students' guardians")).toBeVisible();
   await page.goto(`/students/${student}`);
 

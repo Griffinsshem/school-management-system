@@ -21,7 +21,7 @@ import {
 import { relationshipLabel, type Relationship } from "@/lib/guardians";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 
-import { NoFeesAccess, tdClass, thClass } from "../../fees";
+import { NoFeesAccess, amountClass, tdClass, thClass } from "../../fees";
 
 // One student's bill for a term (E1): its fees and adjustments, the total,
 // the guardians to contact about it, and (for those who manage fees) adding
@@ -70,10 +70,10 @@ function BillView({ billId }: { billId: string }) {
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Bill not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Bill not found</h1>
         <p>
           This bill does not exist, or it is not in this school.{" "}
-          <Link href="/fees" className="underline">
+          <Link href="/fees" className="text-link underline underline-offset-2">
             Back to fees
           </Link>
           .
@@ -82,7 +82,7 @@ function BillView({ billId }: { billId: string }) {
     );
   }
   if (!bill) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   function changed(next: Bill, message: string) {
@@ -93,12 +93,12 @@ function BillView({ billId }: { billId: string }) {
   return (
     <>
       <p className="mb-2">
-        <Link href={gradeFeesPath(bill.year.id, bill.term.number, bill.grade.code)} className="text-sm underline">
+        <Link href={gradeFeesPath(bill.year.id, bill.term.number, bill.grade.code)} className="text-sm text-link underline underline-offset-2">
           Back to {bill.grade.name} fees
         </Link>
       </p>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight break-words">Bill for {bill.student.full_name}</h1>
-      <p className="mb-6 break-words text-zinc-600 dark:text-zinc-400">
+      <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight break-words">Bill for {bill.student.full_name}</h1>
+      <p className="mb-6 break-words text-muted">
         Admission no. {bill.student.admission_number}, {bill.class_name}, Term {bill.term.number} of {bill.year.name}
       </p>
 
@@ -116,7 +116,7 @@ function BillView({ billId }: { billId: string }) {
                 <th scope="col" className={thClass}>
                   Item or reason
                 </th>
-                <th scope="col" className={thClass}>
+                <th scope="col" className={`${thClass} ${amountClass}`}>
                   Amount
                 </th>
                 <th scope="col" className={thClass}>
@@ -137,7 +137,7 @@ function BillView({ billId }: { billId: string }) {
                   <th scope="row" className={`${tdClass} font-normal break-words`}>
                     {line.kind === "adjustment" ? `Adjustment: ${line.description}` : line.description}
                   </th>
-                  <td className={`${tdClass} whitespace-nowrap`}>{formatKes(line.amount_kes)}</td>
+                  <td className={`${tdClass} ${amountClass}`}>{formatKes(line.amount_kes)}</td>
                   <td className={tdClass}>
                     {line.created_at && formatDayOf(line.created_at)}
                     {line.created_by && `, ${line.created_by}`}
@@ -150,7 +150,7 @@ function BillView({ billId }: { billId: string }) {
                 <th scope="row" className="px-2 py-2 text-base font-semibold">
                   Total
                 </th>
-                <td className="px-2 py-2 text-base font-semibold whitespace-nowrap">{formatKes(bill.total_kes)}</td>
+                <td className={`px-2 py-2 text-base font-semibold ${amountClass}`}>{formatKes(bill.total_kes)}</td>
                 <td />
               </tr>
             </tfoot>
@@ -206,7 +206,7 @@ function AddOptionalItem({ bill, onAdded }: { bill: Bill; onAdded: (next: Bill, 
         Add an optional item
       </h2>
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-muted">
           No optional items left to add for {bill.grade.name} this term.
         </p>
       ) : (
@@ -291,7 +291,7 @@ function AddAdjustment({ bill, onAdded }: { bill: Bill; onAdded: (next: Bill) =>
         <label htmlFor="adjustment-amount" className={labelClass}>
           Amount (KES)
         </label>
-        <p id="adjustment-amount-hint" className="mb-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <p id="adjustment-amount-hint" className="mb-1 text-sm text-muted">
           Put a minus sign in front to reduce the bill, for example -5000 for a bursary.
         </p>
         <input
@@ -326,30 +326,30 @@ function Guardians({ bill }: { bill: Bill }) {
       <h2 id="guardians-heading" className="mb-1 text-xl font-semibold">
         Guardians to contact
       </h2>
-      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">For questions about this bill only.</p>
+      <p className="mb-3 text-sm text-muted">For questions about this bill only.</p>
       {bill.guardians.length === 0 ? (
         <p className="text-sm">No guardians are recorded for {bill.student.full_name}.</p>
       ) : (
         <ul className="space-y-3">
           {bill.guardians.map((guardian) => (
-            <li key={guardian.phone} className="rounded-lg border border-zinc-200 p-3 break-words dark:border-zinc-800">
+            <li key={guardian.phone} className="rounded-lg border border-rule p-3 break-words">
               <p className="font-medium">
                 {guardian.full_name}
-                <span className="ml-2 text-sm font-normal text-zinc-600 dark:text-zinc-400">
+                <span className="ml-2 text-sm font-normal text-muted">
                   {relationshipLabel(guardian.relationship as Relationship)}
                   {guardian.is_primary && ", main contact"}
                 </span>
               </p>
               <p className="text-sm">
                 Phone:{" "}
-                <a href={`tel:${guardian.phone}`} className="underline">
+                <a href={`tel:${guardian.phone}`} className="text-link underline underline-offset-2">
                   {guardian.phone}
                 </a>
               </p>
               {guardian.email && (
                 <p className="text-sm">
                   Email:{" "}
-                  <a href={`mailto:${guardian.email}`} className="underline">
+                  <a href={`mailto:${guardian.email}`} className="text-link underline underline-offset-2">
                     {guardian.email}
                   </a>
                 </p>

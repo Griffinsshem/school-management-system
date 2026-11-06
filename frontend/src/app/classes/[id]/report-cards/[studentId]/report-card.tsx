@@ -72,11 +72,11 @@ function Card({ classId, studentId }: { classId: string; studentId: string }) {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div>
           <p className="mb-2">
-            <Link href={reportCardsPath(classId, term ?? undefined)} className="text-sm underline">
+            <Link href={reportCardsPath(classId, term ?? undefined)} className="text-sm text-link underline underline-offset-2">
               Back to the report cards
             </Link>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Report card</h1>
+          <h1 className="text-[1.9375rem] leading-tight font-bold tracking-tight">Report card</h1>
         </div>
         {data && (
           <button type="button" className={inlineButtonClass} onClick={() => window.print()}>
@@ -88,7 +88,7 @@ function Card({ classId, studentId }: { classId: string; studentId: string }) {
       {data ? (
         <ReportCardView data={data} card={data.student} />
       ) : (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       )}
     </>
   );

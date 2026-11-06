@@ -29,6 +29,11 @@ async function logOut(page: Page) {
   await expect(page).toHaveURL("/login");
 }
 
+// The home page repeats the menu's links (V1), so clicks go to the menu.
+function menu(page: Page) {
+  return page.getByRole("navigation", { name: "Main" });
+}
+
 function role(page: Page) {
   return page.locator("dt:has-text('Your role') + dd");
 }
@@ -52,14 +57,14 @@ test("an administrator sees the school's students and staff", async ({ page, con
     ["__Host-sms_session", true, true, "Lax"],
   ]);
 
-  await page.getByRole("link", { name: "Students" }).click();
+  await menu(page).getByRole("link", { name: "Students" }).click();
   await expect(page.getByRole("status")).toHaveText("Showing 1 to 12 of 12 students.");
   await page.getByRole("searchbox").fill("Amani");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText('Showing 1 to 1 of 1 student matching "Amani".');
   await expect(page.getByRole("table")).toContainText("Amani Demo");
 
-  await page.getByRole("link", { name: "People" }).click();
+  await menu(page).getByRole("link", { name: "People" }).click();
   const members = page.getByRole("region", { name: "Members" });
   for (const name of ["Admin Demo", "Principal Demo", "Teacher Demo"]) {
     await expect(members).toContainText(name);
@@ -80,11 +85,11 @@ test("a teacher sees the school year and their classes, but no student or staff 
   await expect(page.getByRole("link", { name: "Students" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "People" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "School year" }).click();
+  await menu(page).getByRole("link", { name: "School year" }).click();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a school year" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Classes" }).click();
+  await menu(page).getByRole("link", { name: "Classes" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "My classes" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a class" })).toHaveCount(0);
 

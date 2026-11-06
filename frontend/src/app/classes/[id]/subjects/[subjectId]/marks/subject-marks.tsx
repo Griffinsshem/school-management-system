@@ -35,10 +35,10 @@ function Content({ me, classId, subjectId }: { me: Me; classId: string; subjectI
   if (!school || !hasAnyMarksAccess(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Marks</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Marks</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -84,10 +84,10 @@ function Assessments({ classId, subjectId }: { classId: string; subjectId: strin
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Marks not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Marks not found</h1>
         <p>
           This class or subject does not exist, or it is not one of yours.{" "}
-          <Link href="/classes" className="underline">
+          <Link href="/classes" className="text-link underline underline-offset-2">
             Back to the classes
           </Link>
           .
@@ -96,7 +96,7 @@ function Assessments({ classId, subjectId }: { classId: string; subjectId: strin
     );
   }
   if (!list) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   const asked = Number(searchParams.get("term"));
@@ -108,14 +108,14 @@ function Assessments({ classId, subjectId }: { classId: string; subjectId: strin
   return (
     <>
       <p className="mb-2">
-        <Link href={`/classes/${classId}`} className="text-sm underline">
+        <Link href={`/classes/${classId}`} className="text-sm text-link underline underline-offset-2">
           Back to {list.class.name}
         </Link>
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">{list.class.name}</p>
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">{title}</h1>
+          <p className="text-muted">{list.class.name}</p>
         </div>
         {list.terms.length > 0 && term !== null && (
           <div>
@@ -201,7 +201,7 @@ function WeightingNote({ assessments, term }: { assessments: Assessment[]; term:
   }
   if (!any) {
     return (
-      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-3 text-sm text-muted">
         Term {term} results add up the marks. To weight them, give every assessment a weight adding up to 100%.
       </p>
     );
@@ -232,10 +232,10 @@ function AssessmentTable({ assessments, students }: { assessments: Assessment[];
           {assessments.map((a) => (
             <tr key={a.id}>
               <th scope="row" className={`${tdClass} font-medium`}>
-                <Link href={`/assessments/${a.id}`} className="underline underline-offset-4 hover:no-underline">
+                <Link href={`/assessments/${a.id}`} className="text-link underline underline-offset-4 hover:no-underline">
                   {a.name}
                 </Link>
-                {a.is_locked && <span className="ml-2 text-zinc-600 dark:text-zinc-400">(locked)</span>}
+                {a.is_locked && <span className="ml-2 text-muted">(locked)</span>}
               </th>
               <td className={tdClass}>{formatCalendarDate(a.held_on)}</td>
               <td className={tdClass}>{a.max_score}</td>
@@ -315,7 +315,7 @@ function AddAssessment({
   return (
     <section
       aria-labelledby="add-assessment-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2
         id="add-assessment-heading"
@@ -395,5 +395,5 @@ function AddAssessment({
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

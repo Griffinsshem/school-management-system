@@ -1,34 +1,126 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* The look of the app (V1): named colours, defined once here, for light and
+   dark screens and for paper. Pages use these names (text-muted,
+   border-rule, bg-action...), never raw palette colours, so a change of
+   colour happens in one place. Every text colour keeps WCAG AA contrast on
+   the backgrounds it is used on (checked by the browser tests with axe).
+   The red "margin" is decoration only, like an exercise book's margin line:
+   it never carries meaning on its own. */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --ink: #1b2433;
+  --muted: #56607a;
+  --rule: #d5deeb;
+  --rule-strong: #aebbd0;
+  --field: #7d889e;
+  --band: #1b2a4a;
+  --band-ink: #ffffff;
+  --band-muted: #b9c4dc;
+  --action: #1f4fb8;
+  --action-hover: #193f94;
+  --on-action: #ffffff;
+  --link: #1f4fb8;
+  --margin: #d9485f;
+  --hover: #eef2f8;
+  --readonly: #f1f4f8;
+  --ok: #1e6b40;
+  --ok-soft: #e8f3ec;
+  --danger: #b42318;
+  --danger-hover: #912018;
+  --danger-soft: #fdecea;
+  --danger-ink: #8a1c12;
+  --warn-soft: #fff6e0;
+  --warn-border: #c98a0b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #121826;
+    --surface: #182033;
+    --ink: #e7ecf5;
+    --muted: #a6b0c3;
+    --rule: #2c3850;
+    --rule-strong: #3e4c68;
+    --field: #6b7894;
+    --band: #0b1222;
+    --band-ink: #e7ecf5;
+    --band-muted: #9aa6c0;
+    --action: #3563d0;
+    --action-hover: #2b54b5;
+    --on-action: #ffffff;
+    --link: #93b4ff;
+    --margin: #e2687b;
+    --hover: #1f2940;
+    --readonly: #1f2940;
+    --ok: #8fd6a9;
+    --ok-soft: #12301f;
+    --danger: #c42b2b;
+    --danger-hover: #a52222;
+    --danger-soft: #3a1414;
+    --danger-ink: #ffb4b0;
+    --warn-soft: #3a2a06;
+    --warn-border: #b7791f;
   }
 }
 
 /* Paper is white: print dark text on it, even when the screen is dark. */
 @media print {
   :root {
-    --background: #ffffff;
-    --foreground: #171717;
+    --paper: #ffffff;
+    --surface: #ffffff;
+    --ink: #171717;
+    /* The greys report cards have always printed with. */
+    --muted: #52525b;
+    --rule: #e4e4e7;
+    --rule-strong: #a1a1aa;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-field: var(--field);
+  --color-band: var(--band);
+  --color-band-ink: var(--band-ink);
+  --color-band-muted: var(--band-muted);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-on-action: var(--on-action);
+  --color-link: var(--link);
+  --color-margin: var(--margin);
+  --color-hover: var(--hover);
+  --color-readonly: var(--readonly);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-border: var(--warn-border);
+  /* Atkinson Hyperlegible Next (self-hosted, see layout.tsx): designed for
+     readers with low vision; 0/O and 1/l/I are easy to tell apart. */
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* In the base layer, so a utility class on an element (text-band-ink on a
+   header link, say) always wins over these defaults. */
+@layer base {
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Figures line up in columns in every table (marks, fees, counts). */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
 }

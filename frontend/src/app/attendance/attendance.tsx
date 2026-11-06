@@ -32,10 +32,10 @@ function Content({ me, date }: { me: Me; date: string }) {
   if (!school || !canSeeAttendance(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Attendance</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Attendance</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -170,8 +170,8 @@ function DayPage({ schoolName, date, everyClass }: { schoolName: string; date: s
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">Attendance</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Attendance</h1>
+          <p className="text-muted">
             {schoolName}: {formatDay(date)}
           </p>
         </div>
@@ -198,7 +198,7 @@ function DayPage({ schoolName, date, everyClass }: { schoolName: string; date: s
       <ErrorMessage message={error} />
 
       {!day ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : day.note && day.rows.length === 0 ? (
         <p>{day.note}</p>
       ) : day.rows.length === 0 ? (
@@ -228,7 +228,7 @@ function DayPage({ schoolName, date, everyClass }: { schoolName: string; date: s
                       {day.note ? (
                         row.name
                       ) : (
-                        <Link href={registerPath(row.id, date)} className="underline">
+                        <Link href={registerPath(row.id, date)} className="text-link underline underline-offset-2">
                           {row.name}
                         </Link>
                       )}
@@ -250,5 +250,5 @@ function DayPage({ schoolName, date, everyClass }: { schoolName: string; date: s
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

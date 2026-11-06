@@ -31,10 +31,10 @@ function Content({ me, classId, term }: { me: Me; classId: string; term: number 
   if (!school || !canSeeAttendance(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Attendance summary</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Attendance summary</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -142,10 +142,10 @@ function ClassSummary({ classId, askedTerm }: { classId: string; askedTerm: numb
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Class not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Class not found</h1>
         <p>
           This class does not exist, or it is not one of yours.{" "}
-          <Link href="/attendance" className="underline">
+          <Link href="/attendance" className="text-link underline underline-offset-2">
             Back to attendance
           </Link>
           .
@@ -157,16 +157,16 @@ function ClassSummary({ classId, askedTerm }: { classId: string; askedTerm: numb
   return (
     <>
       <p className="mb-2">
-        <Link href={registerPath(classId, kenyaToday())} className="text-sm underline">
+        <Link href={registerPath(classId, kenyaToday())} className="text-sm text-link underline underline-offset-2">
           Back to the register
         </Link>
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">
             {className ? `${className} attendance` : "Attendance summary"}
           </h1>
-          {year && <p className="text-zinc-600 dark:text-zinc-400">School year {year.name}</p>}
+          {year && <p className="text-muted">School year {year.name}</p>}
         </div>
         {year && term !== null && (
           <div>
@@ -201,7 +201,7 @@ function ClassSummary({ classId, askedTerm }: { classId: string; askedTerm: numb
       ) : year && term === null ? (
         <p>The school year {year.name} has no terms yet.</p>
       ) : !summary ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : (
         <SummaryTables summary={summary} />
       )}
@@ -238,9 +238,9 @@ function SummaryTables({ summary }: { summary: TermSummary }) {
                 <tr key={row.student.id}>
                   <th scope="row" className={`${tdClass} font-normal`}>
                     {row.student.full_name}{" "}
-                    <span className="text-zinc-600 dark:text-zinc-400">({row.student.admission_number})</span>
+                    <span className="text-muted">({row.student.admission_number})</span>
                     {!row.in_class && (
-                      <span className="block text-zinc-600 dark:text-zinc-400">No longer in this class</span>
+                      <span className="block text-muted">No longer in this class</span>
                     )}
                   </th>
                   <td className={tdClass}>
@@ -273,7 +273,7 @@ function SummaryTables({ summary }: { summary: TermSummary }) {
               {summary.registers.map((day) => (
                 <tr key={day.date}>
                   <th scope="row" className={`${tdClass} font-normal`}>
-                    <Link href={registerPath(summary.class.id, day.date)} className="underline">
+                    <Link href={registerPath(summary.class.id, day.date)} className="text-link underline underline-offset-2">
                       {formatCalendarDate(day.date)}
                     </Link>
                   </th>
@@ -292,5 +292,5 @@ function SummaryTables({ summary }: { summary: TermSummary }) {
 }
 
 // Narrower padding on phones, so four columns fit.
-const thClass = "border-b border-zinc-300 px-2 py-2 font-medium sm:px-3 dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-2 py-2 align-top sm:px-3 dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-2 py-2 font-medium sm:px-3";
+const tdClass = "border-b border-rule px-2 py-2 align-top sm:px-3";

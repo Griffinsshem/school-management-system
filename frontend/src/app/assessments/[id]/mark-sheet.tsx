@@ -5,7 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { AppShell, goToLogin } from "@/components/app-shell";
-import { ErrorMessage, Notice, inlineButtonClass, inputClass, labelClass, secondaryButtonClass } from "@/components/ui";
+import {
+  dangerButtonClass,
+  ErrorMessage,
+  inlineButtonClass,
+  inputClass,
+  labelClass,
+  Notice,
+  secondaryButtonClass,
+} from "@/components/ui";
 import { api, withReference, type Me } from "@/lib/api";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { formatCalendarDate } from "@/lib/academic-years";
@@ -37,10 +45,10 @@ function Content({ me, assessmentId }: { me: Me; assessmentId: string }) {
   if (!school || !hasAnyMarksAccess(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Mark sheet</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Mark sheet</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -86,10 +94,10 @@ function Sheet({ assessmentId }: { assessmentId: string }) {
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Assessment not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Assessment not found</h1>
         <p>
           This assessment does not exist, or it is not one of yours.{" "}
-          <Link href="/classes" className="underline">
+          <Link href="/classes" className="text-link underline underline-offset-2">
             Back to the classes
           </Link>
           .
@@ -98,7 +106,7 @@ function Sheet({ assessmentId }: { assessmentId: string }) {
     );
   }
   if (!sheet) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   const { assessment } = sheet;
@@ -138,23 +146,23 @@ function Sheet({ assessmentId }: { assessmentId: string }) {
   return (
     <>
       <p className="mb-2">
-        <Link href={back} className="text-sm underline">
+        <Link href={back} className="text-sm text-link underline underline-offset-2">
           Back to {sheet.subject.name} marks
         </Link>
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">{assessment.name}</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">{assessment.name}</h1>
+          <p className="text-muted">
             {sheet.subject.name}, {sheet.class.name}, Term {assessment.term}
           </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-muted">
             Done on {formatCalendarDate(assessment.held_on)}, out of {assessment.max_score}
             {assessment.weight !== null && `, weight ${assessment.weight}%`}
           </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-muted">
             Graded on the{" "}
-            <Link href="/grading" className="underline">
+            <Link href="/grading" className="text-link underline underline-offset-2">
               {SCALE_NAMES[sheet.scale.kind]}
             </Link>
           </p>
@@ -317,7 +325,7 @@ function MarksForm({
     <form onSubmit={save} noValidate>
       <Summary scores={scores} didNotSit={didNotSit} students={sheet.students.length} max={max} />
       <ErrorMessage message={problems} />
-      <ul className="mb-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+      <ul className="mb-4 divide-y divide-rule border-y border-rule">
         {sheet.students.map((student) => {
           const row = rows[student.id];
           const value = parseScore(row.text, max);
@@ -326,9 +334,9 @@ function MarksForm({
             <li key={student.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
               <span>
                 {student.full_name}{" "}
-                <span className="text-zinc-600 dark:text-zinc-400">({student.admission_number})</span>
+                <span className="text-muted">({student.admission_number})</span>
                 {!student.in_class && (
-                  <span className="text-zinc-600 dark:text-zinc-400"> (no longer in this class)</span>
+                  <span className="text-muted"> (no longer in this class)</span>
                 )}
               </span>
               <span className="flex items-center gap-3">
@@ -358,7 +366,7 @@ function MarksForm({
           );
         })}
       </ul>
-      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-3 text-sm text-muted">
         Scores out of {max}, with at most one decimal place. Leave a box empty for a mark not entered yet.
       </p>
       <button type="submit" className={inlineButtonClass} disabled={pending}>
@@ -396,7 +404,7 @@ function ReadOnlyMarks({ sheet }: { sheet: MarkSheet }) {
                 <td className={tdClass}>{s.admission_number}</td>
                 <td className={tdClass}>
                   {s.full_name}
-                  {!s.in_class && <span className="text-zinc-600 dark:text-zinc-400"> (no longer in this class)</span>}
+                  {!s.in_class && <span className="text-muted"> (no longer in this class)</span>}
                 </td>
                 <td className={tdClass}>
                   {s.did_not_sit
@@ -491,7 +499,7 @@ function DetailsForm({
   return (
     <section
       aria-labelledby="details-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2 id="details-heading" ref={headingRef} tabIndex={-1} className="mb-4 text-xl font-semibold focus:outline-none">
         Edit {assessment.name}
@@ -570,7 +578,7 @@ function DetailsForm({
             <div className="flex gap-2">
               <button
                 type="button"
-                className="rounded-md bg-red-700 px-3 py-1 font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"
+                className={dangerButtonClass}
                 onClick={onDelete}
                 disabled={pending}
               >
@@ -587,5 +595,5 @@ function DetailsForm({
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

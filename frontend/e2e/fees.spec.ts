@@ -8,6 +8,7 @@ import {
   SCHOOL_C,
   errorMessage,
   logIn,
+  openRoleAllows,
 } from "./helpers";
 
 // School fees (E1): fee structures, issuing bills, optional items,
@@ -236,6 +237,7 @@ test("a finance officer manages fees and sees guardians only on bills", async ({
 
   await logInAs(page, FINANCE_EMAIL);
   await expect(menu(page).getByRole("link", { name: "Fees", exact: true })).toBeVisible();
+  await openRoleAllows(page);
   // The home page names the permissions in plain words.
   for (const permission of ["See fees and bills", "Set fees, issue bills and correct them"]) {
     await expect(page.getByRole("main").getByText(permission, { exact: true })).toBeVisible();
@@ -317,6 +319,14 @@ test("fee pages fit a phone screen without sideways scrolling", async ({ page })
     await expect(page.getByText("Loading...")).toHaveCount(0);
     await page.addStyleTag({ content: 'body { font-family: "DejaVu Sans", Verdana, sans-serif !important; }' });
     expect(await offScreen(page), path).toEqual([]);
+    // Money is right-aligned, so the figures line up, and never split.
+    const amounts = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("main td"))
+        .filter((cell) => /KES/.test(cell.textContent ?? ""))
+        .map((cell) => `${getComputedStyle(cell).textAlign} ${getComputedStyle(cell).whiteSpace}`),
+    );
+    expect(amounts.length, path).toBeGreaterThan(0);
+    expect(new Set(amounts), path).toEqual(new Set(["right nowrap"]));
   }
 });
 

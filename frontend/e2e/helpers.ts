@@ -57,3 +57,12 @@ export async function invite(page: Page, email: string, role: string): Promise<s
 export function uniqueEmail(prefix: string): string {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 1e6)}@example.com`;
 }
+
+// Opens the home page's "What your role allows" list (V1: closed by default,
+// so its items are not visible until opened).
+export async function openRoleAllows(page: Page) {
+  const details = page.getByRole("main").locator("details", { hasText: "What your role allows" });
+  if (!(await details.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await details.locator("summary").click();
+  }
+}

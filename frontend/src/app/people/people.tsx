@@ -6,12 +6,13 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 
 import { AppShell, goToLogin } from "@/components/app-shell";
 import {
-  ErrorMessage,
-  Notice,
   buttonClass,
+  dangerButtonClass,
+  ErrorMessage,
   inlineButtonClass,
   inputClass,
   labelClass,
+  Notice,
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type Me } from "@/lib/api";
@@ -29,10 +30,10 @@ function PeopleContent({ me }: { me: Me }) {
   if (!school) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">People</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">People</h1>
         <p>
           Choose a school first on the{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             home page
           </Link>
           .
@@ -43,7 +44,7 @@ function PeopleContent({ me }: { me: Me }) {
   if (!me.permissions.includes("members.read")) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">People</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">People</h1>
         <p>You do not have access to this page in {school.name}.</p>
       </section>
     );
@@ -156,8 +157,8 @@ function PeopleLists({ me }: { me: Me }) {
 
   return (
     <>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">People</h1>
-      <p className="mb-6 text-zinc-600 dark:text-zinc-400">{me.active_school?.name}</p>
+      <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">People</h1>
+      <p className="mb-6 text-muted">{me.active_school?.name}</p>
       {canManage && <InviteSection schoolName={me.active_school?.name ?? ""} onInvited={reload} />}
       <ErrorMessage message={error} />
       {notice && <Notice>{notice}</Notice>}
@@ -225,7 +226,7 @@ function InviteSection({ schoolName, onInvited }: { schoolName: string; onInvite
   }
 
   return (
-    <section aria-labelledby="invite-heading" className="mb-10 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800">
+    <section aria-labelledby="invite-heading" className="mb-10 rounded-lg border border-rule p-4 sm:p-6">
       <h2 id="invite-heading" className="mb-3 text-xl font-semibold">
         Invite someone
       </h2>
@@ -272,7 +273,7 @@ function InviteSection({ schoolName, onInvited }: { schoolName: string; onInvite
               {pending ? "Creating..." : "Create invitation link"}
             </button>
           </div>
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-3 text-sm text-muted">
             You will get a link to send to this person yourself. It works once and expires after
             7 days. Inviting the same person to the same role again replaces the earlier link.
           </p>
@@ -386,7 +387,7 @@ function ConfirmButtons({
         <button
           ref={yesRef}
           type="button"
-          className="rounded-md bg-red-700 px-3 py-1 font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"
+          className={dangerButtonClass}
           onClick={onConfirm}
           disabled={busy}
         >
@@ -410,8 +411,8 @@ type RowActions<T> = {
 };
 
 const tableClass = "w-full min-w-[36rem] border-collapse text-left text-sm";
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";
 
 function MembersTable({
   members,
@@ -451,7 +452,7 @@ function MembersTable({
                 <tr key={member.id}>
                   <td className={tdClass}>
                     {member.user.full_name}
-                    {isMe && <span className="text-zinc-600 dark:text-zinc-400"> (you)</span>}
+                    {isMe && <span className="text-muted"> (you)</span>}
                   </td>
                   <td className={tdClass}>{member.user.email}</td>
                   <td className={tdClass}>{role}</td>

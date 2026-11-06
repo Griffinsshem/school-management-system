@@ -36,10 +36,10 @@ function SchoolYearContent({ me }: { me: Me }) {
   if (!school) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">School year</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">School year</h1>
         <p>
           Choose a school first on the{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             home page
           </Link>
           .
@@ -50,7 +50,7 @@ function SchoolYearContent({ me }: { me: Me }) {
   if (!me.permissions.includes("academics.read")) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">School year</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">School year</h1>
         <p>You do not have access to this page in {school.name}.</p>
       </section>
     );
@@ -116,8 +116,8 @@ function Years({ schoolName, canManage }: { schoolName: string; canManage: boole
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">School year</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">{schoolName}</p>
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">School year</h1>
+          <p className="text-muted">{schoolName}</p>
         </div>
         {canManage && !editing && list && (
           <button type="button" className={inlineButtonClass} onClick={() => open({ mode: "add" })}>
@@ -143,12 +143,12 @@ function Years({ schoolName, canManage }: { schoolName: string; canManage: boole
       {notice && <Notice>{notice}</Notice>}
 
       {!list ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : (
         <>
           <section
             aria-labelledby="today-heading"
-            className="mb-8 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950"
+            className="mb-8 rounded-md border-l-4 border-action bg-hover p-4"
           >
             <h2 id="today-heading" className="mb-1 text-sm font-medium">
               Today
@@ -200,7 +200,7 @@ function YearSection({
             {year.name}
             {isCurrent && <CurrentBadge />}
           </h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-muted">
             {formatCalendarDate(year.starts_on)} to {formatCalendarDate(year.ends_on)}
           </p>
         </div>
@@ -267,7 +267,7 @@ function YearSection({
 
 function CurrentBadge() {
   return (
-    <span className="ml-2 rounded bg-blue-700 px-1.5 py-0.5 align-middle text-xs font-medium text-white">
+    <span className="ml-2 rounded bg-action px-1.5 py-0.5 align-middle text-xs font-semibold text-on-action">
       Now
     </span>
   );
@@ -307,7 +307,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section
       aria-labelledby="year-form-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2
         id="year-form-heading"
@@ -450,7 +450,7 @@ function AddYearForm({ onSaved, onCancel }: Saving) {
         </div>
         <fieldset className="mt-6">
           <legend className="mb-2 font-medium">
-            Terms <span className="font-normal text-zinc-600 dark:text-zinc-400">(optional, can be added later)</span>
+            Terms <span className="font-normal text-muted">(optional, can be added later)</span>
           </legend>
           <div className="grid gap-4 sm:grid-cols-3">
             {TERM_NUMBERS.map((number, i) => (
@@ -573,7 +573,7 @@ function TermForm({ year, number, onSaved, onCancel }: Saving & { year: Academic
 
   return (
     <Panel title={`Term ${number} of ${year.name}`}>
-      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 text-sm text-muted">
         The school year runs from {formatCalendarDate(year.starts_on)} to {formatCalendarDate(year.ends_on)}.
       </p>
       <form onSubmit={onSubmit} noValidate>
@@ -588,5 +588,5 @@ function TermForm({ year, number, onSaved, onCancel }: Saving & { year: Academic
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

@@ -10,6 +10,7 @@ import {
   errorMessage,
   logIn,
   logInToSchoolA,
+  openRoleAllows,
 } from "./helpers";
 
 // Subjects, the subjects each class takes and their teachers (D3). Each test
@@ -106,7 +107,7 @@ test("a logged-out visitor is sent to the login page", async ({ page }) => {
 test("an administrator keeps the school's subject list", async ({ page }) => {
   await logInToSchoolA(page);
   const id = unique();
-  await page.getByRole("link", { name: "Subjects" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Subjects" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Subjects" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add a subject" }).click();
@@ -211,7 +212,7 @@ test("a subject teacher sees the class and its names, but takes no register", as
   await logIn(page, ATTENDANCE_TEACHER_EMAIL);
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_C })).toBeVisible();
   await expect(page.getByRole("link", { name: "Subjects" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Classes" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Classes" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "My classes" })).toBeVisible();
   await page.getByLabel("School year").selectOption({ label: "E2E now" });
   const row = page.getByRole("row", { name: new RegExp(`^${className}\\b`) });
@@ -226,7 +227,7 @@ test("a subject teacher sees the class and its names, but takes no register", as
   await expect(page.getByRole("heading", { name: "Subjects" })).toHaveCount(0);
 
   // Only class teachers' classes appear on the attendance page.
-  await page.getByRole("link", { name: "Attendance" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Attendance" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Attendance" })).toBeVisible();
   await expect(page.getByText("Loading...")).toHaveCount(0);
   await expect(page.getByRole("row", { name: new RegExp(`^${className}\\b`) })).toHaveCount(0);
@@ -248,8 +249,9 @@ test("a principal sees subjects and their teachers but changes nothing", async (
 
   await logIn(page, PRINCIPAL_EMAIL);
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_A })).toBeVisible();
+  await openRoleAllows(page);
   await expect(page.getByText("See subjects and who teaches them")).toBeVisible();
-  await page.getByRole("link", { name: "Subjects" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Subjects" }).click();
   await expect(subjectRow(page, `Art ${id}`)).toContainText(`A${id}`);
   await expect(page.getByRole("button", { name: "Add a subject" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Edit / })).toHaveCount(0);

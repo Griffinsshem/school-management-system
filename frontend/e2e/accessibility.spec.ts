@@ -194,6 +194,10 @@ for (const scheme of ["light", "dark"] as const) {
     await page.goto("/students");
     await page.getByRole("button", { name: "Add a student" }).click();
     await check("add-student form");
+    // A confirmation with its red "Yes" button (not clicked).
+    await page.getByRole("button", { name: new RegExp(`^Deactivate Amani ${c.id} `) }).click();
+    await expect(page.getByRole("button", { name: "Yes, deactivate" })).toBeFocused();
+    await check("deactivate confirmation");
     await page.goto("/classes");
     await page.getByRole("button", { name: "Add a class" }).click();
     await check("add-class form");

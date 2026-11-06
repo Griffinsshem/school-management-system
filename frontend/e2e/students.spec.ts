@@ -9,7 +9,7 @@ function prefix(): string {
 }
 
 async function openStudents(page: Page) {
-  await page.getByRole("link", { name: "Students" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Students" }).click();
   await expect(page).toHaveURL("/students");
   await expect(page.getByRole("status").filter({ hasText: /Showing|No students/ })).toBeVisible();
 }

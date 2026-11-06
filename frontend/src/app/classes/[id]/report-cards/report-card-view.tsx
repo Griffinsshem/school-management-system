@@ -18,9 +18,9 @@ export function ReportCardView({ data, card }: { data: CardContext; card: Report
   return (
     <article
       aria-labelledby={headingId}
-      className="min-w-0 rounded-lg border border-zinc-300 p-4 break-words sm:p-6 dark:border-zinc-700 print:rounded-none print:border-0 print:p-0"
+      className="min-w-0 rounded-lg border border-rule-strong p-4 break-words sm:p-6 print:rounded-none print:border-0 print:p-0"
     >
-      <header className="mb-4 border-b border-zinc-300 pb-3 dark:border-zinc-700">
+      <header className="mb-4 border-b border-rule-strong pb-3">
         <p className="text-lg font-semibold">{data.school.name}</p>
         <p className="text-sm">
           Term {data.term.number} report, {data.year.name}
@@ -116,11 +116,11 @@ export function ReportCardView({ data, card }: { data: CardContext; card: Report
         {card.comment ? (
           <p className="text-sm whitespace-pre-line">{card.comment.text}</p>
         ) : (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No comment yet.</p>
+          <p className="text-sm text-muted">No comment yet.</p>
         )}
       </section>
 
-      <p className="mt-4 text-xs text-zinc-600 dark:text-zinc-400">Printed on {printedOn()}</p>
+      <p className="mt-4 text-xs text-muted">Printed on {printedOn()}</p>
     </article>
   );
 }
@@ -129,5 +129,5 @@ function printedOn(): string {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "Africa/Nairobi" }).format(new Date());
 }
 
-const thClass = "border-b border-zinc-400 px-1.5 py-1.5 font-medium sm:px-2";
-const tdClass = "border-b border-zinc-200 px-1.5 py-1.5 sm:px-2 dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-1.5 py-1.5 font-medium sm:px-2";
+const tdClass = "border-b border-rule px-1.5 py-1.5 sm:px-2";

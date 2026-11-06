@@ -5,11 +5,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { AppShell, goToLogin } from "@/components/app-shell";
 import {
+  dangerButtonClass,
   ErrorMessage,
-  Notice,
   inlineButtonClass,
   inputClass,
   labelClass,
+  Notice,
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
@@ -37,10 +38,10 @@ function StudentsContent({ me }: { me: Me }) {
   if (!school) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Students</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Students</h1>
         <p>
           Choose a school first on the{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             home page
           </Link>
           .
@@ -51,7 +52,7 @@ function StudentsContent({ me }: { me: Me }) {
   if (!me.permissions.includes("students.read")) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Students</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Students</h1>
         <p>You do not have access to this page in {school.name}.</p>
       </section>
     );
@@ -176,8 +177,8 @@ function StudentsList({ schoolName, canManage }: { schoolName: string; canManage
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">Students</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">{schoolName}</p>
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Students</h1>
+          <p className="text-muted">{schoolName}</p>
         </div>
         {canManage && !editing && (
           <button type="button" className={inlineButtonClass} onClick={() => openPanel({ mode: "add" })}>
@@ -223,7 +224,7 @@ function StudentsList({ schoolName, canManage }: { schoolName: string; canManage
       <ErrorMessage message={error} />
       {notice && <Notice>{notice}</Notice>}
 
-      <p role="status" className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+      <p role="status" className="mb-3 text-sm text-muted">
         {loading
           ? "Loading..."
           : result && result.total > 0
@@ -257,7 +258,7 @@ function StudentsList({ schoolName, canManage }: { schoolName: string; canManage
                 <tr key={student.id}>
                   <td className={tdClass}>{student.admission_number}</td>
                   <td className={tdClass}>
-                    <Link href={`/students/${student.id}`} className="underline">
+                    <Link href={`/students/${student.id}`} className="text-link underline underline-offset-2">
                       {student.full_name}
                     </Link>
                   </td>
@@ -446,7 +447,7 @@ function StudentForm({
   return (
     <section
       aria-labelledby="student-form-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2
         id="student-form-heading"
@@ -539,7 +540,7 @@ function ConfirmDeactivate({
         <button
           ref={yesRef}
           type="button"
-          className="rounded-md bg-red-700 px-3 py-1 font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"
+          className={dangerButtonClass}
           onClick={onConfirm}
           disabled={busy}
         >
@@ -553,5 +554,5 @@ function ConfirmDeactivate({
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

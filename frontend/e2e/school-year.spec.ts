@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PRINCIPAL_EMAIL, SCHOOL_A, SCHOOL_B, errorMessage, logIn, logInToSchoolA } from "./helpers";
+import { PRINCIPAL_EMAIL, SCHOOL_A, SCHOOL_B, errorMessage, logIn, logInToSchoolA, openRoleAllows } from "./helpers";
 
 // Today's date in Kenya, as the API works it out, moved by `days`.
 function kenyaDate(days = 0): string {
@@ -11,7 +11,7 @@ function kenyaDate(days = 0): string {
 }
 
 async function openSchoolYear(page: Page) {
-  await page.getByRole("link", { name: "School year" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "School year" }).click();
   await expect(page).toHaveURL("/school-year");
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
 }
@@ -106,6 +106,7 @@ test("a principal sees the school year but cannot change it", async ({ page }) =
   await page.goto("/login");
   await logIn(page, PRINCIPAL_EMAIL);
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_A })).toBeVisible();
+  await openRoleAllows(page);
   await expect(page.getByText("See the school year and terms")).toBeVisible();
   await openSchoolYear(page);
 

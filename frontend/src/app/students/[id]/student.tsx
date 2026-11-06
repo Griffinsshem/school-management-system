@@ -6,11 +6,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { AppShell, goToLogin } from "@/components/app-shell";
 import {
+  dangerButtonClass,
   ErrorMessage,
-  Notice,
   inlineButtonClass,
   inputClass,
   labelClass,
+  Notice,
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
@@ -45,10 +46,10 @@ function Content({ me, studentId }: { me: Me; studentId: string }) {
   if (!school || !me.permissions.includes("students.read")) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Student</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Student</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -120,10 +121,10 @@ function StudentView({
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Student not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Student not found</h1>
         <p>
           This student does not exist in this school.{" "}
-          <Link href="/students" className="underline">
+          <Link href="/students" className="text-link underline underline-offset-2">
             Back to the students
           </Link>
           .
@@ -132,23 +133,23 @@ function StudentView({
     );
   }
   if (!student) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   return (
     <>
       <p className="mb-2">
-        <Link href="/students" className="text-sm underline">
+        <Link href="/students" className="text-sm text-link underline underline-offset-2">
           Back to the students
         </Link>
       </p>
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">{student.full_name}</h1>
+      <h1 className="mb-4 text-[1.9375rem] leading-tight font-bold tracking-tight">{student.full_name}</h1>
       <dl className="mb-8 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
-        <dt className="text-zinc-600 dark:text-zinc-400">Admission no.</dt>
+        <dt className="text-muted">Admission no.</dt>
         <dd>{student.admission_number}</dd>
-        <dt className="text-zinc-600 dark:text-zinc-400">Date of birth</dt>
+        <dt className="text-muted">Date of birth</dt>
         <dd>{formatBirthDate(student.date_of_birth)}</dd>
-        <dt className="text-zinc-600 dark:text-zinc-400">Status</dt>
+        <dt className="text-muted">Status</dt>
         <dd>{student.is_active ? "Active" : "Inactive"}</dd>
       </dl>
       {readGuardians && <Guardians studentId={studentId} canManage={manageGuardians} />}
@@ -188,18 +189,18 @@ function Fees({ studentId }: { studentId: string }) {
       </h2>
       <ErrorMessage message={error} />
       {!data ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : data.bills.length === 0 ? (
         <p>No bills yet.</p>
       ) : (
         <ul className="space-y-2">
           {data.bills.map((bill) => (
             <li key={bill.id}>
-              <Link href={billPath(bill.id)} className="underline">
+              <Link href={billPath(bill.id)} className="text-link underline underline-offset-2">
                 Term {bill.term.number}, {bill.year.name}
                 <span className="sr-only"> bill</span>
               </Link>
-              : {formatKes(bill.total_kes)} ({bill.class_name})
+              : <span className="whitespace-nowrap">{formatKes(bill.total_kes)}</span> ({bill.class_name})
             </li>
           ))}
         </ul>
@@ -293,11 +294,11 @@ function Guardians({ studentId, canManage }: { studentId: string; canManage: boo
       )}
 
       {!data ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : guardians.length === 0 ? (
         <p>No guardians recorded yet.</p>
       ) : (
-        <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        <ul className="divide-y divide-rule border-y border-rule">
           {guardians.map((guardian) => (
             <li key={guardian.id} className="py-3" aria-label={guardian.full_name}>
               {mode?.kind === "edit" && mode.guardianId === guardian.id ? (
@@ -311,15 +312,15 @@ function Guardians({ studentId, canManage }: { studentId: string; canManage: boo
                 <>
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <span className="font-medium">{guardian.full_name}</span>
-                    <span className="text-zinc-600 dark:text-zinc-400">{relationshipLabel(guardian.relationship)}</span>
+                    <span className="text-muted">{relationshipLabel(guardian.relationship)}</span>
                     {guardian.is_primary && (
-                      <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900 dark:bg-blue-950 dark:text-blue-100">
+                      <span className="rounded border border-rule-strong px-2 py-0.5 text-xs font-semibold">
                         Primary contact
                       </span>
                     )}
                   </div>
                   <p className="mt-1 break-words">
-                    <a href={`tel:${guardian.phone}`} className="underline">
+                    <a href={`tel:${guardian.phone}`} className="text-link underline underline-offset-2">
                       {formatPhone(guardian.phone)}
                     </a>
                     {guardian.email && <span className="ml-3">{guardian.email}</span>}
@@ -333,7 +334,7 @@ function Guardians({ studentId, canManage }: { studentId: string; canManage: boo
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          className="rounded-md bg-red-700 px-3 py-1 font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"
+                          className={dangerButtonClass}
                           onClick={() =>
                             send("DELETE", guardian, undefined, `Removed ${guardian.full_name} from ${data.student.full_name}.`)
                           }
@@ -390,7 +391,7 @@ function Guardians({ studentId, canManage }: { studentId: string; canManage: boo
         </ul>
       )}
       {canManage && full && (
-        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-3 text-sm text-muted">
           A student can have at most {MAX_GUARDIANS_PER_STUDENT} guardians. Remove one to add another.
         </p>
       )}
@@ -519,12 +520,12 @@ function AddGuardian({
   return (
     <section
       aria-labelledby="add-guardian-heading"
-      className="mb-6 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-6 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h3 id="add-guardian-heading" ref={headingRef} tabIndex={-1} className="mb-1 text-lg font-semibold focus:outline-none">
         Add a guardian for {student.full_name}
       </h3>
-      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 text-sm text-muted">
         Start with the mobile number: a parent already recorded for a brother or sister is linked, not added twice.
       </p>
       <ErrorMessage message={error} />
@@ -698,7 +699,7 @@ function EditGuardian({
   return (
     <form onSubmit={save} className="grid max-w-xl gap-4" noValidate aria-label={`Edit ${guardian.full_name}`}>
       <ErrorMessage message={error} />
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-muted">
         Name, number and email change for every student this guardian is linked to.
       </p>
       <div>

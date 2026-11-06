@@ -6,11 +6,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { AppShell, goToLogin } from "@/components/app-shell";
 import {
+  dangerButtonClass,
   ErrorMessage,
-  Notice,
   inlineButtonClass,
   inputClass,
   labelClass,
+  Notice,
   secondaryButtonClass,
 } from "@/components/ui";
 import { api, withReference, type ApiErrorBody, type Me } from "@/lib/api";
@@ -40,10 +41,10 @@ function Content({ me, classId }: { me: Me; classId: string }) {
   if (!school || !canRead) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Class list</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Class list</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -153,10 +154,10 @@ function Students({
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Class not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Class not found</h1>
         <p>
           This class does not exist, or it is not one of yours.{" "}
-          <Link href="/classes" className="underline">
+          <Link href="/classes" className="text-link underline underline-offset-2">
             Back to the classes
           </Link>
           .
@@ -165,7 +166,7 @@ function Students({
     );
   }
   if (!list) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   const count = list.students.length;
@@ -175,14 +176,14 @@ function Students({
   return (
     <>
       <p className="mb-2">
-        <Link href="/classes" className="text-sm underline">
+        <Link href="/classes" className="text-sm text-link underline underline-offset-2">
           Back to the classes
         </Link>
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">{list.class.name}</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">{list.class.name}</h1>
+          <p className="text-muted">
             {count} student{count === 1 ? "" : "s"}
           </p>
           {myPart && myPart.subjects.length > 0 && (
@@ -192,7 +193,7 @@ function Students({
               </p>
               <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
                 {myPart.subjects.map((subject) => (
-                  <Link key={subject.id} href={subjectMarksPath(classId, subject.id)} className="underline">
+                  <Link key={subject.id} href={subjectMarksPath(classId, subject.id)} className="text-link underline underline-offset-2">
                     {subject.name} marks
                   </Link>
                 ))}
@@ -203,23 +204,23 @@ function Students({
             <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
               {attendance && (
                 <>
-                  <Link href={registerPath(classId, kenyaToday())} className="underline">
+                  <Link href={registerPath(classId, kenyaToday())} className="text-link underline underline-offset-2">
                     Today&apos;s register
                   </Link>
-                  <Link href={`/classes/${classId}/attendance/summary`} className="underline">
+                  <Link href={`/classes/${classId}/attendance/summary`} className="text-link underline underline-offset-2">
                     Attendance summary
                   </Link>
                 </>
               )}
               {marksOverview && (
                 <>
-                  <Link href={classMarksPath(classId)} className="underline">
+                  <Link href={classMarksPath(classId)} className="text-link underline underline-offset-2">
                     Marks overview
                   </Link>
-                  <Link href={classResultsPath(classId)} className="underline">
+                  <Link href={classResultsPath(classId)} className="text-link underline underline-offset-2">
                     Term results
                   </Link>
-                  <Link href={reportCardsPath(classId)} className="underline">
+                  <Link href={reportCardsPath(classId)} className="text-link underline underline-offset-2">
                     Report cards
                   </Link>
                 </>
@@ -448,7 +449,7 @@ function StudentActions({
           <button
             ref={yesRef}
             type="button"
-            className="rounded-md bg-red-700 px-3 py-1 font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"
+            className={dangerButtonClass}
             onClick={() => send("DELETE", undefined, `Removed ${label} from ${list.class.name}.`)}
             disabled={busy}
           >
@@ -582,12 +583,12 @@ function AddStudents({
   return (
     <section
       aria-labelledby="add-students-heading"
-      className="mb-8 rounded-lg border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800"
+      className="mb-8 rounded-lg border border-rule p-4 sm:p-6"
     >
       <h2 id="add-students-heading" ref={headingRef} tabIndex={-1} className="mb-1 text-xl font-semibold focus:outline-none">
         Add students to {className}
       </h2>
-      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 text-sm text-muted">
         Only active students without a class this school year are listed.
       </p>
       <form onSubmit={search} role="search" className="mb-4 flex max-w-xl flex-wrap items-end gap-2">
@@ -613,14 +614,14 @@ function AddStudents({
       <ErrorMessage message={error} />
 
       {!found ? (
-        <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        <p className="text-muted">Loading...</p>
       ) : found.students.length === 0 ? (
         <p className="mb-4">
           {query.q ? `No students without a class match "${query.q}".` : "Every active student has a class this year."}
         </p>
       ) : (
         <fieldset className="mb-4">
-          <legend className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <legend className="mb-2 text-sm text-muted">
             {found.total > found.students.length
               ? `Showing ${found.students.length} of ${found.total}. Search to narrow the list.`
               : `${found.total} student${found.total === 1 ? "" : "s"} without a class.`}
@@ -636,7 +637,7 @@ function AddStudents({
                     onChange={() => toggle(student.id)}
                   />
                   <span>
-                    {student.full_name} <span className="text-zinc-600 dark:text-zinc-400">({student.admission_number})</span>
+                    {student.full_name} <span className="text-muted">({student.admission_number})</span>
                   </span>
                 </label>
               </li>
@@ -662,5 +663,5 @@ function joinNames(names: string[]): string {
   return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";

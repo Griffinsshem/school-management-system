@@ -44,10 +44,10 @@ function Content({ me, classId, date }: { me: Me; classId: string; date: string 
   if (!school || !canSeeAttendance(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Attendance</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Attendance</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -203,10 +203,10 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Class not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Class not found</h1>
         <p>
           This class does not exist, or it is not one of yours.{" "}
-          <Link href="/attendance" className="underline">
+          <Link href="/attendance" className="text-link underline underline-offset-2">
             Back to attendance
           </Link>
           .
@@ -223,14 +223,14 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
   return (
     <>
       <p className="mb-2">
-        <Link href="/attendance" className="text-sm underline">
+        <Link href="/attendance" className="text-sm text-link underline underline-offset-2">
           Back to attendance
         </Link>
       </p>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">
+      <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">
         {register ? `${register.class.name} register` : "Register"}
       </h1>
-      <p className="mb-4 text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 text-muted">
         {formatDay(date)}
         {register?.term_number ? `, Term ${register.term_number}` : ""}
       </p>
@@ -270,7 +270,7 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
       {noRegister ? (
         <p>{noRegister}</p>
       ) : !register ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : (
         <>
           <RegisterStatus register={register} />
@@ -281,7 +281,7 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
               <p className="mb-3 font-medium" aria-live="polite">
                 Present {counts.present}, absent {counts.absent}, late {counts.late}
               </p>
-              <ul className="mb-6 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+              <ul className="mb-6 divide-y divide-rule border-y border-rule">
                 {register.marks.map(({ student }) => {
                   const mark = draft[student.id];
                   return (
@@ -298,7 +298,7 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
                         <div className="flex flex-wrap justify-between gap-x-4">
                           <span>
                             {student.full_name}{" "}
-                            <span className="text-zinc-600 dark:text-zinc-400">({student.admission_number})</span>
+                            <span className="text-muted">({student.admission_number})</span>
                           </span>
                           <span>
                             {register.taken
@@ -335,7 +335,7 @@ function RegisterView({ classId, date }: { classId: string; date: string }) {
             </>
           )}
           <p className="mt-8">
-            <Link href={`/classes/${classId}/attendance/summary`} className="underline">
+            <Link href={`/classes/${classId}/attendance/summary`} className="text-link underline underline-offset-2">
               Term summary for {register.class.name}
             </Link>
           </p>
@@ -391,7 +391,7 @@ function MarkInput({
         {student.full_name} ({student.admission_number})
       </legend>
       <span aria-hidden="true">
-        {student.full_name} <span className="text-zinc-600 dark:text-zinc-400">({student.admission_number})</span>
+        {student.full_name} <span className="text-muted">({student.admission_number})</span>
       </span>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex gap-3">

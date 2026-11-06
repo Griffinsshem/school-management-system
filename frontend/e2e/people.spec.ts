@@ -12,7 +12,7 @@ import {
 } from "./helpers";
 
 async function openPeople(page: Page) {
-  await page.getByRole("link", { name: "People" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "People" }).click();
   await expect(page).toHaveURL("/people");
   await expect(page.getByRole("heading", { level: 2, name: "Members" })).toBeVisible();
 }

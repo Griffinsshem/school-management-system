@@ -7,6 +7,7 @@ import {
   SCHOOL_C,
   errorMessage,
   logIn,
+  openRoleAllows,
 } from "./helpers";
 
 // These tests use E2E School C, which has its own administrator and teacher,
@@ -128,8 +129,9 @@ test("a teacher takes today's register and corrects it", async ({ page }) => {
   await logOut(page);
 
   await logInAs(page, ATTENDANCE_TEACHER_EMAIL);
+  await openRoleAllows(page);
   await expect(page.getByText("Take attendance for the classes you teach")).toBeVisible();
-  await page.getByRole("link", { name: "Attendance" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Attendance" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Attendance" })).toBeVisible();
   const row = page.getByRole("row", { name: new RegExp(`^${className}`) });
   await expect(row).toContainText("Not taken");
@@ -207,7 +209,7 @@ test("an administrator sees which registers were taken and a term summary", asyn
     );
   }
 
-  await page.getByRole("link", { name: "Attendance" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Attendance" }).click();
   // Today: not taken yet.
   await expect(page.getByRole("row", { name: new RegExp(`^${className}`) })).toContainText("Not taken");
   await page.getByLabel("Day").fill(kenyaDate(-1));
@@ -230,8 +232,9 @@ test("an administrator sees which registers were taken and a term summary", asyn
 
 test("a principal reads attendance but takes no registers", async ({ page }) => {
   await logInAs(page, PRINCIPAL_EMAIL);
+  await openRoleAllows(page);
   await expect(page.getByText("See every class's attendance")).toBeVisible();
-  await page.getByRole("link", { name: "Attendance" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Attendance" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Attendance" })).toBeVisible();
   await expect(page.getByLabel("Day")).toHaveValue(kenyaDate());

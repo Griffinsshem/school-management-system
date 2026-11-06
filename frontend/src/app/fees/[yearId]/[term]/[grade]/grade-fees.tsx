@@ -23,7 +23,7 @@ import {
 } from "@/lib/fees";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 
-import { NoFeesAccess, tdClass, thClass } from "../../../fees";
+import { NoFeesAccess, amountClass, tdClass, thClass } from "../../../fees";
 
 // One grade's fees for a term (E1): its fee structure (edited until bills
 // are issued), issuing bills, and the students' bills.
@@ -79,10 +79,10 @@ function Grade({ yearId, term, grade }: { yearId: string; term: number; grade: s
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Fees not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Fees not found</h1>
         <p>
           {notFound}{" "}
-          <Link href="/fees" className="underline">
+          <Link href="/fees" className="text-link underline underline-offset-2">
             Back to fees
           </Link>
           .
@@ -91,7 +91,7 @@ function Grade({ yearId, term, grade }: { yearId: string; term: number; grade: s
     );
   }
   if (!data) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   const structure = data.structure;
@@ -106,12 +106,12 @@ function Grade({ yearId, term, grade }: { yearId: string; term: number; grade: s
   return (
     <>
       <p className="mb-2">
-        <Link href={feesPath(yearId, term)} className="text-sm underline">
+        <Link href={feesPath(yearId, term)} className="text-sm text-link underline underline-offset-2">
           Back to fees
         </Link>
       </p>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">{data.grade.name} fees</h1>
-      <p className="mb-6 text-zinc-600 dark:text-zinc-400">
+      <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">{data.grade.name} fees</h1>
+      <p className="mb-6 text-muted">
         Term {data.term.number}, {data.year.name}
       </p>
 
@@ -135,7 +135,7 @@ function Grade({ yearId, term, grade }: { yearId: string; term: number; grade: s
           <p>No fee structure yet for this term.</p>
         )}
         {issued && structure && (
-          <p className="mt-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-3 max-w-2xl text-sm text-muted">
             Bills were first issued on {formatDayOf(structure.issued_at!)}
             {structure.issued_by && ` by ${structure.issued_by}`}. The fee structure can no longer be changed:
             correct single bills with adjustments.
@@ -170,7 +170,7 @@ function StructureView({ structure }: { structure: Structure }) {
             <th scope="col" className={thClass}>
               Item
             </th>
-            <th scope="col" className={thClass}>
+            <th scope="col" className={`${thClass} ${amountClass}`}>
               Amount
             </th>
             <th scope="col" className={thClass}>
@@ -184,7 +184,7 @@ function StructureView({ structure }: { structure: Structure }) {
               <th scope="row" className={`${tdClass} font-normal`}>
                 {item.name}
               </th>
-              <td className={tdClass}>{formatKes(item.amount_kes)}</td>
+              <td className={`${tdClass} ${amountClass}`}>{formatKes(item.amount_kes)}</td>
               <td className={tdClass}>{item.is_optional ? "Optional, added per student" : "Every student"}</td>
             </tr>
           ))}
@@ -194,7 +194,7 @@ function StructureView({ structure }: { structure: Structure }) {
             <th scope="row" className="px-2 py-2 font-medium">
               Compulsory fees
             </th>
-            <td className="px-2 py-2 font-medium">{formatKes(structure.compulsory_total_kes)}</td>
+            <td className={`px-2 py-2 font-medium ${amountClass}`}>{formatKes(structure.compulsory_total_kes)}</td>
             <td />
           </tr>
         </tfoot>
@@ -299,7 +299,7 @@ function StructureEditor({
 
   return (
     <form onSubmit={save} noValidate className="max-w-2xl">
-      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-4 text-sm text-muted">
         List this term&apos;s fees in whole shillings. Every student is billed the compulsory items; optional items
         (such as boarding or transport) are added to single students&apos; bills. Up to {MAX_FEE_ITEMS} items.
       </p>
@@ -307,7 +307,7 @@ function StructureEditor({
       <ol className="mb-4 space-y-3">
         {rows.map((row, index) => (
           <li key={row.key}>
-            <fieldset className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <fieldset className="flex flex-wrap items-end gap-3 rounded-lg border border-rule p-3">
               <legend className="sr-only">Item {index + 1}</legend>
               <div className="min-w-0 flex-1 basis-40">
                 <label htmlFor={`name-${row.key}`} className={labelClass}>
@@ -440,7 +440,7 @@ function IssueBills({
           {first ? `Issue bills to ${students}` : `Bill ${students} not billed yet`}
         </button>
       ) : (
-        <div className="rounded-lg border border-amber-400 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950">
+        <div className="rounded-md border-l-4 border-warn-border bg-warn-soft p-4">
           <p className="mb-3 text-sm font-medium" id="issue-confirm">
             Issue {count} bill{count === 1 ? "" : "s"} for Term {data.term.number}? Bills cannot be deleted; mistakes
             are corrected with adjustments.
@@ -491,7 +491,7 @@ function Bills({ data }: { data: GradeFees }) {
               <th scope="col" className={thClass}>
                 Class
               </th>
-              <th scope="col" className={thClass}>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
                 Total
               </th>
             </tr>
@@ -502,7 +502,7 @@ function Bills({ data }: { data: GradeFees }) {
                 <th scope="row" className={`${tdClass} font-normal`}>
                   <Link
                     href={billPath(bill.id)}
-                    className="underline"
+                    className="text-link underline underline-offset-2"
                     aria-label={`${bill.student.full_name}'s bill`}
                   >
                     {bill.student.full_name}
@@ -510,7 +510,7 @@ function Bills({ data }: { data: GradeFees }) {
                 </th>
                 <td className={tdClass}>{bill.student.admission_number}</td>
                 <td className={tdClass}>{bill.class_name}</td>
-                <td className={tdClass}>{formatKes(bill.total_kes)}</td>
+                <td className={`${tdClass} ${amountClass}`}>{formatKes(bill.total_kes)}</td>
               </tr>
             ))}
           </tbody>
@@ -519,7 +519,7 @@ function Bills({ data }: { data: GradeFees }) {
               <th scope="row" colSpan={3} className="px-2 py-2 font-medium">
                 All bills
               </th>
-              <td className="px-2 py-2 font-medium">{formatKes(total)}</td>
+              <td className={`px-2 py-2 font-medium ${amountClass}`}>{formatKes(total)}</td>
             </tr>
           </tfoot>
         </table>

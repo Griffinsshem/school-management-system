@@ -32,10 +32,10 @@ function Content({ me, classId }: { me: Me; classId: string }) {
   if (!school || !hasAnyMarksAccess(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Marks overview</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Marks overview</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -102,10 +102,10 @@ function Overview({ classId }: { classId: string }) {
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Marks not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Marks not found</h1>
         <p>
           This class does not exist, or you are not its class teacher.{" "}
-          <Link href="/classes" className="underline">
+          <Link href="/classes" className="text-link underline underline-offset-2">
             Back to the classes
           </Link>
           .
@@ -137,19 +137,19 @@ function Overview({ classId }: { classId: string }) {
   return (
     <>
       <p className="mb-2">
-        <Link href={`/classes/${classId}`} className="text-sm underline">
+        <Link href={`/classes/${classId}`} className="text-sm text-link underline underline-offset-2">
           Back to {marks?.class.name ?? "the class"}
         </Link>
         {term !== null && (
-          <Link href={classResultsPath(classId, term)} className="ml-4 text-sm underline">
+          <Link href={classResultsPath(classId, term)} className="ml-4 text-sm text-link underline underline-offset-2">
             Term results
           </Link>
         )}
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">Marks overview</h1>
-          {marks && <p className="text-zinc-600 dark:text-zinc-400">{marks.class.name}</p>}
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Marks overview</h1>
+          {marks && <p className="text-muted">{marks.class.name}</p>}
         </div>
         {term !== null && (
           <div>
@@ -179,16 +179,16 @@ function Overview({ classId }: { classId: string }) {
       <ErrorMessage message={error} />
 
       {!marks ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : columns.length === 0 ? (
         <p>No assessments in Term {marks.term.number} yet.</p>
       ) : marks.students.length === 0 ? (
         <p>No students in {marks.class.name} yet.</p>
       ) : (
         <>
-          <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mb-3 text-sm text-muted">
             Each mark with its percentage and grade on the{" "}
-            <Link href="/grading" className="underline">
+            <Link href="/grading" className="text-link underline underline-offset-2">
               {SCALE_NAMES[marks.scale.kind]}
             </Link>
             . A subject&apos;s term total adds up the assessments each student sat. Scroll the table sideways to see
@@ -205,17 +205,17 @@ function Overview({ classId }: { classId: string }) {
                   {columns.map((column) =>
                     column.kind === "assessment" ? (
                       <th key={column.key} scope="col" className={thClass}>
-                        <Link href={`/assessments/${column.assessment.id}`} className="underline underline-offset-4">
+                        <Link href={`/assessments/${column.assessment.id}`} className="text-link underline underline-offset-4">
                           {column.subject}: {column.assessment.name}
                         </Link>
-                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">
+                        <span className="block font-normal text-muted">
                           out of {column.assessment.max_score}
                         </span>
                       </th>
                     ) : (
                       <th key={column.key} scope="col" className={thClass}>
                         {column.subject}: Term {marks.term.number}{" "}
-                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">
+                        <span className="block font-normal text-muted">
                           {column.weighted ? "weighted" : "total"}
                         </span>
                       </th>
@@ -228,7 +228,7 @@ function Overview({ classId }: { classId: string }) {
                   <tr key={student.id}>
                     <th scope="row" className={`${tdClass} font-medium`}>
                       {student.full_name}
-                      <span className="block font-normal text-zinc-600 dark:text-zinc-400">
+                      <span className="block font-normal text-muted">
                         {student.admission_number}
                         {!student.in_class && ", no longer in this class"}
                       </span>
@@ -259,14 +259,14 @@ type Column =
 
 function Cell({ mark }: { mark: OverviewMark | undefined }) {
   if (!mark) {
-    return <span className="text-zinc-600 dark:text-zinc-400">Not entered</span>;
+    return <span className="text-muted">Not entered</span>;
   }
   if (mark.did_not_sit || mark.score === null || !mark.result) {
     return <>Did not sit</>;
   }
   return (
     <>
-      {formatScore(mark.score)} <span className="text-zinc-600 dark:text-zinc-400">({mark.result.percent}%)</span>{" "}
+      {formatScore(mark.score)} <span className="text-muted">({mark.result.percent}%)</span>{" "}
       <span className="font-medium">{mark.result.grade}</span>
     </>
   );
@@ -274,7 +274,7 @@ function Cell({ mark }: { mark: OverviewMark | undefined }) {
 
 function TermCell({ result }: { result: TermResult | undefined }) {
   if (!result) {
-    return <span className="text-zinc-600 dark:text-zinc-400">—</span>;
+    return <span className="text-muted">—</span>;
   }
   if (result.weighted) {
     // The raw totals would not match a weighted percentage.
@@ -287,11 +287,11 @@ function TermCell({ result }: { result: TermResult | undefined }) {
   return (
     <>
       {formatScore(result.score)} / {result.max_score}{" "}
-      <span className="text-zinc-600 dark:text-zinc-400">({result.percent}%)</span>{" "}
+      <span className="text-muted">({result.percent}%)</span>{" "}
       <span className="font-medium">{result.grade}</span>
     </>
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 align-bottom font-medium whitespace-nowrap dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top whitespace-nowrap dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 align-bottom font-medium whitespace-nowrap";
+const tdClass = "border-b border-rule px-3 py-2 align-top whitespace-nowrap";

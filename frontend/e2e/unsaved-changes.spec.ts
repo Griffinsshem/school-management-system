@@ -274,35 +274,61 @@ test("nothing asks when nothing was changed", async ({ page }) => {
   expect(asked).toEqual([]);
 });
 
-test("the header keeps the menu on its own row", async ({ page }) => {
+test("the header keeps the menu on its own row, and folds it away on a phone", async ({ page }) => {
   await logInAsAdmin(page);
+  const header = page.getByRole("banner");
+  const menuButton = header.getByRole("button", { name: "Menu" });
+  const nav = page.getByRole("navigation", { name: "Main" });
   const rows = async () =>
     page.evaluate(() => {
-      const top = (selector: string) => Math.round(document.querySelector(selector)!.getBoundingClientRect().top);
-      const links = Array.from(document.querySelectorAll('nav[aria-label="Main"] li')).map((li) =>
-        Math.round(li.getBoundingClientRect().top),
-      );
+      const top = (element: Element) => Math.round(element.getBoundingClientRect().top);
+      const buttons = Array.from(document.querySelectorAll("header button"));
+      const links = Array.from(document.querySelectorAll('nav[aria-label="Main"] li')).map(top);
       return {
-        title: top("header p.font-semibold"),
-        logOut: top("header button"),
+        title: top(document.querySelector("header p")!),
+        logOut: top(buttons.find((b) => b.textContent === "Log out")!),
         menuTops: [...new Set(links)].length,
         menuTop: links[0],
+        links: links.length,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
     });
 
-  // Desktop: the app's name and Log out on one row, the whole menu on one
-  // row below it.
+  // V1: the band names the school, so people know where they are working.
+  await expect(header.getByText(SCHOOL_C, { exact: true })).toBeVisible();
+
+  // Desktop: the school's name and Log out on one row, the whole menu on
+  // one row below it, and no Menu button.
   await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(nav).toBeVisible();
+  await expect(menuButton).toBeHidden();
   const wide = await rows();
   expect(Math.abs(wide.title - wide.logOut)).toBeLessThan(12);
   expect(wide.menuTop).toBeGreaterThan(wide.title);
   expect(wide.menuTops).toBe(1);
   expect(wide.overflow).toBe(0);
 
-  // The narrowest phone: the menu may wrap, but nothing runs off the screen.
+  // The narrowest phone: the menu is folded away behind "Menu", which
+  // says whether it is open (for screen readers).
   await page.setViewportSize({ width: 320, height: 740 });
+  await expect(nav).toBeHidden();
+  await expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  await menuButton.click();
+  await expect(menuButton).toHaveAttribute("aria-expanded", "true");
+  await expect(nav).toBeVisible();
   const narrow = await rows();
+  // One link per line, below the name, and nothing runs off the screen.
   expect(narrow.menuTop).toBeGreaterThan(narrow.title);
+  expect(narrow.menuTops).toBe(narrow.links);
   expect(narrow.overflow).toBe(0);
+
+  // Choosing a page folds the menu away, also on the page left behind:
+  // Next.js keeps that page, so going back must not find the menu open.
+  await nav.getByRole("link", { name: "Classes", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Classes" })).toBeVisible();
+  await expect(nav).toBeHidden();
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1, name: "Classes" })).toBeHidden();
+  await expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  await expect(nav).toBeHidden();
 });

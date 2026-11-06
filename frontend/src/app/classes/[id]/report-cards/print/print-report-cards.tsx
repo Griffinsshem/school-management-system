@@ -67,13 +67,13 @@ function AllCards({ classId }: { classId: string }) {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div>
           <p className="mb-2">
-            <Link href={reportCardsPath(classId, term ?? undefined)} className="text-sm underline">
+            <Link href={reportCardsPath(classId, term ?? undefined)} className="text-sm text-link underline underline-offset-2">
               Back to the report cards
             </Link>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Print report cards</h1>
+          <h1 className="text-[1.9375rem] leading-tight font-bold tracking-tight">Print report cards</h1>
           {data && (
-            <p className="text-zinc-600 dark:text-zinc-400">
+            <p className="text-muted">
               {data.class.name}, Term {data.term.number}: {data.students.length} report card
               {data.students.length === 1 ? "" : "s"}, one per page.
             </p>
@@ -87,7 +87,7 @@ function AllCards({ classId }: { classId: string }) {
       </div>
       <ErrorMessage message={error} />
       {!data ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : data.students.length === 0 ? (
         <p>No students in {data.class.name} yet.</p>
       ) : (

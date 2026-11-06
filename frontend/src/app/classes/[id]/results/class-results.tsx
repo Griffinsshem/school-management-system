@@ -27,10 +27,10 @@ function Content({ me, classId }: { me: Me; classId: string }) {
   if (!school || !hasAnyMarksAccess(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Term results</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Term results</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -97,10 +97,10 @@ function Results({ classId }: { classId: string }) {
   if (notFound) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Results not found</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Results not found</h1>
         <p>
           This class does not exist, or you are not its class teacher.{" "}
-          <Link href="/classes" className="underline">
+          <Link href="/classes" className="text-link underline underline-offset-2">
             Back to the classes
           </Link>
           .
@@ -114,15 +114,15 @@ function Results({ classId }: { classId: string }) {
   return (
     <>
       <p className="mb-2 flex flex-wrap gap-x-4">
-        <Link href={`/classes/${classId}`} className="text-sm underline">
+        <Link href={`/classes/${classId}`} className="text-sm text-link underline underline-offset-2">
           Back to {results?.class.name ?? "the class"}
         </Link>
         {term !== null && (
           <>
-            <Link href={classMarksPath(classId, term)} className="text-sm underline">
+            <Link href={classMarksPath(classId, term)} className="text-sm text-link underline underline-offset-2">
               Marks overview
             </Link>
-            <Link href={reportCardsPath(classId, term)} className="text-sm underline">
+            <Link href={reportCardsPath(classId, term)} className="text-sm text-link underline underline-offset-2">
               Report cards
             </Link>
           </>
@@ -130,8 +130,8 @@ function Results({ classId }: { classId: string }) {
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">Term results</h1>
-          {results && <p className="text-zinc-600 dark:text-zinc-400">{results.class.name}</p>}
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Term results</h1>
+          {results && <p className="text-muted">{results.class.name}</p>}
         </div>
         {term !== null && (
           <div>
@@ -161,16 +161,16 @@ function Results({ classId }: { classId: string }) {
       <ErrorMessage message={error} />
 
       {!results ? (
-        !error && <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
+        !error && <p className="text-muted">Loading...</p>
       ) : results.subjects.length === 0 ? (
         <p>No assessments in Term {results.term.number} yet.</p>
       ) : results.students.length === 0 ? (
         <p>No students in {results.class.name} yet.</p>
       ) : (
         <>
-          <p className="mb-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mb-3 max-w-2xl text-sm text-muted">
             Each subject&apos;s term result on the{" "}
-            <Link href="/grading" className="underline">
+            <Link href="/grading" className="text-link underline underline-offset-2">
               {SCALE_NAMES[results.scale.kind]}
             </Link>
             .{" "}
@@ -201,7 +201,7 @@ function Results({ classId }: { classId: string }) {
                     <th key={subject.id} scope="col" className={thClass}>
                       {subject.name}
                       {subject.weighted && (
-                        <span className="block font-normal text-zinc-600 dark:text-zinc-400">weighted</span>
+                        <span className="block font-normal text-muted">weighted</span>
                       )}
                     </th>
                   ))}
@@ -211,11 +211,11 @@ function Results({ classId }: { classId: string }) {
                 {results.students.map((student) => (
                   <tr key={student.id}>
                     {results.show_positions && (
-                      <td className={tdClass}>{student.position ?? <span className="text-zinc-600 dark:text-zinc-400">—</span>}</td>
+                      <td className={tdClass}>{student.position ?? <span className="text-muted">—</span>}</td>
                     )}
                     <th scope="row" className={`${tdClass} font-medium`}>
                       {student.full_name}
-                      <span className="block font-normal text-zinc-600 dark:text-zinc-400">
+                      <span className="block font-normal text-muted">
                         {student.admission_number}
                         {!student.in_class && ", no longer in this class"}
                       </span>
@@ -234,7 +234,7 @@ function Results({ classId }: { classId: string }) {
             </table>
           </div>
           {results.show_positions && (
-            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-3 text-sm text-muted">
               Positions go to complete results only; students with the same points share a place.
             </p>
           )}
@@ -246,21 +246,21 @@ function Results({ classId }: { classId: string }) {
 
 function OverallCell({ overall }: { overall: Overall | null }) {
   if (!overall) {
-    return <span className="text-zinc-600 dark:text-zinc-400">—</span>;
+    return <span className="text-muted">—</span>;
   }
   const detail = `${overall.total_points} points, ${overall.subjects_counted} subject${overall.subjects_counted === 1 ? "" : "s"}`;
   return (
     <>
       <span className="font-medium">{overall.grade}</span>
       {!overall.complete && <span className="ml-1 font-medium">(incomplete)</span>}
-      <span className="block text-zinc-600 dark:text-zinc-400">{detail}</span>
+      <span className="block text-muted">{detail}</span>
     </>
   );
 }
 
 function SubjectCell({ result }: { result: TermResult | undefined }) {
   if (!result) {
-    return <span className="text-zinc-600 dark:text-zinc-400">—</span>;
+    return <span className="text-muted">—</span>;
   }
   return (
     <>
@@ -269,5 +269,5 @@ function SubjectCell({ result }: { result: TermResult | undefined }) {
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 align-bottom font-medium whitespace-nowrap dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top whitespace-nowrap dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 align-bottom font-medium whitespace-nowrap";
+const tdClass = "border-b border-rule px-3 py-2 align-top whitespace-nowrap";

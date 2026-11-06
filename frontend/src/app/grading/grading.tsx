@@ -25,10 +25,10 @@ function Content({ me }: { me: Me }) {
   if (!school || !hasAnyMarksAccess(me)) {
     return (
       <section>
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">Grading</h1>
+        <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Grading</h1>
         <p>
           {school ? `You do not have access to this page in ${school.name}.` : "Choose a school first."}{" "}
-          <Link href="/" className="underline">
+          <Link href="/" className="text-link underline underline-offset-2">
             Go to the home page
           </Link>
           .
@@ -65,14 +65,14 @@ function Scales({ schoolName, canManage }: { schoolName: string; canManage: bool
   }, []);
 
   if (!grading) {
-    return error ? <ErrorMessage message={error} /> : <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>;
+    return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
   return (
     <>
       <div className="mb-6">
-        <h1 className="mb-1 text-2xl font-semibold tracking-tight">Grading</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">{schoolName}</p>
+        <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">Grading</h1>
+        <p className="text-muted">{schoolName}</p>
       </div>
       <p className="mb-6 max-w-2xl">
         Each mark is turned into a percentage, rounded to a whole number, and graded on its class&apos;s scale.
@@ -84,7 +84,7 @@ function Scales({ schoolName, canManage }: { schoolName: string; canManage: bool
         <h2 id="kcse-heading" className="mb-1 text-xl font-semibold">
           {SCALE_NAMES.kcse}
         </h2>
-        <p className="mb-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mb-3 max-w-2xl text-sm text-muted">
           For Form classes.{" "}
           {grading.kcse.is_default
             ? "These are the default boundaries, a common choice for school exams; KNEC sets its own for KCSE itself."
@@ -132,7 +132,7 @@ function Scales({ schoolName, canManage }: { schoolName: string; canManage: bool
         <h2 id="cbc-heading" className="mb-1 text-xl font-semibold">
           {SCALE_NAMES.cbc}
         </h2>
-        <p className="mb-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mb-3 max-w-2xl text-sm text-muted">
           For PP1 to Grade 12: the eight KJSEA performance levels published by KNEC. It cannot be changed.
         </p>
         <BandTable caption="CBC performance levels" bands={grading.cbc.bands} />
@@ -184,7 +184,7 @@ function Positions({
       <h2 id="positions-heading" className="mb-1 text-xl font-semibold">
         Class positions
       </h2>
-      <p className="mb-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mb-3 max-w-2xl text-sm text-muted">
         Term results can rank students within their class. Kenya no longer ranks candidates in national exams,
         so this is off unless the school chooses it.
       </p>
@@ -321,5 +321,5 @@ function KcseForm({
   );
 }
 
-const thClass = "border-b border-zinc-300 px-3 py-2 font-medium dark:border-zinc-700";
-const tdClass = "border-b border-zinc-200 px-3 py-2 align-top dark:border-zinc-800";
+const thClass = "border-b border-rule-strong px-3 py-2 font-medium";
+const tdClass = "border-b border-rule px-3 py-2 align-top";
