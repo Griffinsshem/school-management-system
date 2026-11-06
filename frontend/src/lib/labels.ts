@@ -34,6 +34,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   "grading.manage": "Set the school's KCSE grade boundaries",
   "fees.read": "See fees and bills",
   "fees.manage": "Set fees, issue bills and correct them",
+  "payments.record": "Record fee payments and print receipts",
+  "payments.cancel": "Cancel fee payments, giving a reason",
 };
 
 // Every role a school can give, in the order they are offered.

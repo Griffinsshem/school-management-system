@@ -30,7 +30,7 @@ import {
   type Relationship,
   type StudentGuardians,
 } from "@/lib/guardians";
-import { billPath, canSeeFees, formatKes, type StudentBills } from "@/lib/fees";
+import { billPath, canSeeFees, describeBalance, formatKes, type StudentBills } from "@/lib/fees";
 import { formatBirthDate, type Student } from "@/lib/students";
 
 // The menu marks "Students" as the current page.
@@ -200,7 +200,8 @@ function Fees({ studentId }: { studentId: string }) {
                 Term {bill.term.number}, {bill.year.name}
                 <span className="sr-only"> bill</span>
               </Link>
-              : <span className="whitespace-nowrap">{formatKes(bill.total_kes)}</span> ({bill.class_name})
+              : <span className="whitespace-nowrap">{formatKes(bill.total_kes)}</span> ({bill.class_name}),{" "}
+              {describeBalance(bill.balance_kes)}
             </li>
           ))}
         </ul>

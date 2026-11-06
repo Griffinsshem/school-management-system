@@ -79,6 +79,8 @@ export const config = {
     "/fees",
     "/fees/:yearId/:term/:grade",
     "/fees/bills/:id",
+    "/fees/payments",
+    "/fees/receipts/:id",
     "/grading",
     "/people",
     "/school-year",

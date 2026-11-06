@@ -8,6 +8,41 @@ export const MAX_FEE_ITEMS = 30;
 export const MAX_FEE_ITEM_NAME = 60;
 export const MAX_ADJUSTMENT_REASON = 200;
 export const MAX_FEE_AMOUNT = 1_000_000;
+// Payments (E2, see backend/app/models/payments.py).
+export const MAX_REFERENCE = 40;
+export const MAX_PAID_BY = 100;
+export const MAX_CANCEL_REASON = 200;
+export const MPESA_CODE = /^[A-Z0-9]{10}$/;
+
+export type PaymentMethod = "cash" | "mpesa" | "bank" | "cheque";
+
+export const PAYMENT_METHODS: { value: PaymentMethod; label: string; reference: string | null }[] = [
+  { value: "mpesa", label: "M-Pesa", reference: "M-Pesa transaction code" },
+  { value: "cash", label: "Cash", reference: null },
+  { value: "bank", label: "Bank deposit or transfer", reference: "Bank reference" },
+  { value: "cheque", label: "Cheque", reference: "Cheque number" },
+];
+
+export function methodLabel(method: PaymentMethod): string {
+  return PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method;
+}
+
+// What a bill (or a row of bills) says about money: a balance below 0
+// means the family paid more than was owed.
+type Money = { total_kes: number; paid_kes: number; balance_kes: number };
+
+export type Payment = {
+  id: string;
+  receipt_number: number;
+  amount_kes: number;
+  method: PaymentMethod;
+  reference: string | null;
+  paid_on: string;
+  paid_by: string | null;
+  recorded_at: string | null;
+  recorded_by: string | null;
+  cancelled: { reason: string; cancelled_at: string | null; cancelled_by: string | null } | null;
+};
 
 type StudentRef = { id: string; full_name: string; admission_number: string };
 
@@ -22,6 +57,9 @@ export type GradeRow = {
   classes: number;
   students: number;
   billed: number;
+  billed_kes: number;
+  paid_kes: number;
+  outstanding_kes: number;
   structure: { items: number; compulsory_total_kes: number; issued: boolean } | null;
 };
 
@@ -43,7 +81,7 @@ export type GradeFees = TermRef & {
   grade: { code: string; name: string };
   can_manage: boolean;
   structure: Structure | null;
-  bills: { id: string; student: StudentRef; class_name: string; total_kes: number }[];
+  bills: ({ id: string; student: StudentRef; class_name: string } & Money)[];
   not_billed: { student: StudentRef; class_name: string }[];
 };
 
@@ -66,7 +104,7 @@ export type Bill = TermRef & {
   issued_at: string | null;
   issued_by: string | null;
   lines: BillLine[];
-  total_kes: number;
+  payments: Payment[];
   optional_items: { id: string; name: string; amount_kes: number }[];
   guardians: {
     full_name: string;
@@ -76,11 +114,28 @@ export type Bill = TermRef & {
     email: string | null;
   }[];
   can_manage: boolean;
+  can_record_payments: boolean;
+  can_cancel_payments: boolean;
+} & Money;
+
+export type Receipt = {
+  payment: Payment;
+  school: { name: string };
+  bill: TermRef & { id: string; student: StudentRef; class_name: string; grade: { code: string; name: string } };
+  balance_after_kes: number;
+};
+
+export type DayPayments = {
+  date: string;
+  payments: (Payment & { bill_id: string; student: StudentRef; class_name: string })[];
+  totals: { method: PaymentMethod; name: string; amount_kes: number }[];
+  total_kes: number;
+  cancelled: number;
 };
 
 export type StudentBills = {
   student: StudentRef;
-  bills: { id: string; term: { id: string; number: number }; year: { name: string }; class_name: string; total_kes: number }[];
+  bills: ({ id: string; term: { id: string; number: number }; year: { name: string }; class_name: string } & Money)[];
 };
 
 export function canSeeFees(me: Me): boolean {
@@ -100,6 +155,43 @@ export function gradeFeesPath(yearId: string, term: number, grade: string): stri
 
 export function billPath(id: string): string {
   return `/fees/bills/${id}`;
+}
+
+export function receiptPath(paymentId: string): string {
+  return `/fees/receipts/${paymentId}`;
+}
+
+export function paymentsDayPath(day?: string): string {
+  return day ? `/fees/payments?${new URLSearchParams({ date: day })}` : "/fees/payments";
+}
+
+// Receipt numbers are shown with six digits: Receipt No. 000012.
+export function formatReceiptNumber(n: number): string {
+  return String(n).padStart(6, "0");
+}
+
+// "KES 7,000 still owed", "Fully paid", "Overpaid by KES 500 (credit)".
+export function describeBalance(balance: number): string {
+  if (balance > 0) {
+    return `${formatKes(balance)} still owed`;
+  }
+  if (balance < 0) {
+    return `Overpaid by ${formatKes(-balance)} (credit)`;
+  }
+  return "Fully paid";
+}
+
+// A balance in a table cell: "KES 7,000", or "KES 500 credit" when overpaid.
+export function formatBalance(balance: number): string {
+  return balance < 0 ? `${formatKes(-balance)} credit` : formatKes(balance);
+}
+
+// A calendar date (2027-02-09) as people read it: 9 Feb 2027.
+export function formatDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(
+    new Date(Date.UTC(y, m - 1, d)),
+  );
 }
 
 // The day of a moment (when bills were issued, a line added), in Kenya.

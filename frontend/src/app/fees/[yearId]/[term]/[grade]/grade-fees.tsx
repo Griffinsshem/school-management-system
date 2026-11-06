@@ -15,6 +15,7 @@ import {
   describeFeesError,
   feesPath,
   formatDayOf,
+  formatBalance,
   formatKes,
   parseAmount,
   type GradeFees,
@@ -470,6 +471,9 @@ function Bills({ data }: { data: GradeFees }) {
     return null;
   }
   const total = data.bills.reduce((sum, bill) => sum + bill.total_kes, 0);
+  const paid = data.bills.reduce((sum, bill) => sum + bill.paid_kes, 0);
+  // A credit on one bill does not lower what another family owes.
+  const outstanding = data.bills.reduce((sum, bill) => sum + Math.max(bill.balance_kes, 0), 0);
   return (
     <section aria-labelledby="bills-heading">
       <h2 id="bills-heading" className="mb-3 text-xl font-semibold">
@@ -494,6 +498,12 @@ function Bills({ data }: { data: GradeFees }) {
               <th scope="col" className={`${thClass} ${amountClass}`}>
                 Total
               </th>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
+                Paid
+              </th>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
+                Balance
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -511,6 +521,8 @@ function Bills({ data }: { data: GradeFees }) {
                 <td className={tdClass}>{bill.student.admission_number}</td>
                 <td className={tdClass}>{bill.class_name}</td>
                 <td className={`${tdClass} ${amountClass}`}>{formatKes(bill.total_kes)}</td>
+                <td className={`${tdClass} ${amountClass}`}>{formatKes(bill.paid_kes)}</td>
+                <td className={`${tdClass} ${amountClass}`}>{formatBalance(bill.balance_kes)}</td>
               </tr>
             ))}
           </tbody>
@@ -520,10 +532,17 @@ function Bills({ data }: { data: GradeFees }) {
                 All bills
               </th>
               <td className={`px-2 py-2 font-medium ${amountClass}`}>{formatKes(total)}</td>
+              <td className={`px-2 py-2 font-medium ${amountClass}`}>{formatKes(paid)}</td>
+              <td className={`px-2 py-2 font-medium ${amountClass}`}>{formatKes(outstanding)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {/* (Not a visually hidden note inside the table: positioned out of the
+          sideways-scrolling box, it would widen the whole page on phones.) */}
+      <p className="mt-2 text-sm text-muted">
+        The balance total is what is still owed: a credit on one bill is not taken off another.
+      </p>
     </section>
   );
 }

@@ -323,7 +323,7 @@ storage. React escapes all text it displays and the app adds no HTML of its
 own, which removes the common causes. A policy with per-request nonces, as
 Next.js recommends, is planned as a separate change.
 
-### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries, report comments, fee structures and bills only
+### Row-Level Security covers students, invitations, academic years, terms, classes, class teachers, enrolments, attendance, guardians, subjects, assessments, marks, grade boundaries, report comments, fees, bills, payments and receipt counters only
 
 `memberships` and `audit_events` carry a `school_id` but are not under
 Row-Level Security: memberships must be read across schools to list a user's
@@ -434,6 +434,34 @@ amounts never go into logs (a test captures the logs to prove it).
   this note must be revisited.
 - Amounts are whole shillings sent as JSON integers; decimals, text and
   booleans are refused, so nothing is guessed or rounded.
+
+### Money received cannot be silently changed
+
+Payments (E2) are kept the way a cash book is: only added to.
+
+- The API's database user has no `UPDATE` or `DELETE` on `payments` and
+  `payment_cancellations`, and cannot delete a `receipt_counters` row; the
+  staging check confirms this on the real database. A mistake becomes a
+  visible cancellation with a reason, who cancelled and when; the payment
+  and its receipt number stay.
+- Receipt numbers have no gaps and are never reused: each comes from the
+  school's counter row in the same transaction as the payment. Setting a
+  counter lower (the API never does) could not reuse a number either: the
+  database's unique receipt number per school would refuse the next save.
+- Separation of duties (decision of 2026-11-06): finance officers record
+  payments but only school administrators cancel them, so the person who
+  takes the money cannot also quietly remove the record of it.
+- The same M-Pesa code, bank reference or cheque number is refused a second
+  time in a school (a unique index, ignoring case), the commonest way the
+  same money gets entered twice.
+- Payers' names are optional and phone numbers are not stored. Payments are
+  personal financial information: Row-Level Security keeps them inside
+  their school, and names, amounts and references never go into logs (a
+  test captures the logs to prove it).
+- Printed or saved receipts leave the system's protection, like report
+  cards: what happens to them is the school's responsibility.
+- The schema owner (`sms_migrator`) could still change payments, as for
+  bills: its password stays with the people who run migrations.
 
 ### Student search is not indexed for large schools
 

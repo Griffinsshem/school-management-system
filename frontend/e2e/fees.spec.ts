@@ -1,13 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { problems } from "./axe";
+import { call, feeClass, issued, logInAs, logOut, menu, offScreen } from "./fees-data";
 import {
   ATTENDANCE_ADMIN_EMAIL,
   ATTENDANCE_TEACHER_EMAIL,
   FINANCE_EMAIL,
-  SCHOOL_C,
   errorMessage,
-  logIn,
   openRoleAllows,
 } from "./helpers";
 
@@ -18,111 +17,8 @@ import {
 
 const LEAVE = "You have unsaved changes. Leave this page and lose them?";
 
-type Json = Record<string, unknown>;
-
-async function call(page: Page, method: string, path: string, body?: object) {
-  return page.evaluate(
-    async ([method, path, body]) => {
-      const response = await fetch(`/api/v1${path}`, {
-        method,
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      return { status: response.status, json: (await response.json()) as Json };
-    },
-    [method, path, body] as const,
-  );
-}
-
-let counter = 0;
-function unique(): string {
-  counter += 1;
-  return `${Date.now().toString(36).slice(-5).toUpperCase()}${counter}`;
-}
-
-async function logInAs(page: Page, email: string) {
-  await page.goto("/login");
-  await logIn(page, email);
-  await expect(page.getByRole("heading", { level: 1, name: SCHOOL_C })).toBeVisible();
-}
-
-async function logOut(page: Page) {
-  await page.getByRole("button", { name: "Log out" }).click();
-  await expect(page).toHaveURL("/login");
-}
-
-// A school year of the test's own (the first calendar year from 2030 not
-// used yet) with Term 1, a Grade 7 class with Amani and Baraka, and Amani's
-// mother as her guardian. Set up by the administrator. `widest` uses the
-// longest stream (20) and admission numbers (30) the school can enter.
-async function feeClass(page: Page, { widest = false } = {}) {
-  const id = unique();
-  const { json } = await call(page, "GET", "/school/academic-years");
-  const used = new Set((json.academic_years as { starts_on: string }[]).map((y) => Number(y.starts_on.slice(0, 4))));
-  let calendar = 2030;
-  while (used.has(calendar)) {
-    calendar += 1;
-  }
-  const year = await call(page, "POST", "/school/academic-years", {
-    name: `Fees ${calendar}`,
-    starts_on: `${calendar}-01-06`,
-    ends_on: `${calendar}-11-20`,
-    terms: [{ number: 1, starts_on: `${calendar}-01-06`, ends_on: `${calendar}-04-03` }],
-  });
-  expect(year.status).toBe(201);
-  const yearId = (year.json.academic_year as { id: string }).id;
-  const made = await call(page, "POST", "/school/classes", {
-    academic_year_id: yearId,
-    grade: "grade_7",
-    stream: widest ? id.padEnd(20, "W") : id,
-  });
-  expect(made.status).toBe(201);
-  const classId = (made.json.class as { id: string }).id;
-  const students: Record<string, string> = {};
-  for (const [n, first] of ["Amani", "Baraka"].entries()) {
-    const student = await call(page, "POST", "/school/students", {
-      admission_number: widest ? `FE${id}N${n + 1}`.padEnd(30, "0") : `FE${id}-${n + 1}`,
-      full_name: `${first} ${id}`,
-    });
-    expect(student.status).toBe(201);
-    students[first] = (student.json.student as { id: string }).id;
-  }
-  const enrol = await call(page, "POST", `/school/classes/${classId}/students`, { student_ids: Object.values(students) });
-  expect(enrol.status).toBe(201);
-  const phone = `+2547${String(Date.now() + counter).slice(-8)}`;
-  const guardian = await call(page, "POST", `/school/students/${students.Amani}/guardians`, {
-    full_name: `Wanjiru ${id}`,
-    phone,
-    relationship: "mother",
-  });
-  expect(guardian.status).toBe(201);
-  const grade = `/school/fees/years/${yearId}/terms/1/grades/grade_7`;
-  const yearName = `Fees ${calendar}`;
-  return { id, yearId, yearName, classId, students, phone, grade, gradePage: `/fees/${yearId}/1/grade_7` };
-}
-
-type FeeClass = Awaited<ReturnType<typeof feeClass>>;
-
-// Tuition and Activity for everyone, Boarding optional; bills issued.
-async function issued(page: Page, f: FeeClass) {
-  const items = [
-    { name: "Tuition", amount_kes: 15_000 },
-    { name: "Activity", amount_kes: 2_000 },
-    { name: "Boarding", amount_kes: 30_000, is_optional: true },
-  ];
-  expect((await call(page, "PUT", f.grade, { items })).status).toBe(200);
-  const result = await call(page, "POST", `${f.grade}/issue`);
-  expect(result.status).toBe(200);
-  const bills = result.json.bills as { id: string; student: { id: string } }[];
-  return Object.fromEntries(bills.map((b) => [b.student.id === f.students.Amani ? "Amani" : "Baraka", b.id]));
-}
-
 function item(page: Page, n: number) {
   return page.getByRole("group", { name: `Item ${n}` });
-}
-
-function menu(page: Page) {
-  return page.getByRole("navigation", { name: "Main" });
 }
 
 test("a logged-out visitor is sent to the login page", async ({ page }) => {
@@ -272,33 +168,6 @@ test("a teacher has no Fees menu or page", async ({ page }) => {
   const yearId = (response.json.academic_years as { id: string }[])[0].id;
   expect((await call(page, "GET", `/school/fees/years/${yearId}/terms/1`)).status).toBe(403);
 });
-
-// Elements running past the right edge of the screen, except inside a box
-// that scrolls sideways on its own (as in report-cards.spec.ts).
-async function offScreen(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const width = document.documentElement.clientWidth;
-    const scrolls = (el: Element | null): boolean => {
-      for (let e = el; e && e !== document.body; e = e.parentElement) {
-        if (["auto", "scroll"].includes(getComputedStyle(e).overflowX)) {
-          return true;
-        }
-      }
-      return false;
-    };
-    const outside: string[] = [];
-    if (document.documentElement.scrollWidth > width) {
-      outside.push(`page is ${document.documentElement.scrollWidth}px wide`);
-    }
-    for (const el of Array.from(document.querySelectorAll("main *"))) {
-      const box = el.getBoundingClientRect();
-      if (box.width > 0 && box.right > width + 0.5 && !scrolls(el.parentElement)) {
-        outside.push(`${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 30)}" ends at ${Math.round(box.right)}px`);
-      }
-    }
-    return outside;
-  });
-}
 
 // At 320 px (the narrowest common phone), with a wide font such as some
 // computers use instead of Arial, the longest class stream and admission

@@ -170,6 +170,8 @@ class Bill(db.Model):
         UniqueConstraint("student_id", "term_id", name="uq_bills_student_term"),
         # Lets lines prove the same bill, structure and school.
         UniqueConstraint("id", "structure_id", "school_id", name="uq_bills_id_structure_school"),
+        # Lets payments (E2) prove the same school.
+        UniqueConstraint("id", "school_id", name="uq_bills_id_school"),
         Index("ix_bills_term_structure", "term_id", "structure_id"),
     )
 

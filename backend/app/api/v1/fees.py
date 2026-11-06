@@ -18,7 +18,11 @@
   finance officers (`fees.manage`) do everything; principals (`fees.read`)
   read; nobody else sees fees (403). Another school's ids are not found.
 - Every change is audited (`fee_structure.saved`, `fee_bills.issued`,
-  `bill.item_added`, `bill.adjusted`), with ids only. Fee data is personal
+  `bill.item_added`, `bill.adjusted`), with ids only.
+- E2: bills, grade pages, the term overview and the student page also show
+  what has been paid and what is still owed. A bill's balance is its total
+  minus its payments that are not cancelled (see app/api/v1/payments.py);
+  it is worked out each time, never stored, and below 0 when overpaid. Fee data is personal
   financial information: logs carry ids and counts, never names or amounts.
 """
 
@@ -30,7 +34,14 @@ from sqlalchemy import delete, func, select
 
 from app import audit
 from app.api.v1.guardians import _links
-from app.auth.permissions import FEES_MANAGE, FEES_READ, current_permissions, permission_required
+from app.auth.permissions import (
+    FEES_MANAGE,
+    FEES_READ,
+    PAYMENTS_CANCEL,
+    PAYMENTS_RECORD,
+    current_permissions,
+    permission_required,
+)
 from app.auth.schools import current_school
 from app.errors import ApiError
 from app.extensions import db
@@ -41,6 +52,8 @@ from app.models import (
     Enrolment,
     FeeItem,
     FeeStructure,
+    Payment,
+    PaymentCancellation,
     School,
     SchoolClass,
     Student,
@@ -156,6 +169,24 @@ def _totals(bill_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
     return {bill_id: int(total) for bill_id, total in rows}
 
 
+def _paid(bill_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """What has been paid on each bill: its payments that are not cancelled."""
+    if not bill_ids:
+        return {}
+    rows = db.session.execute(
+        select(Payment.bill_id, func.sum(Payment.amount_kes))
+        .outerjoin(PaymentCancellation, PaymentCancellation.payment_id == Payment.id)
+        .where(Payment.bill_id.in_(bill_ids), PaymentCancellation.id.is_(None))
+        .group_by(Payment.bill_id)
+    )
+    return {bill_id: int(paid) for bill_id, paid in rows}
+
+
+def _money(total: int, paid: int) -> dict:
+    """A bill's figures: balance below 0 means overpaid (a credit)."""
+    return {"total_kes": total, "paid_kes": paid, "balance_kes": total - paid}
+
+
 def _user_names(ids: set[uuid.UUID | None]) -> dict[uuid.UUID, str]:
     ids = {i for i in ids if i is not None}
     if not ids:
@@ -226,13 +257,14 @@ def _grade_view(term: Term, grade: str) -> dict:
             .where(Bill.structure_id == structure.id)
             .order_by(Student.full_name, Student.admission_number)
         ).all()
-        totals = _totals([bill.id for bill, _, _ in rows])
+        ids = [bill.id for bill, _, _ in rows]
+        totals, paid = _totals(ids), _paid(ids)
         bills = [
             {
                 "id": str(bill.id),
                 "student": _student_json(student),
                 "class_name": school_class.name,
-                "total_kes": totals.get(bill.id, 0),
+                **_money(totals.get(bill.id, 0), paid.get(bill.id, 0)),
             }
             for bill, student, school_class in rows
         ]
@@ -287,7 +319,8 @@ def _bill_json(bill: Bill) -> dict:
             }
             for line in lines
         ],
-        "total_kes": sum(line.amount_kes for line in lines),
+        **_money(sum(line.amount_kes for line in lines), _paid([bill.id]).get(bill.id, 0)),
+        "payments": _payments_json(bill),
         "optional_items": [
             {"id": str(item.id), "name": item.name, "amount_kes": item.amount_kes}
             for item in _items(structure)
@@ -305,6 +338,46 @@ def _bill_json(bill: Bill) -> dict:
             for link, guardian in _links(student)
         ],
         "can_manage": _can_manage(),
+        "can_record_payments": PAYMENTS_RECORD in current_permissions(),
+        "can_cancel_payments": PAYMENTS_CANCEL in current_permissions(),
+    }
+
+
+def _payments_json(bill: Bill) -> list[dict]:
+    """A bill's payments, in receipt order, cancelled ones included."""
+    rows = db.session.execute(
+        select(Payment, PaymentCancellation)
+        .outerjoin(PaymentCancellation, PaymentCancellation.payment_id == Payment.id)
+        .where(Payment.bill_id == bill.id)
+        .order_by(Payment.receipt_number)
+    ).all()
+    names = _user_names(
+        {p.recorded_by_user_id for p, _ in rows}
+        | {c.cancelled_by_user_id for _, c in rows if c is not None}
+    )
+    return [payment_json(p, c, names) for p, c in rows]
+
+
+def payment_json(
+    payment: Payment, cancellation: PaymentCancellation | None, names: dict[uuid.UUID, str]
+) -> dict:
+    return {
+        "id": str(payment.id),
+        "receipt_number": payment.receipt_number,
+        "amount_kes": payment.amount_kes,
+        "method": payment.method,
+        "reference": payment.reference,
+        "paid_on": payment.paid_on.isoformat(),
+        "paid_by": payment.paid_by,
+        "recorded_at": _iso(payment.created_at),
+        "recorded_by": names.get(payment.recorded_by_user_id),
+        "cancelled": None
+        if cancellation is None
+        else {
+            "reason": cancellation.reason,
+            "cancelled_at": _iso(cancellation.created_at),
+            "cancelled_by": names.get(cancellation.cancelled_by_user_id),
+        },
     }
 
 
@@ -342,6 +415,23 @@ def term_fees(year_id: uuid.UUID, number: int):
             .group_by(FeeStructure.grade)
         ).all()
     )
+    # Per grade: what was billed, what has been paid, and what is still owed.
+    # An overpaid bill's credit does not lower another family's debt, so
+    # "outstanding" adds up only the bills with something left to pay.
+    bill_rows = db.session.execute(
+        select(FeeStructure.grade, Bill.id)
+        .join(Bill, Bill.structure_id == FeeStructure.id)
+        .where(FeeStructure.term_id == term.id)
+    ).all()
+    bill_ids = [bill_id for _, bill_id in bill_rows]
+    totals, paid = _totals(bill_ids), _paid(bill_ids)
+    money: dict[str, dict[str, int]] = {}
+    for grade, bill_id in bill_rows:
+        sums = money.setdefault(grade, {"billed_kes": 0, "paid_kes": 0, "outstanding_kes": 0})
+        total, received = totals.get(bill_id, 0), paid.get(bill_id, 0)
+        sums["billed_kes"] += total
+        sums["paid_kes"] += received
+        sums["outstanding_kes"] += max(total - received, 0)
     structures = {
         structure.grade: structure
         for structure in db.session.scalars(
@@ -360,6 +450,7 @@ def term_fees(year_id: uuid.UUID, number: int):
                 "classes": class_count,
                 "students": students.get(grade, 0),
                 "billed": billed.get(grade, 0),
+                **money.get(grade, {"billed_kes": 0, "paid_kes": 0, "outstanding_kes": 0}),
                 "structure": None
                 if structure is None
                 else {
@@ -618,7 +709,8 @@ def student_bills(student_id: uuid.UUID):
         .where(Bill.student_id == student.id)
         .order_by(Term.starts_on.desc())
     ).all()
-    totals = _totals([bill.id for bill, *_ in rows])
+    ids = [bill.id for bill, *_ in rows]
+    totals, paid = _totals(ids), _paid(ids)
     return jsonify(
         {
             "student": _student_json(student),
@@ -628,7 +720,7 @@ def student_bills(student_id: uuid.UUID):
                     "term": {"id": str(term.id), "number": term.number},
                     "year": {"name": year.name},
                     "class_name": school_class.name,
-                    "total_kes": totals.get(bill.id, 0),
+                    **_money(totals.get(bill.id, 0), paid.get(bill.id, 0)),
                 }
                 for bill, term, year, school_class in rows
             ],

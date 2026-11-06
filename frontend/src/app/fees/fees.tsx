@@ -8,7 +8,7 @@ import { AppShell, goToLogin } from "@/components/app-shell";
 import { ErrorMessage, inputClass, labelClass } from "@/components/ui";
 import { api, withReference, type Me } from "@/lib/api";
 import type { AcademicYear, AcademicYearList } from "@/lib/academic-years";
-import { canSeeFees, feesPath, formatKes, gradeFeesPath, type TermFees } from "@/lib/fees";
+import { canSeeFees, feesPath, formatKes, gradeFeesPath, paymentsDayPath, type TermFees } from "@/lib/fees";
 
 // School fees for one term (E1): every grade with classes that year, its
 // fee structure and how many of its students are billed.
@@ -191,11 +191,17 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
   }
   return (
     <>
-      <p className="mb-4 max-w-2xl text-sm text-muted">
+      <p className="mb-2 max-w-2xl text-sm text-muted">
         Each grade has one fee structure per term.{" "}
         {data.can_manage
           ? "Open a grade to set its fees and issue bills to its students."
-          : "Open a grade to see its fees and bills."}
+          : "Open a grade to see its fees and bills."}{" "}
+        Outstanding is what is still owed on bills not yet fully paid.
+      </p>
+      <p className="mb-4">
+        <Link href={paymentsDayPath()} className="font-medium text-link underline underline-offset-2">
+          Payments on a day
+        </Link>
       </p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
@@ -215,6 +221,15 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
               </th>
               <th scope="col" className={thClass}>
                 Students billed
+              </th>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
+                Billed
+              </th>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
+                Paid
+              </th>
+              <th scope="col" className={`${thClass} ${amountClass}`}>
+                Outstanding
               </th>
             </tr>
           </thead>
@@ -236,6 +251,9 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
                 <td className={tdClass}>
                   {row.billed} of {row.students}
                 </td>
+                <td className={`${tdClass} ${amountClass}`}>{formatKes(row.billed_kes)}</td>
+                <td className={`${tdClass} ${amountClass}`}>{formatKes(row.paid_kes)}</td>
+                <td className={`${tdClass} ${amountClass}`}>{formatKes(row.outstanding_kes)}</td>
               </tr>
             ))}
           </tbody>

@@ -156,14 +156,18 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/classes/{id}/report-cards?term=1` | Same readers as the results: `200` with the results (as above) plus `school`, `year`, `can_comment`, `position_out_of` (when positions are shown) and, per student, `attendance` (`present`, `late`, `absent`, `days_recorded`) and `comment` (`text`, `updated_at`, `updated_by`, or `null`); or `404` (D7) |
 | GET    | `/api/v1/school/classes/{id}/report-cards/{student_id}?term=1` | Same: one card as `student`, or `404` if the student is not on the class's results (D7) |
 | PUT    | `/api/v1/school/classes/{id}/report-cards/{student_id}/comment?term=1` | Needs `marks.record`, or `marks.record_own` as the class teacher: `{"comment": "..."}`, plain text up to 500 characters (`""` clears it): `200` (the card), `403`, `404` or `422` (D7) |
-| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}` | Needs `fees.read`: `200 {"term", "year", "can_manage", "grades"}`, each grade with classes that year with `classes`, `students` (active, enrolled), `billed` and its `structure` (`items`, `compulsory_total_kes`, `issued`, or `null`); or `404` (E1) |
-| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.read`: `200 {"term", "year", "grade", "can_manage", "structure", "bills", "not_billed"}` (the structure's `items`, `compulsory_total_kes`, `issued_at`/`issued_by`, `updated_at`/`updated_by`, or `null`), or `404` (no classes of that grade that year) (E1) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}` | Needs `fees.read`: `200 {"term", "year", "can_manage", "grades"}`, each grade with classes that year with `classes`, `students` (active, enrolled), `billed`, and (E2) `billed_kes`, `paid_kes` and `outstanding_kes` (only bills with something left to pay), and its `structure` (`items`, `compulsory_total_kes`, `issued`, or `null`); or `404` (E1) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.read`: `200 {"term", "year", "grade", "can_manage", "structure", "bills", "not_billed"}` (each bill with `total_kes`, `paid_kes` and `balance_kes`, E2; the structure's `items`, `compulsory_total_kes`, `issued_at`/`issued_by`, `updated_at`/`updated_by`, or `null`), or `404` (no classes of that grade that year) (E1) |
 | PUT    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.manage`: `{"items": [{"name", "amount_kes", "is_optional"?}]}`, 0 to 30 items, the whole list in order; names 1 to 60 characters, unique ignoring case; amounts whole shillings (JSON integers) from 1 to 1,000,000: `200` (as GET), `404`, `409` (`structure_issued`) or `422` (E1) |
 | POST   | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/issue` | Needs `fees.manage`: bill every active student enrolled in the grade's classes that year who has no bill this term, with the compulsory items: `200 {"billed": N, ...}` (as GET), `404` or `422` (`no_fee_items`) (E1) |
-| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`) and `can_manage`; or `404` (E1) |
+| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, `paid_kes` and `balance_kes` (below 0 when overpaid) and its `payments` in receipt order, cancelled ones with `cancelled` (`reason`, `cancelled_at`, `cancelled_by`) (E2), the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`), `can_manage`, `can_record_payments` and `can_cancel_payments`; or `404` (E1) |
 | POST   | `/api/v1/school/fees/bills/{id}/items` | Needs `fees.manage`: `{"fee_item_id"}`, an optional item of the bill's structure: `201` (the bill), `404`, `409` (`item_already_on_bill`) or `422` (`not_an_optional_item`) (E1) |
 | POST   | `/api/v1/school/fees/bills/{id}/adjustments` | Needs `fees.manage`: `{"amount_kes", "reason"}`, a whole number from -1,000,000 to 1,000,000 but not 0, and a one-line reason of 1 to 200 characters: `201` (the bill), `404` or `422` (`total_below_zero`, or invalid) (E1) |
-| GET    | `/api/v1/school/students/{id}/bills` | Needs `fees.read`: `200 {"student", "bills"}`, newest term first, each with `term`, `year`, `class_name` and `total_kes`; or `404` (E1) |
+| GET    | `/api/v1/school/students/{id}/bills` | Needs `fees.read`: `200 {"student", "bills"}`, newest term first, each with `term`, `year`, `class_name`, `total_kes`, `paid_kes` and `balance_kes` (E2); or `404` (E1) |
+| POST   | `/api/v1/school/fees/bills/{id}/payments` | Needs `payments.record`: `{"amount_kes", "method", "reference"?, "paid_on", "paid_by"?}`: a whole number from 1 to 1,000,000; `cash`, `mpesa`, `bank` or `cheque`; no reference for cash, the 10-character M-Pesa code (any case, stored in capitals), or a one-line bank reference or cheque number of 1 to 40 characters; the date paid, not in the future and at most 365 days back (Kenyan time); an optional one-line payer name up to 100 characters (blank means none): `201 {"payment", "bill"}` with the next receipt number, `404`, `409` (`duplicate_reference`) or `422` (E2) |
+| GET    | `/api/v1/school/fees/payments/{id}` | Needs `fees.read`: `200 {"payment", "school", "bill", "balance_after_kes"}`, everything a receipt shows; the balance is the bill's just after this payment, so a reprint shows the same figure; or `404` (E2) |
+| POST   | `/api/v1/school/fees/payments/{id}/cancellation` | Needs `payments.cancel`: `{"reason"}`, one line of 1 to 200 characters: `201` (the bill), `404`, `409` (`already_cancelled`) or `422` (E2) |
+| GET    | `/api/v1/school/fees/payments?date=YYYY-MM-DD` | Needs `fees.read`: `200 {"date", "payments", "totals", "total_kes", "cancelled"}`: the payments recorded that day (Kenyan time; today by default) in receipt order, each with its `bill_id`, `student` and `class_name`; totals by method leave out cancelled payments; or `422` (E2) |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -273,6 +277,8 @@ every endpoint checks on the server).
 | `grading.manage`   | `school_admin`                          | Changing the school's KCSE grade boundaries and whether results show class positions (anyone with a marks permission reads both) |
 | `fees.read`        | `school_admin`, `principal`, `finance_officer` | Reading fee structures and bills, with the contacts of billed students' guardians on each bill |
 | `fees.manage`      | `school_admin`, `finance_officer`       | Setting fee structures, issuing bills, adding optional items and adjustments |
+| `payments.record`  | `school_admin`, `finance_officer`       | Recording fee payments against bills (E2); payments and receipts are read with `fees.read` |
+| `payments.cancel`  | `school_admin`                          | Cancelling a payment with a reason (E2): finance officers record but cannot cancel |
 
 Teachers have no access to student records: they see only the class lists
 of their own classes, with each student's name and admission number. They
@@ -281,7 +287,8 @@ get no guardian (parent) data at all: contact goes through the office
 
 Finance officers see students only inside the fee pages (E1): a bill shows
 the student's name, admission number and class, and the guardians'
-contacts for fee follow-up (decision of 2026-11-04). They have no
+contacts for fee follow-up (decision of 2026-11-04). They record payments
+but cannot cancel them (E2, decision of 2026-11-06). They have no
 `students.read` or `guardians.read`, so not the student or guardian pages,
 nor the search by phone. Teachers and registrars see no fees.
 
@@ -672,8 +679,52 @@ E1 (decisions of 2026-11-04):
   `bill.item_added`, `bill.adjusted`), with ids only; the bill lines
   themselves record each amount, who added it and when. Logs carry ids and
   counts, never names or amounts.
-- Payments, receipts, balances carried to the next term and statements to
-  parents are not part of E1.
+- Payments and receipts came in E2 (below); balances carried to the next
+  term and statements to parents are not built yet.
+
+### Payments and receipts
+
+E2 (decisions of 2026-11-06):
+
+- A payment is money received against one bill (`payments`): whole
+  shillings from 1 to 1,000,000; cash, M-Pesa, bank or cheque with its
+  reference (none for cash; the 10-character M-Pesa code; a bank reference
+  or cheque number); the date paid (not in the future, at most 365 days
+  back); and optionally the payer's name. Several payments can go against
+  one bill, and paying more than is owed is allowed: the bill then shows a
+  credit (its balance is below 0).
+- A bill's balance is its total minus its payments that are not
+  cancelled. It is worked out each time, never stored. The term overview
+  shows per grade what was billed, paid and is still outstanding;
+  outstanding adds up only bills with something left to pay, so one
+  family's credit never lowers another's debt.
+- Every payment takes the school's next receipt number (`receipt_counters`,
+  one row per school, raised in the same transaction as the payment), so
+  numbers have no gaps, are never used twice, and a failed save uses none.
+  Two payments saved at once get one number each (a database test proves
+  it).
+- The same M-Pesa code, bank reference or cheque number is never recorded
+  twice in a school, ignoring case (a unique index; the API answers `409`).
+  A cancelled payment keeps its reference.
+- A mistake is cancelled with a one-line reason
+  (`payment_cancellations`, at most one per payment). The payment stays
+  listed as cancelled, no longer counts, and its receipt number is not used
+  again. To fix an amount, cancel the payment and record it again. Only
+  school administrators cancel; finance officers record.
+- Payments and cancellations are never changed or deleted: the API's
+  database user has no `UPDATE` or `DELETE` on them, and cannot delete a
+  receipt counter. Recording and cancelling lock the student's row, as bill
+  changes do.
+- A receipt is a page printed or saved as PDF from the browser; it shows the
+  bill's balance just after the payment, so a reprint shows the same
+  figures, and `CANCELLED` with the reason when cancelled.
+- "Payments on a day" lists what was recorded that day (Kenyan time) with
+  totals by method, cancelled payments listed but not counted.
+- Audited as `payment.recorded` and `payment.cancelled`, with ids only.
+  Logs carry ids, never names, amounts or references.
+- Not built yet: matching M-Pesa payments automatically (Daraja), SMS or
+  email receipts, moving a credit to the next term, refunds of cash, fee
+  statements, bulk import and amounts in words on receipts.
 
 ### Database-level isolation (Row-Level Security)
 

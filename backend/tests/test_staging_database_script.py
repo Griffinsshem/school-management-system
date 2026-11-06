@@ -111,8 +111,12 @@ def test_checks_pass_for_the_least_privilege_api_user(migrated_database, capsys)
     assert "FAIL" not in output
     assert "Row-Level Security is on for students" in output
     assert "Row-Level Security is on for bill_lines" in output
-    for table in ("audit events", "bills", "bill lines"):
+    for table in ("receipt_counters", "payments", "payment_cancellations"):
+        assert f"ok    Row-Level Security is on for {table}" in output
+    for table in ("audit events", "bills", "bill lines", "payments", "payment cancellations"):
         assert f"ok    {table} cannot be changed or deleted" in output
+    for table in ("fee structures", "receipt counters"):
+        assert f"ok    {table} cannot be deleted" in output
 
 
 def test_checks_fail_for_the_schema_owner(migrated_database, capsys):

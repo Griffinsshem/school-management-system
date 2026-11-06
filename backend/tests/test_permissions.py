@@ -21,6 +21,8 @@ from app.auth.permissions import (
     MARKS_RECORD_OWN,
     MEMBERS_MANAGE,
     MEMBERS_READ,
+    PAYMENTS_CANCEL,
+    PAYMENTS_RECORD,
     ROLE_PERMISSIONS,
     STUDENTS_MANAGE,
     STUDENTS_READ,
@@ -67,6 +69,8 @@ def test_roles_get_only_what_they_are_given():
         GRADING_MANAGE,
         FEES_READ,
         FEES_MANAGE,
+        PAYMENTS_RECORD,
+        PAYMENTS_CANCEL,
     }
     assert ROLE_PERMISSIONS["principal"] == {
         MEMBERS_READ,
@@ -97,8 +101,14 @@ def test_roles_get_only_what_they_are_given():
         ATTENDANCE_RECORD_OWN,
         MARKS_RECORD_OWN,
     }
-    # Finance officers see students only inside the fee pages (E1).
-    assert ROLE_PERMISSIONS["finance_officer"] == {ACADEMICS_READ, FEES_READ, FEES_MANAGE}
+    # Finance officers see students only inside the fee pages (E1), and
+    # record payments but cannot cancel them (E2).
+    assert ROLE_PERMISSIONS["finance_officer"] == {
+        ACADEMICS_READ,
+        FEES_READ,
+        FEES_MANAGE,
+        PAYMENTS_RECORD,
+    }
     for role in ("guardian", "student"):
         assert ROLE_PERMISSIONS[role] == frozenset()
     assert ALL_PERMISSIONS == {
@@ -125,6 +135,8 @@ def test_roles_get_only_what_they_are_given():
         GRADING_MANAGE,
         FEES_READ,
         FEES_MANAGE,
+        PAYMENTS_RECORD,
+        PAYMENTS_CANCEL,
     }
 
 
@@ -157,6 +169,8 @@ def test_an_unknown_permission_is_a_programming_error():
                 "marks.record",
                 "members.manage",
                 "members.read",
+                "payments.cancel",
+                "payments.record",
                 "students.manage",
                 "students.read",
                 "subjects.manage",
@@ -182,7 +196,10 @@ def test_an_unknown_permission_is_a_programming_error():
             ["academics.read", "attendance.record_own", "classes.read_own", "marks.record_own"],
         ),
         (["guardian"], []),
-        (["finance_officer"], ["academics.read", "fees.manage", "fees.read"]),
+        (
+            ["finance_officer"],
+            ["academics.read", "fees.manage", "fees.read", "payments.record"],
+        ),
         (
             ["teacher", "principal"],
             [

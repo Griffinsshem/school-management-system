@@ -11,6 +11,7 @@ from app.models.guardian import Guardian, StudentGuardian
 from app.models.invitation import Invitation
 from app.models.login_attempt import LoginAttempt
 from app.models.membership import Membership
+from app.models.payments import Payment, PaymentCancellation, ReceiptCounter
 from app.models.report_comment import ReportComment
 from app.models.school import School
 from app.models.school_class import ClassTeacher, SchoolClass
@@ -38,6 +39,9 @@ __all__ = [
     "LoginAttempt",
     "Mark",
     "Membership",
+    "Payment",
+    "PaymentCancellation",
+    "ReceiptCounter",
     "ReportComment",
     "School",
     "SchoolClass",

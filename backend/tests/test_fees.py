@@ -450,6 +450,10 @@ def test_the_term_overview_counts_each_grade(db_app, school):
             "classes": 2,
             "students": 3,
             "billed": 3,
+            # Three bills of 17,000 (E2: nothing paid yet).
+            "billed_kes": 51_000,
+            "paid_kes": 0,
+            "outstanding_kes": 51_000,
             "structure": {"items": 4, "compulsory_total_kes": 17_000, "issued": True},
         },
         {
@@ -458,6 +462,9 @@ def test_the_term_overview_counts_each_grade(db_app, school):
             "classes": 1,
             "students": 1,
             "billed": 0,
+            "billed_kes": 0,
+            "paid_kes": 0,
+            "outstanding_kes": 0,
             "structure": {"items": 1, "compulsory_total_kes": 1, "issued": False},
         },
     ]

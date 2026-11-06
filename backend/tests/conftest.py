@@ -20,6 +20,9 @@ TEST_ENV_KEYS = ("TEST_DATABASE_URL", "TEST_MIGRATION_DATABASE_URL")
 # The schema owner does the emptying: the API's user cannot delete audit
 # events, and Row-Level Security hides other schools' students from it.
 TABLES_TO_CLEAN = (
+    "payment_cancellations",
+    "payments",
+    "receipt_counters",
     "bill_lines",
     "bills",
     "fee_items",

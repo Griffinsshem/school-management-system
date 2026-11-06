@@ -11,21 +11,27 @@ import {
   MAX_ADJUSTMENT_REASON,
   billPath,
   canSeeFees,
+  formatBalance,
   describeFeesError,
   formatDayOf,
   formatKes,
+  formatReceiptNumber,
   gradeFeesPath,
   parseAmount,
+  receiptPath,
   type Bill,
+  type Payment,
 } from "@/lib/fees";
 import { relationshipLabel, type Relationship } from "@/lib/guardians";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 
 import { NoFeesAccess, amountClass, tdClass, thClass } from "../../fees";
+import { Payments } from "./payments";
 
 // One student's bill for a term (E1): its fees and adjustments, the total,
 // the guardians to contact about it, and (for those who manage fees) adding
 // an optional item or an adjustment. Nothing on a bill is ever changed.
+// E2: what has been paid and what is still owed, and the payments.
 
 export function BillPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +51,7 @@ function BillView({ billId }: { billId: string }) {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<Payment | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,9 +92,10 @@ function BillView({ billId }: { billId: string }) {
     return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
-  function changed(next: Bill, message: string) {
+  function changed(next: Bill, message: string, newReceipt?: Payment) {
     setBill(next);
     setNotice(message);
+    setReceipt(newReceipt ?? null);
   }
 
   return (
@@ -102,7 +110,19 @@ function BillView({ billId }: { billId: string }) {
         Admission no. {bill.student.admission_number}, {bill.class_name}, Term {bill.term.number} of {bill.year.name}
       </p>
 
-      {notice && <Notice>{notice}</Notice>}
+      {notice && (
+        <Notice>
+          {notice}
+          {receipt && (
+            <>
+              {" "}
+              <Link href={receiptPath(receipt.id)} className="font-semibold text-link underline underline-offset-2">
+                View receipt {formatReceiptNumber(receipt.receipt_number)}
+              </Link>
+            </>
+          )}
+        </Notice>
+      )}
 
       <section aria-labelledby="lines-heading" className="mb-8 max-w-3xl">
         <h2 id="lines-heading" className="mb-3 text-xl font-semibold">
@@ -153,10 +173,26 @@ function BillView({ billId }: { billId: string }) {
                 <td className={`px-2 py-2 text-base font-semibold ${amountClass}`}>{formatKes(bill.total_kes)}</td>
                 <td />
               </tr>
+              <tr>
+                <th scope="row" className="px-2 py-1 font-normal">
+                  Paid
+                </th>
+                <td className={`px-2 py-1 ${amountClass}`}>{formatKes(bill.paid_kes)}</td>
+                <td />
+              </tr>
+              <tr>
+                <th scope="row" className="px-2 py-1 text-base font-semibold">
+                  Balance
+                </th>
+                <td className={`px-2 py-1 text-base font-semibold ${amountClass}`}>{formatBalance(bill.balance_kes)}</td>
+                <td />
+              </tr>
             </tfoot>
           </table>
         </div>
       </section>
+
+      <Payments bill={bill} onChanged={changed} />
 
       {bill.can_manage && (
         <div className="mb-8 grid max-w-3xl gap-8 md:grid-cols-2">

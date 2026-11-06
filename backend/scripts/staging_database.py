@@ -66,10 +66,22 @@ RLS_TABLES = (
     "fee_items",
     "bills",
     "bill_lines",
+    "receipt_counters",
+    "payments",
+    "payment_cancellations",
 )
-# Tables the API's user can only add to: the audit trail, and what families
-# owe (E1).
-APPEND_ONLY_TABLES = ("audit_events", "bills", "bill_lines")
+# Tables the API's user can only add to: the audit trail, what families owe
+# (E1), and money received and its cancellations (E2).
+APPEND_ONLY_TABLES = (
+    "audit_events",
+    "bills",
+    "bill_lines",
+    "payments",
+    "payment_cancellations",
+)
+# Tables whose rows the API's user can change but never delete: fee
+# structures (E1) and receipt counters (E2).
+NO_DELETE_TABLES = ("fee_structures", "receipt_counters")
 # Placeholder until the Vercel address is known (replace it in .env.staging).
 PLACEHOLDER_ORIGIN = "https://staging.example.invalid"
 
@@ -326,6 +338,12 @@ def run_checks(database_url: str, expect_tables: bool = True, require_tls: bool 
                     ).fetchone()[0]
                     label = name.replace("_", " ")
                     check(not can_edit, f"{label} cannot be changed or deleted")
+            for name in NO_DELETE_TABLES:
+                if name in rls:
+                    can_delete = conn.execute(
+                        "SELECT has_table_privilege(%s, 'DELETE')", (name,)
+                    ).fetchone()[0]
+                    check(not can_delete, f"{name.replace('_', ' ')} cannot be deleted")
             version = conn.execute("SELECT version_num FROM alembic_version").fetchone()
             print(f"Database: {database}, migration {version[0] if version else 'none'}")
         else:

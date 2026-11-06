@@ -60,6 +60,13 @@ GRADING_MANAGE = "grading.manage"
 # 2026-11-04: teachers and registrars get neither.
 FEES_READ = "fees.read"
 FEES_MANAGE = "fees.manage"
+# Fee payments (see app/api/v1/payments.py): recording money received
+# against a bill (with its receipt), and cancelling a payment with a reason.
+# Seeing payments comes with `fees.read`. Decisions of 2026-11-06: finance
+# officers record but do not cancel (the one who records is not the one who
+# can remove), so only school administrators cancel.
+PAYMENTS_RECORD = "payments.record"
+PAYMENTS_CANCEL = "payments.cancel"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "school_admin": frozenset(
@@ -84,6 +91,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             GRADING_MANAGE,
             FEES_READ,
             FEES_MANAGE,
+            PAYMENTS_RECORD,
+            PAYMENTS_CANCEL,
         }
     ),
     "principal": frozenset(
@@ -108,7 +117,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         {ACADEMICS_READ, CLASSES_READ_OWN, ATTENDANCE_RECORD_OWN, MARKS_RECORD_OWN}
     ),
     # Finance officers see students only inside the fee pages (E1).
-    "finance_officer": frozenset({ACADEMICS_READ, FEES_READ, FEES_MANAGE}),
+    "finance_officer": frozenset({ACADEMICS_READ, FEES_READ, FEES_MANAGE, PAYMENTS_RECORD}),
     # Registrars see every class and enrol students, but do not create classes.
     "registrar": frozenset(
         {
