@@ -17,6 +17,7 @@ from app.api.v1.payments import payments_bp
 from app.api.v1.platform import platform_bp
 from app.api.v1.report_cards import report_cards_bp
 from app.api.v1.school import school_bp
+from app.api.v1.statements import statements_bp
 from app.api.v1.students import students_bp
 from app.api.v1.subjects import subjects_bp
 
@@ -39,3 +40,4 @@ api_v1.register_blueprint(grading_bp)
 api_v1.register_blueprint(report_cards_bp)
 api_v1.register_blueprint(fees_bp)
 api_v1.register_blueprint(payments_bp)
+api_v1.register_blueprint(statements_bp)

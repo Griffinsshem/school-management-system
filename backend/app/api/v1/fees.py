@@ -24,10 +24,17 @@
   minus its payments that are not cancelled (see app/api/v1/payments.py);
   it is worked out each time, never stored, and below 0 when overpaid. Fee data is personal
   financial information: logs carry ids and counts, never names or amounts.
+- E3 (decision of 2026-11-07): a bill also shows the balance of the
+  student's bills from earlier terms (terms that start before its own, in any
+  grade or class) and the amount due now (its own balance plus that). This
+  too is worked out each time, never stored or copied onto the bill, so a
+  late payment or cancellation on an old bill shows at once; a credit from
+  an earlier term lowers the amount due now. Statements and printable bills
+  are in app/api/v1/statements.py.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Blueprint, current_app, g, jsonify
 from sqlalchemy import delete, func, select
@@ -187,6 +194,54 @@ def _money(total: int, paid: int) -> dict:
     return {"total_kes": total, "paid_kes": paid, "balance_kes": total - paid}
 
 
+def _earlier(student_ids: list[uuid.UUID], before: date) -> dict[uuid.UUID, list[dict]]:
+    """Each student's bills from terms that start before `before`, oldest
+    first, with their balances (a few queries for any number of students)."""
+    if not student_ids:
+        return {}
+    rows = db.session.execute(
+        select(Bill.id, Bill.student_id, Term.number, AcademicYear.name)
+        .join(Term, Bill.term_id == Term.id)
+        .join(AcademicYear, Bill.academic_year_id == AcademicYear.id)
+        .where(
+            Bill.student_id.in_(student_ids),
+            Bill.school_id == current_school().id,
+            Term.starts_on < before,
+        )
+        .order_by(Term.starts_on)
+    ).all()
+    ids = [row.id for row in rows]
+    totals, paid = _totals(ids), _paid(ids)
+    earlier: dict[uuid.UUID, list[dict]] = {}
+    for bill_id, student_id, number, year_name in rows:
+        earlier.setdefault(student_id, []).append(
+            {
+                "id": str(bill_id),
+                "term": {"number": number},
+                "year": {"name": year_name},
+                "balance_kes": totals.get(bill_id, 0) - paid.get(bill_id, 0),
+            }
+        )
+    return earlier
+
+
+def _earlier_json(bills: list[dict]) -> dict:
+    """The balance from earlier terms (below 0 is a credit), and the earlier
+    bills that are not settled, so staff can open them."""
+    return {
+        "balance_kes": sum(bill["balance_kes"] for bill in bills),
+        "bills": [bill for bill in bills if bill["balance_kes"] != 0],
+    }
+
+
+def _with_earlier(money: dict, earlier: dict) -> dict:
+    return {
+        **money,
+        "earlier": earlier,
+        "due_now_kes": money["balance_kes"] + earlier["balance_kes"],
+    }
+
+
 def _user_names(ids: set[uuid.UUID | None]) -> dict[uuid.UUID, str]:
     ids = {i for i in ids if i is not None}
     if not ids:
@@ -300,8 +355,11 @@ def _bill_json(bill: Bill) -> dict:
     )
     on_bill = {line.fee_item_id for line in lines}
     names = _user_names({bill.issued_by_user_id, *(line.created_by_user_id for line in lines)})
+    money = _money(sum(line.amount_kes for line in lines), _paid([bill.id]).get(bill.id, 0))
+    earlier = _earlier_json(_earlier([bill.student_id], term.starts_on).get(bill.student_id, []))
     return {
         "id": str(bill.id),
+        "school": {"name": current_school().name},
         **_term_json(term),
         "student": _student_json(student),
         "class_name": school_class.name,
@@ -319,7 +377,7 @@ def _bill_json(bill: Bill) -> dict:
             }
             for line in lines
         ],
-        **_money(sum(line.amount_kes for line in lines), _paid([bill.id]).get(bill.id, 0)),
+        **_with_earlier(money, earlier),
         "payments": _payments_json(bill),
         "optional_items": [
             {"id": str(item.id), "name": item.name, "amount_kes": item.amount_kes}

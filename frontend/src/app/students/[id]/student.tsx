@@ -30,7 +30,7 @@ import {
   type Relationship,
   type StudentGuardians,
 } from "@/lib/guardians";
-import { billPath, canSeeFees, describeBalance, formatKes, type StudentBills } from "@/lib/fees";
+import { billPath, canSeeFees, describeBalance, formatKes, statementPath, type StudentBills } from "@/lib/fees";
 import { formatBirthDate, type Student } from "@/lib/students";
 
 // The menu marks "Students" as the current page.
@@ -158,7 +158,8 @@ function StudentView({
   );
 }
 
-// The student's bills, newest term first (E1).
+// The student's bills, newest term first (E1), what is owed for all terms
+// together and a link to the fee statement (E3).
 function Fees({ studentId }: { studentId: string }) {
   const [data, setData] = useState<StudentBills | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +206,14 @@ function Fees({ studentId }: { studentId: string }) {
             </li>
           ))}
         </ul>
+      )}
+      {data && data.bills.length > 0 && (
+        <p className="mt-3">
+          All terms: {describeBalance(data.bills.reduce((sum, bill) => sum + bill.balance_kes, 0))}.{" "}
+          <Link href={statementPath(studentId)} className="text-link underline underline-offset-2">
+            Fee statement
+          </Link>
+        </p>
       )}
     </section>
   );

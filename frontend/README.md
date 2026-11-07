@@ -44,9 +44,12 @@ To test from a phone on the same network, run
 | `/people` | The school's members and invitations (`members.read`). School admins (`members.manage`) also invite people, withdraw invitations and remove members. Needs a login. |
 | `/fees` | Fees for a school year and term (`?year=&term=`, today's term by default): each grade with classes that year, its fee structure and how many students are billed (`fees.read`). |
 | `/fees/{year}/{term}/{grade}` | A grade's fees for a term: the fee structure, edited until bills are issued (`fees.manage`), issuing bills after a confirmation, and the bills. |
-| `/fees/bills/{id}` | One bill: its lines, total, what is paid and the balance (or credit), its payments, the guardians to contact; (`fees.manage`) adding an optional item or an adjustment; (`payments.record`) recording a payment; (`payments.cancel`) cancelling one with a reason. |
+| `/fees/bills/{id}` | One bill: its lines, total, what is paid and the balance (or credit), the balance from earlier terms and the amount due now (E3), its payments, the guardians to contact; (`fees.manage`) adding an optional item or an adjustment; (`payments.record`) recording a payment; (`payments.cancel`) cancelling one with a reason. |
 | `/fees/receipts/{id}` | A payment's receipt, ready to print (E2); marked CANCELLED with the reason when cancelled (`fees.read`). |
 | `/fees/payments?date=` | Payments recorded on a day (today by default), with totals by method; cancelled ones listed but not counted (`fees.read`). |
+| `/fees/students/{id}/statement` | A student's fee statement, ready to print (E3): every charge, payment and cancellation across all terms with a running balance (`fees.read`). |
+| `/fees/bills/{id}/print` | One bill ready to print, with the balance from earlier terms and the amount due now (E3). |
+| `/fees/{year}/{term}/{grade}/print` | All of a grade's bills for a term, one per printed page, class by class (E3). |
 | `/invitations/accept#token=...` | Accept an invitation: create an account, or log in and accept. The token is removed from the address bar at once. |
 
 ## Look and feel
@@ -149,6 +152,8 @@ in as School C's finance officer (`e2e.finance@example.com`, created by
 `e2e/payments.spec.ts` (E2) does the same (shared set-up in
 `e2e/fees-data.ts`) and makes its own M-Pesa codes; receipt numbers are
 shared by the whole school, so its tests read them rather than assume them.
+`e2e/statements.spec.ts` (E3) bills its own class for Terms 1 and 2 of its
+own year (`feeClass(page, { terms: 2 })`).
 
 Phone-width tests run at 320 px. The report card and fee tests also force a
 wide font and a long unbroken word, and check that every element stays on

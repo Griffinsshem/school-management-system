@@ -2,9 +2,10 @@ import { expect, type Page } from "@playwright/test";
 
 import { SCHOOL_C, logIn } from "./helpers";
 
-// Shared by the fee tests (E1, fees.spec.ts) and the payment tests (E2,
-// payments.spec.ts): API calls from the logged-in page, and a school year
-// of the test's own with a billed Grade 7 class. All names are made up.
+// Shared by the fee tests (E1, fees.spec.ts), the payment tests (E2,
+// payments.spec.ts) and the statement tests (E3, statements.spec.ts): API
+// calls from the logged-in page, and a school year of the test's own with a
+// billed Grade 7 class. All names are made up.
 
 export type Json = Record<string, unknown>;
 
@@ -40,10 +41,11 @@ export async function logOut(page: Page) {
 }
 
 // A school year of the test's own (the first calendar year from 2030 not
-// used yet) with Term 1, a Grade 7 class with Amani and Baraka, and Amani's
-// mother as her guardian. Set up by the administrator. `widest` uses the
-// longest stream (20) and admission numbers (30) the school can enter.
-export async function feeClass(page: Page, { widest = false } = {}) {
+// used yet) with Term 1 (and Term 2 when `terms` is 2), a Grade 7 class with
+// Amani and Baraka, and Amani's mother as her guardian. Set up by the
+// administrator. `widest` uses the longest stream (20) and admission
+// numbers (30) the school can enter.
+export async function feeClass(page: Page, { widest = false, terms = 1 } = {}) {
   const id = unique();
   const { json } = await call(page, "GET", "/school/academic-years");
   const used = new Set((json.academic_years as { starts_on: string }[]).map((y) => Number(y.starts_on.slice(0, 4))));
@@ -55,7 +57,10 @@ export async function feeClass(page: Page, { widest = false } = {}) {
     name: `Fees ${calendar}`,
     starts_on: `${calendar}-01-06`,
     ends_on: `${calendar}-11-20`,
-    terms: [{ number: 1, starts_on: `${calendar}-01-06`, ends_on: `${calendar}-04-03` }],
+    terms: [
+      { number: 1, starts_on: `${calendar}-01-06`, ends_on: `${calendar}-04-03` },
+      { number: 2, starts_on: `${calendar}-05-04`, ends_on: `${calendar}-08-01` },
+    ].slice(0, terms),
   });
   expect(year.status).toBe(201);
   const yearId = (year.json.academic_year as { id: string }).id;
@@ -86,25 +91,26 @@ export async function feeClass(page: Page, { widest = false } = {}) {
   expect(guardian.status).toBe(201);
   const grade = `/school/fees/years/${yearId}/terms/1/grades/grade_7`;
   const yearName = `Fees ${calendar}`;
-  return { id, yearId, yearName, classId, students, phone, grade, gradePage: `/fees/${yearId}/1/grade_7` };
+  const termGrade = (term: number) => `/school/fees/years/${yearId}/terms/${term}/grades/grade_7`;
+  return { id, yearId, yearName, classId, students, phone, grade, termGrade, gradePage: `/fees/${yearId}/1/grade_7` };
 }
 
 export type FeeClass = Awaited<ReturnType<typeof feeClass>>;
 
-// Tuition and Activity for everyone, Boarding optional; bills issued.
-export async function issued(page: Page, f: FeeClass) {
+// Tuition and Activity for everyone, Boarding optional; bills issued for
+// the term (Term 1 unless said).
+export async function issued(page: Page, f: FeeClass, term = 1) {
   const items = [
     { name: "Tuition", amount_kes: 15_000 },
     { name: "Activity", amount_kes: 2_000 },
     { name: "Boarding", amount_kes: 30_000, is_optional: true },
   ];
-  expect((await call(page, "PUT", f.grade, { items })).status).toBe(200);
-  const result = await call(page, "POST", `${f.grade}/issue`);
+  expect((await call(page, "PUT", f.termGrade(term), { items })).status).toBe(200);
+  const result = await call(page, "POST", `${f.termGrade(term)}/issue`);
   expect(result.status).toBe(200);
   const bills = result.json.bills as { id: string; student: { id: string } }[];
   return Object.fromEntries(bills.map((b) => [b.student.id === f.students.Amani ? "Amani" : "Baraka", b.id]));
 }
-
 
 export function menu(page: Page) {
   return page.getByRole("navigation", { name: "Main" });

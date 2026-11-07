@@ -46,6 +46,16 @@ export type Payment = {
 
 type StudentRef = { id: string; full_name: string; admission_number: string };
 
+// The student's bills from earlier terms (E3): their balance added together
+// (below 0 is a credit) and those not settled. Worked out by the API each
+// time, never stored.
+export type Earlier = {
+  balance_kes: number;
+  bills: { id: string; term: { number: number }; year: { name: string }; balance_kes: number }[];
+};
+
+type WithEarlier = { earlier: Earlier; due_now_kes: number };
+
 export type TermRef = {
   term: { id: string; number: number; starts_on: string; ends_on: string };
   year: { id: string; name: string };
@@ -98,6 +108,7 @@ export type BillLine = {
 
 export type Bill = TermRef & {
   id: string;
+  school: { name: string };
   student: StudentRef;
   class_name: string;
   grade: { code: string; name: string };
@@ -116,7 +127,48 @@ export type Bill = TermRef & {
   can_manage: boolean;
   can_record_payments: boolean;
   can_cancel_payments: boolean;
-} & Money;
+} & Money &
+  WithEarlier;
+
+// A bill as printed (E3): one, or a whole grade's for a term.
+export type PrintedBill = {
+  id: string;
+  student: StudentRef;
+  class_name: string;
+  lines: { kind: "fee" | "adjustment"; description: string; amount_kes: number }[];
+} & Money &
+  WithEarlier;
+
+export type GradeBillsToPrint = TermRef & {
+  school: { name: string };
+  grade: { code: string; name: string };
+  bills: PrintedBill[];
+};
+
+// A student's fee statement (E3): every charge, payment and cancellation in
+// date order with a running balance. A debit adds to what is owed, a
+// credit takes it off.
+export type StatementEntry = {
+  date: string;
+  kind: "fee" | "adjustment" | "payment" | "cancellation";
+  description: string;
+  bill_id: string;
+  term: { number: number };
+  year: { name: string };
+  debit_kes: number | null;
+  credit_kes: number | null;
+  balance_kes: number;
+  payment: { id: string; receipt_number: number; method: PaymentMethod; reference: string | null } | null;
+};
+
+export type Statement = {
+  school: { name: string };
+  student: StudentRef;
+  class_name: string | null;
+  printed_on: string;
+  entries: StatementEntry[];
+  totals: { charged_kes: number; paid_kes: number; balance_kes: number };
+};
 
 export type Receipt = {
   payment: Payment;
@@ -155,6 +207,23 @@ export function gradeFeesPath(yearId: string, term: number, grade: string): stri
 
 export function billPath(id: string): string {
   return `/fees/bills/${id}`;
+}
+
+export function billPrintPath(id: string): string {
+  return `/fees/bills/${id}/print`;
+}
+
+export function gradeBillsPrintPath(yearId: string, term: number, grade: string): string {
+  return `${gradeFeesPath(yearId, term, grade)}/print`;
+}
+
+export function statementPath(studentId: string): string {
+  return `/fees/students/${studentId}/statement`;
+}
+
+// "Term 3, 2026".
+export function termLabel(term: { number: number }, year: { name: string }): string {
+  return `Term ${term.number}, ${year.name}`;
 }
 
 export function receiptPath(paymentId: string): string {

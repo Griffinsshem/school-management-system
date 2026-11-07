@@ -17,6 +17,7 @@ import {
   formatDayOf,
   formatBalance,
   formatKes,
+  gradeBillsPrintPath,
   parseAmount,
   type GradeFees,
   type IssueResult,
@@ -476,9 +477,17 @@ function Bills({ data }: { data: GradeFees }) {
   const outstanding = data.bills.reduce((sum, bill) => sum + Math.max(bill.balance_kes, 0), 0);
   return (
     <section aria-labelledby="bills-heading">
-      <h2 id="bills-heading" className="mb-3 text-xl font-semibold">
-        Bills ({data.bills.length})
-      </h2>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="bills-heading" className="text-xl font-semibold">
+          Bills ({data.bills.length})
+        </h2>
+        <Link
+          href={gradeBillsPrintPath(data.year.id, data.term.number, data.grade.code)}
+          className="text-link underline underline-offset-2"
+        >
+          Print all bills
+        </Link>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">

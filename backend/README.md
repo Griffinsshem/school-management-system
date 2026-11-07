@@ -160,7 +160,7 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.read`: `200 {"term", "year", "grade", "can_manage", "structure", "bills", "not_billed"}` (each bill with `total_kes`, `paid_kes` and `balance_kes`, E2; the structure's `items`, `compulsory_total_kes`, `issued_at`/`issued_by`, `updated_at`/`updated_by`, or `null`), or `404` (no classes of that grade that year) (E1) |
 | PUT    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.manage`: `{"items": [{"name", "amount_kes", "is_optional"?}]}`, 0 to 30 items, the whole list in order; names 1 to 60 characters, unique ignoring case; amounts whole shillings (JSON integers) from 1 to 1,000,000: `200` (as GET), `404`, `409` (`structure_issued`) or `422` (E1) |
 | POST   | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/issue` | Needs `fees.manage`: bill every active student enrolled in the grade's classes that year who has no bill this term, with the compulsory items: `200 {"billed": N, ...}` (as GET), `404` or `422` (`no_fee_items`) (E1) |
-| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, `paid_kes` and `balance_kes` (below 0 when overpaid) and its `payments` in receipt order, cancelled ones with `cancelled` (`reason`, `cancelled_at`, `cancelled_by`) (E2), the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`), `can_manage`, `can_record_payments` and `can_cancel_payments`; or `404` (E1) |
+| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, `paid_kes` and `balance_kes` (below 0 when overpaid) and its `payments` in receipt order, cancelled ones with `cancelled` (`reason`, `cancelled_at`, `cancelled_by`) (E2), the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`), `can_manage`, `can_record_payments` and `can_cancel_payments`; (E3) the `school`'s name, `earlier` (`balance_kes` of the student's bills from terms that start before this one, below 0 for a credit, and the unsettled earlier `bills` with `term`, `year` and `balance_kes`) and `due_now_kes` (this bill's balance plus the earlier one); or `404` (E1) |
 | POST   | `/api/v1/school/fees/bills/{id}/items` | Needs `fees.manage`: `{"fee_item_id"}`, an optional item of the bill's structure: `201` (the bill), `404`, `409` (`item_already_on_bill`) or `422` (`not_an_optional_item`) (E1) |
 | POST   | `/api/v1/school/fees/bills/{id}/adjustments` | Needs `fees.manage`: `{"amount_kes", "reason"}`, a whole number from -1,000,000 to 1,000,000 but not 0, and a one-line reason of 1 to 200 characters: `201` (the bill), `404` or `422` (`total_below_zero`, or invalid) (E1) |
 | GET    | `/api/v1/school/students/{id}/bills` | Needs `fees.read`: `200 {"student", "bills"}`, newest term first, each with `term`, `year`, `class_name`, `total_kes`, `paid_kes` and `balance_kes` (E2); or `404` (E1) |
@@ -168,6 +168,8 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/fees/payments/{id}` | Needs `fees.read`: `200 {"payment", "school", "bill", "balance_after_kes"}`, everything a receipt shows; the balance is the bill's just after this payment, so a reprint shows the same figure; or `404` (E2) |
 | POST   | `/api/v1/school/fees/payments/{id}/cancellation` | Needs `payments.cancel`: `{"reason"}`, one line of 1 to 200 characters: `201` (the bill), `404`, `409` (`already_cancelled`) or `422` (E2) |
 | GET    | `/api/v1/school/fees/payments?date=YYYY-MM-DD` | Needs `fees.read`: `200 {"date", "payments", "totals", "total_kes", "cancelled"}`: the payments recorded that day (Kenyan time; today by default) in receipt order, each with its `bill_id`, `student` and `class_name`; totals by method leave out cancelled payments; or `422` (E2) |
+| GET    | `/api/v1/school/fees/students/{id}/statement` | Needs `fees.read`: `200 {"school", "student", "class_name", "printed_on", "entries", "totals"}`: every fee, adjustment, payment and cancellation on the student's bills in date order, each with `date`, `kind`, `description`, `bill_id`, `term`, `year`, `debit_kes` or `credit_kes`, the running `balance_kes` and (payments, cancellations) its `payment`; `totals` has `charged_kes`, `paid_kes` and `balance_kes`; no guardian contacts; or `404` (E3) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/bills/print` | Needs `fees.read`: `200 {"school", "term", "year", "grade", "bills"}`, every bill of the grade that term, class by class then by name, each with its `lines`, `total_kes`, `paid_kes`, `balance_kes`, `earlier` and `due_now_kes` (a few queries for the whole grade); or `404` (E3) |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -679,8 +681,8 @@ E1 (decisions of 2026-11-04):
   `bill.item_added`, `bill.adjusted`), with ids only; the bill lines
   themselves record each amount, who added it and when. Logs carry ids and
   counts, never names or amounts.
-- Payments and receipts came in E2 (below); balances carried to the next
-  term and statements to parents are not built yet.
+- Payments and receipts came in E2, balances from earlier terms and
+  statements to parents in E3 (both below).
 
 ### Payments and receipts
 
@@ -723,8 +725,41 @@ E2 (decisions of 2026-11-06):
 - Audited as `payment.recorded` and `payment.cancelled`, with ids only.
   Logs carry ids, never names, amounts or references.
 - Not built yet: matching M-Pesa payments automatically (Daraja), SMS or
-  email receipts, moving a credit to the next term, refunds of cash, fee
-  statements, bulk import and amounts in words on receipts.
+  email receipts, refunds of cash, bulk import and amounts in words on
+  receipts. Fee statements and balances from earlier terms came in E3
+  (below).
+
+### Statements and balances from earlier terms
+
+E3 (decisions of 2026-11-07):
+
+- A bill also shows the balance of the student's bills from earlier terms
+  (terms that start before its own, whatever grade or class the student was
+  in) and the amount due now (its own balance plus that). It is worked out
+  each time, never stored or copied onto the new bill: a late payment or a
+  cancellation on an old bill shows at once, and a credit from an earlier
+  term lowers the amount due now. Each term's own figures stay as they
+  were, so a term's outstanding total still shows that term's arrears.
+- Payments stay against the bill the bursar picks. The payment form notes
+  unpaid earlier terms, with links, so money meant for them is recorded on
+  their bill; nothing is moved automatically.
+- A student's statement lists every fee, adjustment, payment and
+  cancellation across all terms in date order with a running balance:
+  charges are dated when added to the bill, payments when paid,
+  cancellations when made; on the same day charges come first, then
+  payments, then cancellations. A cancelled payment appears twice, as the
+  payment and as its cancellation adding the amount back. The statement
+  ends at the student's bills added together and carries no guardian
+  contacts.
+- A grade's bills for a term can be printed together, one per page, class
+  by class; a single bill too. Receipts are unchanged: a receipt shows its
+  own bill's balance just after the payment.
+- Everyone with `fees.read` reads statements and printable bills; reads
+  are not audited, like other fee reads. No new table, migration or
+  permission.
+- Not built yet: a list of students owing across all terms, due dates on
+  bills, statements by SMS or email, and moving a credit to a later bill
+  by hand.
 
 ### Database-level isolation (Row-Level Security)
 

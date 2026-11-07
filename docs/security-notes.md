@@ -459,7 +459,9 @@ Payments (E2) are kept the way a cash book is: only added to.
   their school, and names, amounts and references never go into logs (a
   test captures the logs to prove it).
 - Printed or saved receipts leave the system's protection, like report
-  cards: what happens to them is the school's responsibility.
+  cards: what happens to them is the school's responsibility. The same
+  holds for printed bills and fee statements (E3), which therefore carry no
+  guardian phone numbers or emails.
 - The schema owner (`sms_migrator`) could still change payments, as for
   bills: its password stays with the people who run migrations.
 

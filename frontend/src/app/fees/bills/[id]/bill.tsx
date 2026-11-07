@@ -10,6 +10,7 @@ import { api, withReference, type Me } from "@/lib/api";
 import {
   MAX_ADJUSTMENT_REASON,
   billPath,
+  billPrintPath,
   canSeeFees,
   formatBalance,
   describeFeesError,
@@ -19,6 +20,8 @@ import {
   gradeFeesPath,
   parseAmount,
   receiptPath,
+  statementPath,
+  termLabel,
   type Bill,
   type Payment,
 } from "@/lib/fees";
@@ -32,6 +35,8 @@ import { Payments } from "./payments";
 // the guardians to contact about it, and (for those who manage fees) adding
 // an optional item or an adjustment. Nothing on a bill is ever changed.
 // E2: what has been paid and what is still owed, and the payments.
+// E3: the balance from earlier terms, the amount due now, and links to the
+// student's fee statement and a printable bill.
 
 export function BillPage() {
   const { id } = useParams<{ id: string }>();
@@ -92,6 +97,8 @@ function BillView({ billId }: { billId: string }) {
     return error ? <ErrorMessage message={error} /> : <p className="text-muted">Loading...</p>;
   }
 
+  const hasEarlier = bill.earlier.balance_kes !== 0 || bill.earlier.bills.length > 0;
+
   function changed(next: Bill, message: string, newReceipt?: Payment) {
     setBill(next);
     setNotice(message);
@@ -106,8 +113,16 @@ function BillView({ billId }: { billId: string }) {
         </Link>
       </p>
       <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight break-words">Bill for {bill.student.full_name}</h1>
-      <p className="mb-6 break-words text-muted">
+      <p className="mb-2 break-words text-muted">
         Admission no. {bill.student.admission_number}, {bill.class_name}, Term {bill.term.number} of {bill.year.name}
+      </p>
+      <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1">
+        <Link href={statementPath(bill.student.id)} className="text-link underline underline-offset-2">
+          Fee statement
+        </Link>
+        <Link href={billPrintPath(bill.id)} className="text-link underline underline-offset-2">
+          Print bill
+        </Link>
       </p>
 
       {notice && (
@@ -187,9 +202,30 @@ function BillView({ billId }: { billId: string }) {
                 <td className={`px-2 py-1 text-base font-semibold ${amountClass}`}>{formatBalance(bill.balance_kes)}</td>
                 <td />
               </tr>
+              {hasEarlier && (
+                <>
+                  <tr>
+                    <th scope="row" className="px-2 py-1 font-normal">
+                      From earlier terms
+                    </th>
+                    <td className={`px-2 py-1 ${amountClass}`}>{formatBalance(bill.earlier.balance_kes)}</td>
+                    <td />
+                  </tr>
+                  <tr>
+                    <th scope="row" className="px-2 py-1 text-base font-semibold">
+                      Amount due now
+                    </th>
+                    <td className={`px-2 py-1 text-base font-semibold ${amountClass}`}>
+                      {formatBalance(bill.due_now_kes)}
+                    </td>
+                    <td />
+                  </tr>
+                </>
+              )}
             </tfoot>
           </table>
         </div>
+        {bill.earlier.bills.length > 0 && <EarlierBills bill={bill} />}
       </section>
 
       <Payments bill={bill} onChanged={changed} />
@@ -203,6 +239,30 @@ function BillView({ billId }: { billId: string }) {
 
       <Guardians bill={bill} />
     </>
+  );
+}
+
+// The earlier bills that are not settled, so staff can open them (a payment
+// is recorded against the bill the family means it for).
+function EarlierBills({ bill }: { bill: Bill }) {
+  return (
+    <div className="mt-3 text-sm">
+      <p className="text-muted">Earlier terms not settled:</p>
+      <ul className="list-disc pl-5">
+        {bill.earlier.bills.map((earlier) => (
+          <li key={earlier.id}>
+            <Link
+              href={billPath(earlier.id)}
+              className="text-link underline underline-offset-2"
+              aria-label={`${termLabel(earlier.term, earlier.year)} bill`}
+            >
+              {termLabel(earlier.term, earlier.year)}
+            </Link>
+            : {earlier.balance_kes > 0 ? `${formatKes(earlier.balance_kes)} owed` : formatBalance(earlier.balance_kes)}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -27,6 +27,7 @@ import {
   methodLabel,
   parseAmount,
   receiptPath,
+  termLabel,
   type Bill,
   type Payment,
   type PaymentMethod,
@@ -327,6 +328,7 @@ function RecordPayment({
       <h3 id="record-heading" className="mb-3 text-lg font-semibold">
         Record a payment
       </h3>
+      <EarlierOwed bill={bill} />
       <ErrorMessage message={error} />
       <div className="grid gap-x-4 sm:grid-cols-2">
         <div>
@@ -414,5 +416,37 @@ function RecordPayment({
         {pending ? "Recording..." : "Record payment"}
       </button>
     </form>
+  );
+}
+
+// E3: earlier terms still owed, so money meant for them can be recorded on
+// their bill instead (nothing is moved automatically).
+function EarlierOwed({ bill }: { bill: Bill }) {
+  const owed = bill.earlier.bills.filter((earlier) => earlier.balance_kes > 0);
+  if (owed.length === 0) {
+    return null;
+  }
+  const total = owed.reduce((sum, earlier) => sum + earlier.balance_kes, 0);
+  return (
+    <div role="note" className="mb-3 rounded-md border-l-4 border-rule-strong px-3 py-2 text-sm">
+      <p>
+        {bill.student.full_name} also owes {formatKes(total)} from earlier terms. If the family means this payment
+        for an earlier term, record it on that bill:
+      </p>
+      <ul className="list-disc pl-5">
+        {owed.map((earlier) => (
+          <li key={earlier.id}>
+            <Link
+              href={billPath(earlier.id)}
+              className="text-link underline underline-offset-2"
+              aria-label={`Record on the ${termLabel(earlier.term, earlier.year)} bill`}
+            >
+              {termLabel(earlier.term, earlier.year)}
+            </Link>
+            : {formatKes(earlier.balance_kes)} owed
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
