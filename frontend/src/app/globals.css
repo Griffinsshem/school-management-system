@@ -124,3 +124,53 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Tables marked "stack-table" become one block per row on phones (P1), so
+   every value and button stays on screen without sideways scrolling. Each
+   cell shows its column name from data-label; the column headings return
+   from 40rem (Tailwind's sm) up, and on paper. Outside a layer on purpose:
+   these rules must beat the cells' padding, border and alignment utilities,
+   and they apply only below 40rem on screen. */
+@media screen and (width < 40rem) {
+  .stack-table,
+  .stack-table > tbody,
+  .stack-table > tbody > tr,
+  .stack-table > tbody > tr > :is(td, th) {
+    display: block;
+  }
+  .stack-table > thead {
+    display: none;
+  }
+  .stack-table > tbody > tr {
+    border-bottom: 1px solid var(--rule);
+    padding-block: 0.5rem;
+  }
+  .stack-table > tbody > tr > :is(td, th) {
+    border: 0;
+    padding: 0.125rem 0;
+    text-align: left;
+  }
+  .stack-table > tbody > tr > [data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
+  }
+  /* Totals under the rows: label on the left, figure on the right. */
+  .stack-table > tfoot,
+  .stack-table > tfoot > tr {
+    display: block;
+  }
+  .stack-table > tfoot > tr {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .stack-table > tfoot > tr > :is(td, th) {
+    padding-inline: 0;
+  }
+  .stack-table > tfoot > tr > th {
+    min-width: 0;
+  }
+  .stack-table > tfoot > tr > :empty {
+    display: none;
+  }
+}

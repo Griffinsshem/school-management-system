@@ -157,7 +157,8 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
         <p>No subjects yet.</p>
       ) : (
         <div className="relative overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          {/* One block per subject on phones (stack-table, globals.css). */}
+          <table className="stack-table w-full border-collapse text-left text-sm">
             <caption className="sr-only">Subjects</caption>
             <thead>
               <tr>
@@ -175,14 +176,20 @@ function SubjectsPage({ schoolName, canManage }: { schoolName: string; canManage
             <tbody>
               {subjects.map((subject) => (
                 <tr key={subject.id}>
-                  <th scope="row" className={`${tdClass} font-medium`}>
+                  <th scope="row" className={`${tdClass} font-medium break-words`}>
                     {subject.name}
                   </th>
-                  <td className={tdClass}>{subject.code ?? <span className="text-muted">None</span>}</td>
-                  <td className={tdClass}>{subject.is_active ? "Active" : "Inactive"}</td>
-                  <td className={tdClass}>{KCSE_CATEGORY_LABELS[subject.kcse_category]}</td>
+                  <td data-label="Code" className={tdClass}>
+                    {subject.code ?? <span className="text-muted">None</span>}
+                  </td>
+                  <td data-label="Status" className={tdClass}>
+                    {subject.is_active ? "Active" : "Inactive"}
+                  </td>
+                  <td data-label="KCSE mean grade" className={tdClass}>
+                    {KCSE_CATEGORY_LABELS[subject.kcse_category]}
+                  </td>
                   {canManage && (
-                    <td className={tdClass}>
+                    <td className={`${tdClass} pt-2`}>
                       <button
                         type="button"
                         className={`${secondaryButtonClass} py-1`}

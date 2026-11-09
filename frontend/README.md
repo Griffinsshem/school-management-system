@@ -78,6 +78,14 @@ Shared pieces live in `src/components/ui.tsx`: buttons (`buttonClass`,
 On the fee pages, money uses `amountClass` (right-aligned, never split over
 two lines), and every table lines its figures up (`tabular-nums`).
 
+Tables too wide for a phone carry the class `stack-table` (P1): below 40rem
+each row becomes a block, the column headings are hidden, and each cell
+shows its column name from its `data-label` ("Amount: KES 15,000"); totals
+rows become a label and a figure. Wider screens and paper keep the table.
+Used on the bill page (its lines and payments), the subjects list and class
+lists. A new table that could be wide gets the class and a `data-label` on
+each cell except the row's heading and its buttons.
+
 The typeface is Atkinson Hyperlegible Next, made for readers with low vision
 (0 and O, 1, l and I are easy to tell apart). It comes from the
 `@fontsource-variable/atkinson-hyperlegible-next` package (free, SIL Open
@@ -162,6 +170,10 @@ Arial with a narrow font, so a page-width check alone can pass while real
 phones overflow. The fee test also uses the longest class stream (20) and
 admission numbers (30) a school can enter; without them, its tables fit
 even with their safety net removed, and the test would prove nothing.
+`e2e/phone-layout.spec.ts` (P1) goes further for the stacked tables: no box
+on the page may scroll sideways at all (`scrollsSideways`), since a box
+that needs swiping hides its buttons and cannot be scrolled from the
+keyboard.
 
 ## Smoke checks against staging
 

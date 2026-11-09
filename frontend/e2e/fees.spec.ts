@@ -188,14 +188,21 @@ test("fee pages fit a phone screen without sideways scrolling", async ({ page })
     await expect(page.getByText("Loading...")).toHaveCount(0);
     await page.addStyleTag({ content: 'body { font-family: "DejaVu Sans", Verdana, sans-serif !important; }' });
     expect(await offScreen(page), path).toEqual([]);
-    // Money is right-aligned, so the figures line up, and never split.
+    // Money is never split, and right-aligned in tables so the figures line
+    // up; in a table shown as one block per row on phones (P1), the amount
+    // follows its label instead.
     const amounts = await page.evaluate(() =>
       Array.from(document.querySelectorAll("main td"))
         .filter((cell) => /KES/.test(cell.textContent ?? ""))
-        .map((cell) => `${getComputedStyle(cell).textAlign} ${getComputedStyle(cell).whiteSpace}`),
+        .map((cell) => {
+          const style = getComputedStyle(cell);
+          return `${style.display === "block" ? "after its label" : style.textAlign} ${style.whiteSpace}`;
+        }),
     );
     expect(amounts.length, path).toBeGreaterThan(0);
-    expect(new Set(amounts), path).toEqual(new Set(["right nowrap"]));
+    for (const amount of new Set(amounts)) {
+      expect(["right nowrap", "after its label nowrap"], path).toContain(amount);
+    }
   }
 });
 

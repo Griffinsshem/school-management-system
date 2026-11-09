@@ -144,7 +144,8 @@ function BillView({ billId }: { billId: string }) {
           What is owed
         </h2>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          {/* One block per line on phones (stack-table, globals.css). */}
+          <table className="stack-table w-full border-collapse text-left text-sm">
             <caption className="sr-only">Bill lines</caption>
             <thead>
               <tr>
@@ -172,8 +173,10 @@ function BillView({ billId }: { billId: string }) {
                   <th scope="row" className={`${tdClass} font-normal break-words`}>
                     {line.kind === "adjustment" ? `Adjustment: ${line.description}` : line.description}
                   </th>
-                  <td className={`${tdClass} ${amountClass}`}>{formatKes(line.amount_kes)}</td>
-                  <td className={tdClass}>
+                  <td data-label="Amount" className={`${tdClass} ${amountClass}`}>
+                    {formatKes(line.amount_kes)}
+                  </td>
+                  <td data-label="Added" className={tdClass}>
                     {line.created_at && formatDayOf(line.created_at)}
                     {line.created_by && `, ${line.created_by}`}
                   </td>

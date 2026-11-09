@@ -181,8 +181,9 @@ function Students({
         </Link>
       </p>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight">{list.class.name}</h1>
+        {/* min-w-0: a long stream name wraps instead of widening the page (P1). */}
+        <div className="min-w-0 max-w-full">
+          <h1 className="mb-1 text-[1.9375rem] leading-tight font-bold tracking-tight break-words">{list.class.name}</h1>
           <p className="text-muted">
             {count} student{count === 1 ? "" : "s"}
           </p>
@@ -313,7 +314,8 @@ function StudentTable({
 
   return (
     <div className="relative overflow-x-auto">
-      <table className="w-full border-collapse text-left text-sm">
+      {/* One block per student on phones (stack-table, globals.css). */}
+      <table className="stack-table w-full border-collapse text-left text-sm">
         <caption className="sr-only">Students in {list.class.name}</caption>
         <thead>
           <tr>
@@ -330,10 +332,16 @@ function StudentTable({
         <tbody>
           {list.students.map((student) => (
             <tr key={student.id}>
-              <td className={tdClass}>{student.admission_number}</td>
-              <td className={tdClass}>{student.full_name}</td>
+              <td data-label="Admission no." className={tdClass}>
+                {student.admission_number}
+              </td>
+              <td data-label="Name" className={tdClass}>
+                {student.full_name}
+              </td>
               {showStatus && (
-                <td className={tdClass}>{student.is_active ? "Active" : "Inactive"}</td>
+                <td data-label="Status" className={tdClass}>
+                  {student.is_active ? "Active" : "Inactive"}
+                </td>
               )}
               {canManage && (
                 <td className={tdClass}>
@@ -413,7 +421,9 @@ function StudentActions({
   if (mode === "move") {
     return (
       <form onSubmit={move} className="flex flex-wrap items-end gap-2" noValidate>
-        <div>
+        {/* Full width on phones, and wide enough for a class name on
+            larger screens, so the choice is never cut to "Choo..." (P1). */}
+        <div className="w-full sm:w-auto sm:min-w-48">
           <label htmlFor={`move-${student.id}`} className={labelClass}>
             Move {student.full_name} to
           </label>

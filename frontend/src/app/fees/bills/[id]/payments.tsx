@@ -59,7 +59,8 @@ export function Payments({
         <p className="mb-4 text-sm">No payments recorded yet.</p>
       ) : (
         <div className="mb-4 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          {/* One block per payment on phones (stack-table, globals.css). */}
+          <table className="stack-table w-full border-collapse text-left text-sm">
             <caption className="sr-only">Payments on this bill</caption>
             <thead>
               <tr>
@@ -105,7 +106,7 @@ function PaymentRow({
   return (
     <>
       <tr className={cancelled ? "text-muted" : undefined}>
-        <th scope="row" className={`${tdClass} font-normal whitespace-nowrap`}>
+        <th scope="row" data-label="Receipt" className={`${tdClass} font-normal whitespace-nowrap`}>
           <Link
             href={receiptPath(payment.id)}
             className="text-link underline underline-offset-2"
@@ -114,13 +115,15 @@ function PaymentRow({
             {number}
           </Link>
         </th>
-        <td className={`${tdClass} break-words`}>
+        <td data-label="Paid on, how" className={`${tdClass} break-words`}>
           {formatDate(payment.paid_on)}, {methodLabel(payment.method)}
           {payment.reference && <span className="block">{payment.reference}</span>}
           {payment.paid_by && <span className="block">Paid by {payment.paid_by}</span>}
         </td>
-        <td className={`${tdClass} ${amountClass}`}>{formatKes(payment.amount_kes)}</td>
-        <td className={`${tdClass} break-words`}>
+        <td data-label="Amount" className={`${tdClass} ${amountClass}`}>
+          {formatKes(payment.amount_kes)}
+        </td>
+        <td data-label="Recorded" className={`${tdClass} break-words`}>
           {payment.recorded_at && formatDayOf(payment.recorded_at)}
           {payment.recorded_by && `, ${payment.recorded_by}`}
           {cancelled ? (
@@ -134,14 +137,18 @@ function PaymentRow({
           ) : (
             bill.can_cancel_payments &&
             !cancelling && (
-              <button
-                type="button"
-                className={`${secondaryButtonClass} mt-2 block py-1 text-sm`}
-                aria-label={`Cancel payment ${number}`}
-                onClick={() => setCancelling(true)}
-              >
-                Cancel payment
-              </button>
+              // Its own line under who recorded it (the button's own display
+              // would otherwise keep it on the same line).
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className={`${secondaryButtonClass} py-1 text-sm`}
+                  aria-label={`Cancel payment ${number}`}
+                  onClick={() => setCancelling(true)}
+                >
+                  Cancel payment
+                </button>
+              </div>
             )
           )}
         </td>
