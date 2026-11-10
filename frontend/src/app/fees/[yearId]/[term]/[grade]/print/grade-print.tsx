@@ -115,6 +115,7 @@ function GradePrintView({ yearId, term, grade }: { yearId: string; term: number;
             term={data.term}
             year={data.year}
             bill={bill}
+            dueOn={data.due_on}
             className={n < count - 1 ? "mb-6 print:mb-0 print:break-after-page" : ""}
           />
         ))

@@ -14,11 +14,13 @@ import {
   canSeeFees,
   describeFeesError,
   feesPath,
+  formatDate,
   formatDayOf,
   formatBalance,
   formatKes,
   gradeBillsPrintPath,
   parseAmount,
+  payByRange,
   type GradeFees,
   type IssueResult,
   type Structure,
@@ -28,7 +30,8 @@ import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { NoFeesAccess, amountClass, tdClass, thClass } from "../../../fees";
 
 // One grade's fees for a term (E1): its fee structure (edited until bills
-// are issued), issuing bills, and the students' bills.
+// are issued), issuing bills, and the students' bills. E4: the pay-by date,
+// which can be set or moved at any time.
 
 export function GradeFeesPage() {
   const params = useParams<{ yearId: string; term: string; grade: string }>();
@@ -144,6 +147,16 @@ function Grade({ yearId, term, grade }: { yearId: string; term: number; grade: s
           </p>
         )}
       </section>
+
+      {structure && (
+        <PayBy
+          key={structure.due_on ?? "none"}
+          path={path}
+          here={here}
+          data={data}
+          onSaved={(next, removed) => updated(next, removed ? "Pay-by date removed." : "Pay-by date saved.")}
+        />
+      )}
 
       {data.can_manage && structure && structure.items.length > 0 && data.not_billed.length > 0 && (
         <IssueBills
@@ -377,6 +390,109 @@ function StructureEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+// The day by which this term's fees should be paid. Bills with something
+// still owed after that day show as overdue, here and on the list of
+// students owing.
+function PayBy({
+  path,
+  here,
+  data,
+  onSaved,
+}: {
+  path: string;
+  here: string;
+  data: GradeFees;
+  onSaved: (next: GradeFees, removed: boolean) => void;
+}) {
+  const saved = data.structure?.due_on ?? "";
+  const [value, setValue] = useState(saved);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const dirty = value !== saved;
+  useUnsavedChanges(dirty, () => setValue(saved));
+  const range = payByRange(data.term);
+  const rangeText = `from ${formatDate(range.min)} to ${formatDate(range.max)} (the term's last day)`;
+
+  if (!data.can_manage) {
+    return (
+      <section aria-labelledby="pay-by-heading" className="mb-8 max-w-2xl">
+        <h2 id="pay-by-heading" className="mb-3 text-xl font-semibold">
+          Pay-by date
+        </h2>
+        <p>{saved ? `Pay by ${formatDate(saved)}.` : "No pay-by date set."}</p>
+      </section>
+    );
+  }
+
+  async function save(dueOn: string | null) {
+    setError(null);
+    if (dueOn !== null && (dueOn < range.min || dueOn > range.max)) {
+      setError(`Choose a pay-by date ${rangeText}.`);
+      return;
+    }
+    setPending(true);
+    const response = await api<GradeFees>(`${path}/due-date`, { method: "PUT", body: { due_on: dueOn } });
+    setPending(false);
+    if (response.status === 401) {
+      goToLogin(here);
+    } else if (response.ok) {
+      onSaved(response.data, dueOn === null);
+    } else {
+      setError(describeFeesError(response.status, response.error));
+    }
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!value) {
+      setError("Enter a date, or use Remove pay-by date.");
+      return;
+    }
+    save(value);
+  }
+
+  return (
+    <section aria-labelledby="pay-by-heading" className="mb-8 max-w-2xl">
+      <h2 id="pay-by-heading" className="mb-3 text-xl font-semibold">
+        Pay-by date
+      </h2>
+      <p className="mb-3 text-sm text-muted">
+        {saved ? `Bills say "Pay by ${formatDate(saved)}". ` : "No pay-by date set. "}A bill with something still owed
+        after this day is overdue. It can be set or moved at any time, even after bills are issued.
+      </p>
+      <ErrorMessage message={error} />
+      <form onSubmit={submit} noValidate className="flex flex-wrap items-end gap-3">
+        <div>
+          <label htmlFor="pay-by" className={labelClass}>
+            Pay by
+          </label>
+          <input
+            id="pay-by"
+            type="date"
+            className={inputClass}
+            min={range.min}
+            max={range.max}
+            value={value}
+            aria-describedby="pay-by-hint"
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </div>
+        <button type="submit" className={inlineButtonClass} disabled={pending || !dirty}>
+          {pending ? "Saving..." : "Save pay-by date"}
+        </button>
+        {saved && (
+          <button type="button" className={secondaryButtonClass} disabled={pending} onClick={() => save(null)}>
+            Remove pay-by date
+          </button>
+        )}
+      </form>
+      <p id="pay-by-hint" className="mt-1 text-sm text-muted">
+        Any day {rangeText}.
+      </p>
+    </section>
   );
 }
 

@@ -462,6 +462,13 @@ Payments (E2) are kept the way a cash book is: only added to.
   cards: what happens to them is the school's responsibility. The same
   holds for printed bills and fee statements (E3), which therefore carry no
   guardian phone numbers or emails.
+- The list of students owing (E4) shows each student's primary guardian's
+  name and phone to the same people who already see them on bills
+  (`fees.read`), and nobody else; it adds no new access. Its printout does
+  carry phone numbers, because calling families is what it is for: it says
+  "Confidential: guardian contacts for fee follow-up only." at the top and
+  the bottom. There is no CSV export, so a full list of phone numbers
+  cannot be downloaded in one go.
 - The schema owner (`sms_migrator`) could still change payments, as for
   bills: its password stays with the people who run migrations.
 

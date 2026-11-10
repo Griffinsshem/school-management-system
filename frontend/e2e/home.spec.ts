@@ -77,11 +77,67 @@ test("the switch list names each school's county", async ({ page }) => {
   await expect(options).toHaveText(["E2E School A (Nairobi City)", SCHOOL_B_CHOICE]);
 });
 
+test("the switch box is wide enough for a school's name and county", async ({ page }) => {
+  await logInToSchoolA(page);
+  // Staging's longest choice, which a narrower box cut to "(Momb".
+  const longest = "Staging Demo School B (Mombasa)";
+  const room = await page.getByLabel("Switch school").evaluate((select, text) => {
+    const style = getComputedStyle(select);
+    const context = document.createElement("canvas").getContext("2d")!;
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const inside = select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    // About 1.5rem of the box is the drop-down arrow.
+    return inside - 24 - context.measureText(text).width;
+  }, longest);
+  expect(room).toBeGreaterThanOrEqual(0);
+});
+
+// Words of the band's title that are split over two lines.
+async function splitWords(page: Page): Promise<string[]> {
+  return page
+    .getByRole("banner")
+    .locator("p")
+    .first()
+    .evaluate((title) => {
+      const split: string[] = [];
+      const walker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent ?? "";
+        for (const match of text.matchAll(/\S+/g)) {
+          const range = document.createRange();
+          range.setStart(node, match.index);
+          range.setEnd(node, match.index + match[0].length);
+          const lines = new Set(Array.from(range.getClientRects()).map((r) => Math.round(r.top)));
+          if (lines.size > 1) {
+            split.push(match[0]);
+          }
+        }
+      }
+      return split;
+    });
+}
+
 test("the chooser fits a phone screen, with every card on screen", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await toChooser(page);
+  // With the site's own font the band keeps one row: the product's name
+  // beside Menu and Log out.
+  const band = page.getByRole("banner");
+  const [title, logOut] = await Promise.all([
+    band.locator("p").first().boundingBox(),
+    band.getByRole("button", { name: "Log out" }).boundingBox(),
+  ]);
+  expect(logOut!.y).toBeLessThan(title!.y + title!.height);
   await page.addStyleTag({ content: 'body { font-family: "DejaVu Sans", Verdana, sans-serif !important; }' });
   expect(await offScreen(page)).toEqual([]);
+  // With no school open the band's title is the product's name: no word of
+  // it may break across lines beside Menu and Log out ("Manageme / nt").
+  await expect(page.getByRole("banner").locator("p").first()).toHaveText("School Management System");
+  expect(await splitWords(page)).toEqual([]);
+  for (const name of ["Menu", "Log out"]) {
+    const box = await page.getByRole("banner").getByRole("button", { name }).boundingBox();
+    expect(box!.x + box!.width, name).toBeLessThanOrEqual(320);
+  }
   for (const school of [SCHOOL_A, SCHOOL_B]) {
     const box = await card(page, school).boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);

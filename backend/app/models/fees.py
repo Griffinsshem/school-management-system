@@ -20,18 +20,20 @@ Rules the database enforces itself:
 - the API's database user cannot change or delete bills or their lines,
   nor delete structures (see the migration).
 
-Rules that need other data (who may change fees; a structure is not changed
-once issued; at most 30 items; a bill's total never below 0; only students
+Rules that need other data (who may change fees; a structure's items are not
+changed once issued, though its pay-by date may be; the pay-by date's range;
+at most 30 items; a bill's total never below 0; only students
 of the structure's grade are billed) are checked by the API. Fee data is
 personal financial information: never log names or amounts.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -88,6 +90,10 @@ class FeeStructure(db.Model):
     academic_year_id: Mapped[uuid.UUID] = mapped_column()
     term_id: Mapped[uuid.UUID] = mapped_column()
     grade: Mapped[str] = mapped_column(String(10))
+    # E4: the day by which the term's fees should be paid (optional). It
+    # changes no amount, so it may be set or moved after issuing; the API
+    # keeps it from 90 days before the term starts to the term's last day.
+    due_on: Mapped[date | None] = mapped_column(Date)
     # Set when the first bills are issued; the API then refuses changes.
     issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     issued_by_user_id: Mapped[uuid.UUID | None] = mapped_column(

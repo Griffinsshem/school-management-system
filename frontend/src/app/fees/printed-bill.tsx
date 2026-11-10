@@ -1,4 +1,4 @@
-import { formatBalance, formatKes, termLabel, type Earlier, type PrintedBill, type TermRef } from "@/lib/fees";
+import { formatBalance, formatDate, formatKes, termLabel, type Earlier, type PrintedBill, type TermRef } from "@/lib/fees";
 
 import { amountClass, tdClass, thClass } from "./fees";
 
@@ -11,8 +11,9 @@ export function PrintedBillView({
   term,
   year,
   bill,
+  dueOn = null,
   className = "",
-}: { school: { name: string }; bill: PrintedBill } & TermRef & { className?: string }) {
+}: { school: { name: string }; bill: PrintedBill; dueOn?: string | null } & TermRef & { className?: string }) {
   const label = termLabel(term, year);
   const hasEarlier = bill.earlier.balance_kes !== 0 || bill.earlier.bills.length > 0;
   return (
@@ -33,6 +34,12 @@ export function PrintedBillView({
         </dd>
         <dt className="text-muted">Class</dt>
         <dd>{bill.class_name}</dd>
+        {dueOn && (
+          <>
+            <dt className="text-muted">Pay by</dt>
+            <dd className="font-semibold">{formatDate(dueOn)}</dd>
+          </>
+        )}
       </dl>
 
       <table className="w-full border-collapse text-left text-sm">

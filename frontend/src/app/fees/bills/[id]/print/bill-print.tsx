@@ -89,7 +89,7 @@ function BillPrintView({ billId }: { billId: string }) {
           Print
         </button>
       </div>
-      <PrintedBillView school={bill.school} term={bill.term} year={bill.year} bill={bill} />
+      <PrintedBillView school={bill.school} term={bill.term} year={bill.year} bill={bill} dueOn={bill.due_on} />
     </>
   );
 }

@@ -133,6 +133,23 @@
   }
 }
 
+/* The list of students owing prints on A4 landscape (E4): seven columns
+   need the width. Only pages inside .arrears-list use this page size. */
+@page arrears {
+  size: A4 landscape;
+  margin: 12mm;
+}
+@media print {
+  .arrears-list {
+    page: arrears;
+  }
+  /* The totals once, after the last row: as a repeating footer, Chrome put
+     them on a page of their own in this page size. */
+  .arrears-list tfoot {
+    display: table-row-group;
+  }
+}
+
 /* Tables marked "stack-table" become one block per row on phones (P1), so
    every value and button stays on screen without sideways scrolling. Each
    cell shows its column name from data-label; the column headings return

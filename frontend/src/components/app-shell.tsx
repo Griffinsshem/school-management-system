@@ -130,12 +130,20 @@ export function AppShell({
           unpredictably. On a phone the menu folds away behind "Menu". */}
       <header className="bg-band text-band-ink print:hidden">
         <div className="mx-auto max-w-4xl px-4 pt-3 pb-2">
-          <div className="flex items-center justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0">
-              <p className="text-xl leading-tight font-bold break-words">{school ?? "School Management System"}</p>
+          {/* The title never breaks inside a word ("Manageme / nt" at 320 px,
+              seen after H1): its box is at least as wide as its longest word
+              and starts from nothing (flex-1), so when the title and the
+              buttons cannot share a line, Menu and Log out move below it.
+              Without a school the product's name is the title, smaller on
+              phones so it usually still fits on one line with them. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-min flex-1">
+              <p className={`${school ? "text-xl" : "text-base sm:text-xl"} leading-tight font-bold break-words`}>
+                {school ?? "School Management System"}
+              </p>
               {school ? <p className="text-sm text-band-muted">School Management System</p> : null}
             </div>
-            <div className="flex shrink-0 items-center gap-3">
+            <div className="ml-auto flex shrink-0 items-center gap-3">
               <p className="hidden text-sm text-band-muted sm:block">
                 <span className="sr-only">Logged in as </span>
                 {me.user.full_name}

@@ -13,6 +13,7 @@ import {
   billPrintPath,
   canSeeFees,
   formatBalance,
+  formatDate,
   describeFeesError,
   formatDayOf,
   formatKes,
@@ -116,6 +117,16 @@ function BillView({ billId }: { billId: string }) {
       <p className="mb-2 break-words text-muted">
         Admission no. {bill.student.admission_number}, {bill.class_name}, Term {bill.term.number} of {bill.year.name}
       </p>
+      {bill.due_on && (
+        <p className="mb-2">
+          Pay by {formatDate(bill.due_on)}
+          {bill.overdue && (
+            <span className="ml-2 inline-block rounded-sm border border-danger px-1.5 text-sm font-semibold text-danger-ink">
+              Overdue
+            </span>
+          )}
+        </p>
+      )}
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1">
         <Link href={statementPath(bill.student.id)} className="text-link underline underline-offset-2">
           Fee statement

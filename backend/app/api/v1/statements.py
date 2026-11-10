@@ -28,6 +28,7 @@ from sqlalchemy import select
 from app.api.v1 import academic_years as years_api
 from app.api.v1.fees import (
     STUDENT_NOT_FOUND,
+    _day,
     _earlier,
     _earlier_json,
     _grade_classes,
@@ -217,6 +218,8 @@ def grade_bills_for_printing(year_id: uuid.UUID, number: int, grade: str):
             "school": {"name": current_school().name},
             **_term_json(term),
             "grade": {"code": grade, "name": GRADES[grade]},
+            # E4: printed on each bill as "Pay by".
+            "due_on": _day(structure.due_on) if structure else None,
             "bills": [
                 {
                     "id": str(bill.id),

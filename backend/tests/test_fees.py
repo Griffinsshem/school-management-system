@@ -454,7 +454,12 @@ def test_the_term_overview_counts_each_grade(db_app, school):
             "billed_kes": 51_000,
             "paid_kes": 0,
             "outstanding_kes": 51_000,
-            "structure": {"items": 4, "compulsory_total_kes": 17_000, "issued": True},
+            "structure": {
+                "items": 4,
+                "compulsory_total_kes": 17_000,
+                "issued": True,
+                "due_on": None,
+            },
         },
         {
             "grade": "grade_5",
@@ -465,7 +470,12 @@ def test_the_term_overview_counts_each_grade(db_app, school):
             "billed_kes": 0,
             "paid_kes": 0,
             "outstanding_kes": 0,
-            "structure": {"items": 1, "compulsory_total_kes": 1, "issued": False},
+            "structure": {
+                "items": 1,
+                "compulsory_total_kes": 1,
+                "issued": False,
+                "due_on": None,
+            },
         },
     ]
     assert (

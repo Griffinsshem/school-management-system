@@ -31,15 +31,22 @@
   late payment or cancellation on an old bill shows at once; a credit from
   an earlier term lowers the amount due now. Statements and printable bills
   are in app/api/v1/statements.py.
+- E4 (decisions of 2026-11-10): a grade's fee structure for a term may have
+  a pay-by date, set or moved by `fees.manage` even after issuing (it
+  changes no amount), from 90 days before the term starts to the term's
+  last day; audited as `fee_structure.due_date_changed`. A bill with a
+  balance is overdue from the day after its pay-by date, in Kenyan time.
+  The list of students owing is in app/api/v1/arrears.py.
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, current_app, g, jsonify
 from sqlalchemy import delete, func, select
 
 from app import audit
+from app.api.v1 import academic_years as years_api
 from app.api.v1.guardians import _links
 from app.auth.permissions import (
     FEES_MANAGE,
@@ -69,7 +76,12 @@ from app.models import (
 )
 from app.models.school_class import GRADES
 from app.schemas import parse_json_body
-from app.schemas.fees import AddBillItemRequest, AdjustBillRequest, SaveStructureRequest
+from app.schemas.fees import (
+    AddBillItemRequest,
+    AdjustBillRequest,
+    DueDateRequest,
+    SaveStructureRequest,
+)
 
 fees_bp = Blueprint("fees", __name__, url_prefix="/school")
 
@@ -82,6 +94,10 @@ STRUCTURE_ISSUED = (
     " Correct single bills with adjustments instead."
 )
 NO_FEE_ITEMS = "Add at least one fee item and save the fee structure before issuing bills."
+NO_STRUCTURE_FOR_DUE_DATE = "Save the fee structure before setting a pay-by date."
+# A pay-by date may be up to this long before the term starts (many schools
+# ask for fees by opening day or earlier).
+DUE_DATE_EARLIEST_BEFORE_TERM = timedelta(days=90)
 
 
 # Looking things up.
@@ -242,6 +258,16 @@ def _with_earlier(money: dict, earlier: dict) -> dict:
     }
 
 
+def is_past_due(due_on: date | None, today: date) -> bool:
+    """The pay-by date has passed (the pay-by day itself is not late)."""
+    return due_on is not None and today > due_on
+
+
+def is_overdue(due_on: date | None, balance_kes: int, today: date) -> bool:
+    """Something is still owed after the pay-by date."""
+    return balance_kes > 0 and is_past_due(due_on, today)
+
+
 def _user_names(ids: set[uuid.UUID | None]) -> dict[uuid.UUID, str]:
     ids = {i for i in ids if i is not None}
     if not ids:
@@ -254,6 +280,15 @@ def _user_names(ids: set[uuid.UUID | None]) -> dict[uuid.UUID, str]:
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
+
+
+def _day(value: date | None) -> str | None:
+    return value.isoformat() if value else None
+
+
+def _spoken(value: date) -> str:
+    """5 Jan 2027, as dates are written for people."""
+    return f"{value.day} {value:%b %Y}"
 
 
 def _student_json(student: Student) -> dict:
@@ -294,6 +329,7 @@ def _structure_json(structure: FeeStructure | None) -> dict | None:
             for item in items
         ],
         "compulsory_total_kes": sum(item.amount_kes for item in items if not item.is_optional),
+        "due_on": _day(structure.due_on),
         "issued_at": _iso(structure.issued_at),
         "issued_by": names.get(structure.issued_by_user_id),
         "updated_at": _iso(structure.updated_at),
@@ -366,6 +402,8 @@ def _bill_json(bill: Bill) -> dict:
         "grade": {"code": structure.grade, "name": GRADES[structure.grade]},
         "issued_at": _iso(bill.issued_at),
         "issued_by": names.get(bill.issued_by_user_id),
+        "due_on": _day(structure.due_on),
+        "overdue": is_overdue(structure.due_on, money["balance_kes"], years_api.school_today()),
         "lines": [
             {
                 "id": str(line.id),
@@ -515,6 +553,7 @@ def term_fees(year_id: uuid.UUID, number: int):
                     "items": len(items),
                     "compulsory_total_kes": sum(i.amount_kes for i in items if not i.is_optional),
                     "issued": structure.issued_at is not None,
+                    "due_on": _day(structure.due_on),
                 },
             }
         )
@@ -649,6 +688,45 @@ def issue_bills(year_id: uuid.UUID, number: int, grade: str):
             len(to_bill),
         )
     return jsonify({"billed": len(to_bill), **_grade_view(term, grade)})
+
+
+@fees_bp.put("/fees/years/<uuid:year_id>/terms/<int:number>/grades/<grade>/due-date")
+@permission_required(FEES_MANAGE)
+def set_due_date(year_id: uuid.UUID, number: int, grade: str):
+    """Set, move or remove the pay-by date of a grade's fees for the term,
+    before or after issuing."""
+    action = "fee_structure.due_date_changed"
+    term = _term(year_id, number, action)
+    _grade_classes(term, grade, action)
+    due_on = parse_json_body(DueDateRequest).due_on
+    earliest = term.starts_on - DUE_DATE_EARLIEST_BEFORE_TERM
+    if due_on is not None and not earliest <= due_on <= term.ends_on:
+        raise ApiError(
+            422,
+            "due_date_out_of_range",
+            f"Choose a pay-by date from {_spoken(earliest)} to {_spoken(term.ends_on)}"
+            " (the term's last day).",
+        )
+    structure = _structure(term, grade, lock=True)
+    if structure is None:
+        db.session.rollback()
+        raise ApiError(409, "no_fee_structure", NO_STRUCTURE_FOR_DUE_DATE)
+    if structure.due_on != due_on:
+        structure.due_on = due_on
+        db.session.flush()
+        audit.record(
+            action,
+            school_id=structure.school_id,
+            target_type="fee_structure",
+            target_id=structure.id,
+        )
+        db.session.commit()
+        current_app.logger.info(
+            "Fee pay-by date changed: structure_id=%s term_id=%s", structure.id, term.id
+        )
+    else:
+        db.session.rollback()
+    return jsonify(_grade_view(term, grade))
 
 
 # Bills.

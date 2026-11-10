@@ -156,11 +156,12 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | GET    | `/api/v1/school/classes/{id}/report-cards?term=1` | Same readers as the results: `200` with the results (as above) plus `school`, `year`, `can_comment`, `position_out_of` (when positions are shown) and, per student, `attendance` (`present`, `late`, `absent`, `days_recorded`) and `comment` (`text`, `updated_at`, `updated_by`, or `null`); or `404` (D7) |
 | GET    | `/api/v1/school/classes/{id}/report-cards/{student_id}?term=1` | Same: one card as `student`, or `404` if the student is not on the class's results (D7) |
 | PUT    | `/api/v1/school/classes/{id}/report-cards/{student_id}/comment?term=1` | Needs `marks.record`, or `marks.record_own` as the class teacher: `{"comment": "..."}`, plain text up to 500 characters (`""` clears it): `200` (the card), `403`, `404` or `422` (D7) |
-| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}` | Needs `fees.read`: `200 {"term", "year", "can_manage", "grades"}`, each grade with classes that year with `classes`, `students` (active, enrolled), `billed`, and (E2) `billed_kes`, `paid_kes` and `outstanding_kes` (only bills with something left to pay), and its `structure` (`items`, `compulsory_total_kes`, `issued`, or `null`); or `404` (E1) |
-| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.read`: `200 {"term", "year", "grade", "can_manage", "structure", "bills", "not_billed"}` (each bill with `total_kes`, `paid_kes` and `balance_kes`, E2; the structure's `items`, `compulsory_total_kes`, `issued_at`/`issued_by`, `updated_at`/`updated_by`, or `null`), or `404` (no classes of that grade that year) (E1) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}` | Needs `fees.read`: `200 {"term", "year", "can_manage", "grades"}`, each grade with classes that year with `classes`, `students` (active, enrolled), `billed`, and (E2) `billed_kes`, `paid_kes` and `outstanding_kes` (only bills with something left to pay), and its `structure` (`items`, `compulsory_total_kes`, `issued`, or `null`); or `404` (E1); (E4) each grade's `structure` also has `due_on` |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.read`: `200 {"term", "year", "grade", "can_manage", "structure", "bills", "not_billed"}` (each bill with `total_kes`, `paid_kes` and `balance_kes`, E2; the structure's `items`, `compulsory_total_kes`, `issued_at`/`issued_by`, `updated_at`/`updated_by`, or `null`), or `404` (no classes of that grade that year) (E1); (E4) the `structure` has `due_on`, its pay-by date or `null` |
 | PUT    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}` | Needs `fees.manage`: `{"items": [{"name", "amount_kes", "is_optional"?}]}`, 0 to 30 items, the whole list in order; names 1 to 60 characters, unique ignoring case; amounts whole shillings (JSON integers) from 1 to 1,000,000: `200` (as GET), `404`, `409` (`structure_issued`) or `422` (E1) |
 | POST   | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/issue` | Needs `fees.manage`: bill every active student enrolled in the grade's classes that year who has no bill this term, with the compulsory items: `200 {"billed": N, ...}` (as GET), `404` or `422` (`no_fee_items`) (E1) |
-| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, `paid_kes` and `balance_kes` (below 0 when overpaid) and its `payments` in receipt order, cancelled ones with `cancelled` (`reason`, `cancelled_at`, `cancelled_by`) (E2), the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`), `can_manage`, `can_record_payments` and `can_cancel_payments`; (E3) the `school`'s name, `earlier` (`balance_kes` of the student's bills from terms that start before this one, below 0 for a credit, and the unsettled earlier `bills` with `term`, `year` and `balance_kes`) and `due_now_kes` (this bill's balance plus the earlier one); or `404` (E1) |
+| PUT    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/due-date` | Needs `fees.manage`: `{"due_on": "YYYY-MM-DD"}` or `{"due_on": null}` to remove it, before or after issuing; from 90 days before the term starts to its last day: `200` (as GET), `404`, `409` (`no_fee_structure`: save the structure first) or `422` (`due_date_out_of_range`, or not a date); audited as `fee_structure.due_date_changed` when it changes (E4) |
+| GET    | `/api/v1/school/fees/bills/{id}` | Needs `fees.read`: `200` with the bill's `student`, `class_name`, `grade`, `term`, `year`, `issued_at`/`issued_by`, `lines` (`kind` `fee` or `adjustment`, `description`, `amount_kes`, `created_at`, `created_by`), `total_kes`, `paid_kes` and `balance_kes` (below 0 when overpaid) and its `payments` in receipt order, cancelled ones with `cancelled` (`reason`, `cancelled_at`, `cancelled_by`) (E2), the `optional_items` not on it yet, the student's `guardians` (`full_name`, `relationship`, `is_primary`, `phone`, `email`), `can_manage`, `can_record_payments` and `can_cancel_payments`; (E3) the `school`'s name, `earlier` (`balance_kes` of the student's bills from terms that start before this one, below 0 for a credit, and the unsettled earlier `bills` with `term`, `year` and `balance_kes`) and `due_now_kes` (this bill's balance plus the earlier one); or `404` (E1); (E4) `due_on` (the structure's pay-by date or `null`) and `overdue` (something still owed after that day, Kenyan time) |
 | POST   | `/api/v1/school/fees/bills/{id}/items` | Needs `fees.manage`: `{"fee_item_id"}`, an optional item of the bill's structure: `201` (the bill), `404`, `409` (`item_already_on_bill`) or `422` (`not_an_optional_item`) (E1) |
 | POST   | `/api/v1/school/fees/bills/{id}/adjustments` | Needs `fees.manage`: `{"amount_kes", "reason"}`, a whole number from -1,000,000 to 1,000,000 but not 0, and a one-line reason of 1 to 200 characters: `201` (the bill), `404` or `422` (`total_below_zero`, or invalid) (E1) |
 | GET    | `/api/v1/school/students/{id}/bills` | Needs `fees.read`: `200 {"student", "bills"}`, newest term first, each with `term`, `year`, `class_name`, `total_kes`, `paid_kes` and `balance_kes` (E2); or `404` (E1) |
@@ -169,7 +170,8 @@ misconfigured server fails loudly instead of running with unsafe settings.
 | POST   | `/api/v1/school/fees/payments/{id}/cancellation` | Needs `payments.cancel`: `{"reason"}`, one line of 1 to 200 characters: `201` (the bill), `404`, `409` (`already_cancelled`) or `422` (E2) |
 | GET    | `/api/v1/school/fees/payments?date=YYYY-MM-DD` | Needs `fees.read`: `200 {"date", "payments", "totals", "total_kes", "cancelled"}`: the payments recorded that day (Kenyan time; today by default) in receipt order, each with its `bill_id`, `student` and `class_name`; totals by method leave out cancelled payments; or `422` (E2) |
 | GET    | `/api/v1/school/fees/students/{id}/statement` | Needs `fees.read`: `200 {"school", "student", "class_name", "printed_on", "entries", "totals"}`: every fee, adjustment, payment and cancellation on the student's bills in date order, each with `date`, `kind`, `description`, `bill_id`, `term`, `year`, `debit_kes` or `credit_kes`, the running `balance_kes` and (payments, cancellations) its `payment`; `totals` has `charged_kes`, `paid_kes` and `balance_kes`; no guardian contacts; or `404` (E3) |
-| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/bills/print` | Needs `fees.read`: `200 {"school", "term", "year", "grade", "bills"}`, every bill of the grade that term, class by class then by name, each with its `lines`, `total_kes`, `paid_kes`, `balance_kes`, `earlier` and `due_now_kes` (a few queries for the whole grade); or `404` (E3) |
+| GET    | `/api/v1/school/fees/years/{year_id}/terms/{1-3}/grades/{grade}/bills/print` | Needs `fees.read`: `200 {"school", "term", "year", "grade", "bills"}`, every bill of the grade that term, class by class then by name, each with its `lines`, `total_kes`, `paid_kes`, `balance_kes`, `earlier` and `due_now_kes` (a few queries for the whole grade); or `404` (E3); (E4) and `due_on` |
+| GET    | `/api/v1/school/fees/arrears?grade=&class_id=&overdue=true&min_kes=` | Needs `fees.read`: `200 {"school", "today", "filters", "students", "totals"}`: every student whose bills added together still owe something, largest first, each with `student`, `class` (`id`, `name`, `grade` and `year` of their latest class, or `null`), `left_school`, `owed_kes` (their statement's final balance), `overdue_kes` (owed on bills past their pay-by date, at most `owed_kes`), `oldest_unpaid` (`term`, `year`), `last_payment` (`paid_on`, `amount_kes`, `method`, or `null`) and `contact` (the primary guardian's `full_name`, `relationship`, `phone`, or `null`); all filters optional (`grade` a grade code, `class_id`, `overdue`, `min_kes` from 1); `filters` lists the grades and classes of everyone owing; `totals` has `students`, `owed_kes`, `overdue_kes`; `422` for an unknown filter or value (E4) |
 | GET    | `/api/v1/school/attendance?date=YYYY-MM-DD` | Needs `attendance.read`: `200 {"date", "academic_year_id", "term_number", "classes"}`, each class taken or not with its counts; the date defaults to today; `422` for a future day |
 | POST   | `/api/v1/school/invitations` | Needs `members.manage`: `201 {"invitation": {...}, "accept_url": "..."}`, `409` (already has the role), `422` |
 | GET    | `/api/v1/school/invitations` | Needs `members.read`: `200 {"invitations": [...]}` (latest 200, never tokens) |
@@ -757,9 +759,39 @@ E3 (decisions of 2026-11-07):
 - Everyone with `fees.read` reads statements and printable bills; reads
   are not audited, like other fee reads. No new table, migration or
   permission.
-- Not built yet: a list of students owing across all terms, due dates on
-  bills, statements by SMS or email, and moving a credit to a later bill
-  by hand.
+- Not built yet: statements by SMS or email, and moving a credit to a
+  later bill by hand. A list of students owing across all terms and due
+  dates on bills came in E4 (below).
+
+### Pay-by dates and students owing
+
+E4 (decisions of 2026-11-10):
+
+- A grade's fee structure for a term can have a pay-by date (column
+  `fee_structures.due_on`, migration `00b9cae11b95`; empty for existing
+  structures). School administrators and finance officers (`fees.manage`)
+  set, move or remove it at any time, even after issuing, since it changes
+  no amount; it runs from 90 days before the term starts (many schools ask
+  for fees by opening day) to the term's last day. Each change is audited
+  as `fee_structure.due_date_changed`, with ids only.
+- Bills, the grade page, the term overview and printed bills show it. A
+  bill is overdue from the day after its pay-by date (Kenyan time) while
+  something is still owed on it.
+- The list of students owing (`/api/v1/school/fees/arrears`, everyone with
+  `fees.read`) has one row per student whose bills added together still
+  owe something: the same figure as their statement's final balance, so a
+  credit on one bill lowers what is owed on another. Overdue is what is
+  owed on bills past their pay-by date, never more than what is owed. Each
+  row also has the student's latest class, whether they have left school
+  (they stay listed while they owe), the oldest term with something unpaid,
+  the last payment that stands and the primary guardian's contact.
+- It is worked out each time from a few plain queries over the school's
+  rows, added up in Python. One query joining grouped subqueries took over
+  15 seconds for 1,500 students before PostgreSQL had statistics on newly
+  issued bills; a test now lists 9,000 bills in exactly that state.
+- Not built yet: SMS or email reminders, late-payment penalties, payment
+  plans and a CSV export (a spreadsheet of guardian phone numbers is easy
+  to leak).
 
 ### Database-level isolation (Row-Level Security)
 

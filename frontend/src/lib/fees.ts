@@ -70,7 +70,7 @@ export type GradeRow = {
   billed_kes: number;
   paid_kes: number;
   outstanding_kes: number;
-  structure: { items: number; compulsory_total_kes: number; issued: boolean } | null;
+  structure: { items: number; compulsory_total_kes: number; issued: boolean; due_on: string | null } | null;
 };
 
 export type TermFees = TermRef & { can_manage: boolean; grades: GradeRow[] };
@@ -81,6 +81,8 @@ export type Structure = {
   id: string;
   items: FeeItem[];
   compulsory_total_kes: number;
+  // E4: the day by which the term's fees should be paid ("2027-05-14").
+  due_on: string | null;
   issued_at: string | null;
   issued_by: string | null;
   updated_at: string | null;
@@ -114,6 +116,9 @@ export type Bill = TermRef & {
   grade: { code: string; name: string };
   issued_at: string | null;
   issued_by: string | null;
+  due_on: string | null;
+  // Something is still owed and the pay-by date has passed (Kenyan time).
+  overdue: boolean;
   lines: BillLine[];
   payments: Payment[];
   optional_items: { id: string; name: string; amount_kes: number }[];
@@ -142,6 +147,7 @@ export type PrintedBill = {
 export type GradeBillsToPrint = TermRef & {
   school: { name: string };
   grade: { code: string; name: string };
+  due_on: string | null;
   bills: PrintedBill[];
 };
 
@@ -190,6 +196,29 @@ export type StudentBills = {
   bills: ({ id: string; term: { id: string; number: number }; year: { name: string }; class_name: string } & Money)[];
 };
 
+// The list of students owing across all terms (E4, see
+// backend/app/api/v1/arrears.py).
+export type ClassRef = { id: string; name: string; grade: string; year: { name: string } };
+
+export type OwingStudent = {
+  student: StudentRef;
+  class: ClassRef | null;
+  left_school: boolean;
+  owed_kes: number;
+  overdue_kes: number;
+  oldest_unpaid: { term: { number: number }; year: { name: string } } | null;
+  last_payment: { paid_on: string; amount_kes: number; method: PaymentMethod } | null;
+  contact: { full_name: string; relationship: string; phone: string } | null;
+};
+
+export type StudentsOwing = {
+  school: { name: string };
+  today: string;
+  filters: { grades: { code: string; name: string }[]; classes: ClassRef[] };
+  students: OwingStudent[];
+  totals: { students: number; owed_kes: number; overdue_kes: number };
+};
+
 export function canSeeFees(me: Me): boolean {
   return me.permissions.includes("fees.read");
 }
@@ -215,6 +244,18 @@ export function billPrintPath(id: string): string {
 
 export function gradeBillsPrintPath(yearId: string, term: number, grade: string): string {
   return `${gradeFeesPath(yearId, term, grade)}/print`;
+}
+
+export function arrearsPath(): string {
+  return "/fees/arrears";
+}
+
+// The earliest and latest pay-by dates for a term: from 90 days before it
+// starts to its last day (the API checks again).
+export function payByRange(term: { starts_on: string; ends_on: string }): { min: string; max: string } {
+  const [y, m, d] = term.starts_on.split("-").map(Number);
+  const earliest = new Date(Date.UTC(y, m - 1, d - 90));
+  return { min: earliest.toISOString().slice(0, 10), max: term.ends_on };
 }
 
 export function statementPath(studentId: string): string {

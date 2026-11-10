@@ -8,7 +8,16 @@ import { AppShell, goToLogin } from "@/components/app-shell";
 import { ErrorMessage, inputClass, labelClass } from "@/components/ui";
 import { api, withReference, type Me } from "@/lib/api";
 import type { AcademicYear, AcademicYearList } from "@/lib/academic-years";
-import { canSeeFees, feesPath, formatKes, gradeFeesPath, paymentsDayPath, type TermFees } from "@/lib/fees";
+import {
+  arrearsPath,
+  canSeeFees,
+  feesPath,
+  formatDate,
+  formatKes,
+  gradeFeesPath,
+  paymentsDayPath,
+  type TermFees,
+} from "@/lib/fees";
 
 // School fees for one term (E1): every grade with classes that year, its
 // fee structure and how many of its students are billed.
@@ -198,7 +207,10 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
           : "Open a grade to see its fees and bills."}{" "}
         Outstanding is what is still owed on bills not yet fully paid.
       </p>
-      <p className="mb-4">
+      <p className="mb-4 flex flex-wrap gap-x-6 gap-y-1">
+        <Link href={arrearsPath()} className="font-medium text-link underline underline-offset-2">
+          Students owing
+        </Link>
         <Link href={paymentsDayPath()} className="font-medium text-link underline underline-offset-2">
           Payments on a day
         </Link>
@@ -246,6 +258,9 @@ function TermTable({ yearId, term }: { yearId: string; term: number }) {
                   {!row.structure
                     ? "Not set"
                     : `${row.structure.issued ? "Issued" : "Draft"}, ${row.structure.items} item${row.structure.items === 1 ? "" : "s"}`}
+                  {row.structure?.due_on && (
+                    <span className="block text-muted">Pay by {formatDate(row.structure.due_on)}</span>
+                  )}
                 </td>
                 <td className={`${tdClass} ${amountClass}`}>{row.structure ? formatKes(row.structure.compulsory_total_kes) : "—"}</td>
                 <td className={tdClass}>

@@ -309,14 +309,17 @@ function SwitchSchool({
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-sm rounded-lg border border-rule p-4">
+    // Wide enough for a school's name and county ("Staging Demo School B
+    // (Mombasa)" was cut off in a narrower box); the button moves below the
+    // list on a phone.
+    <form onSubmit={onSubmit} className="max-w-lg rounded-lg border border-rule p-4">
       <label htmlFor="school" className={labelClass}>
         Switch school
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <select
           id="school"
-          className={inputClass}
+          className={`${inputClass} min-w-0 flex-1 basis-60`}
           value={selected}
           onChange={(event) => setSelected(event.target.value)}
         >
