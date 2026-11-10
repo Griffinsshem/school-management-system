@@ -8,6 +8,8 @@ export const PRINCIPAL_EMAIL = "e2e.principal@example.com";
 export const TEACHER_EMAIL = "e2e.teacher@example.com";
 export const SCHOOL_A = "E2E School A";
 export const SCHOOL_B = "E2E School B";
+// How School B appears in the home page's "Switch school" list (H1).
+export const SCHOOL_B_CHOICE = "E2E School B (Mombasa)";
 // School C and its two people exist for the attendance tests only.
 export const ATTENDANCE_ADMIN_EMAIL = "e2e.attendance.admin@example.com";
 export const ATTENDANCE_TEACHER_EMAIL = "e2e.attendance.teacher@example.com";

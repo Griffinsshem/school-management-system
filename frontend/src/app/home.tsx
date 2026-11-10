@@ -9,7 +9,6 @@ import {
   inlineButtonClass,
   inputClass,
   labelClass,
-  secondaryButtonClass,
 } from "@/components/ui";
 import { hasAnyMarksAccess } from "@/lib/assessments";
 import { api, withReference, type Me, type School } from "@/lib/api";
@@ -58,7 +57,7 @@ function HomeContent({ me, setMe }: { me: Me; setMe: (me: Me) => void }) {
       {active ? (
         <ActiveSchool me={me} school={active} roles={roles} />
       ) : schools.length > 0 ? (
-        <ChooseSchool schools={schools} onChoose={chooseSchool} pending={pending} />
+        <ChooseSchool me={me} schools={schools} onChoose={chooseSchool} pending={pending} />
       ) : (
         <section>
           <h1 className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">Welcome, {me.user.full_name}</h1>
@@ -123,10 +122,15 @@ function ActiveSchool({ me, school, roles }: { me: Me; school: School; roles: st
 
   return (
     <section aria-labelledby="school-heading" className="mb-8">
-      <h1 id="school-heading" className="text-[1.9375rem] leading-tight font-bold tracking-tight break-words">
-        {school.name}
-      </h1>
-      <p className="mb-6 text-muted">{school.county_name} County</p>
+      <div className="mb-6 flex items-center gap-4">
+        <SchoolCrest name={school.name} />
+        <div className="min-w-0">
+          <h1 id="school-heading" className="text-[1.9375rem] leading-tight font-bold tracking-tight break-words">
+            {school.name}
+          </h1>
+          <p className="text-muted">{school.county_name} County</p>
+        </div>
+      </div>
       <dl className="mb-8">
         <dt className="text-sm font-medium text-muted">Your role</dt>
         <dd className="text-lg font-semibold">{roles.join(", ")}</dd>
@@ -182,35 +186,104 @@ function ActiveSchool({ me, school, roles }: { me: Me; school: School; roles: st
   );
 }
 
+// Kenyan schools are known by their crests: a shield with the school's
+// initials (first and last word, so "Staging Demo School A" and "... B"
+// differ), edged in the red margin colour. Decoration only (aria-hidden):
+// the name is always written out beside it.
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return "?";
+  }
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+const SHIELD = "[clip-path:polygon(0_0,100%_0,100%_68%,50%_100%,0_68%)]";
+
+export function SchoolCrest({ name, size = "large" }: { name: string; size?: "large" | "small" }) {
+  const box = size === "large" ? "h-16 w-14 text-xl" : "h-12 w-10 text-base";
+  return (
+    <span aria-hidden="true" className={`relative inline-block shrink-0 bg-margin ${SHIELD} ${box}`}>
+      <span
+        className={`absolute inset-[3px] grid place-items-center bg-crest pb-2 font-bold tracking-wide text-crest-ink ${SHIELD}`}
+      >
+        {initials(name)}
+      </span>
+    </span>
+  );
+}
+
+// "Good morning" in the school's time (Kenya), whatever the computer's clock.
+function greeting(name: string): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: "Africa/Nairobi" }).format(
+      new Date(),
+    ),
+  );
+  const part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  return `${part}, ${name}`;
+}
+
 function ChooseSchool({
+  me,
   schools,
   onChoose,
   pending,
 }: {
+  me: Me;
   schools: School[];
   onChoose: (schoolId: string) => void;
   pending: boolean;
 }) {
+  const [chosen, setChosen] = useState<School | null>(null);
+  const opening = pending ? chosen : null;
+  const rolesAt = (schoolId: string) =>
+    me.memberships.filter((m) => m.school.id === schoolId).map((m) => roleLabel(m.role));
+
   return (
-    <section aria-labelledby="choose-heading">
-      <h1 id="choose-heading" className="mb-4 text-[1.9375rem] leading-tight font-bold tracking-tight">
+    <section aria-labelledby="choose-heading" className="max-w-2xl">
+      <p className="mb-1 text-muted">{greeting(me.user.full_name)}</p>
+      <h1 id="choose-heading" className="mb-2 text-[1.9375rem] leading-tight font-bold tracking-tight">
         Choose a school
       </h1>
+      <p className="mb-6">
+        {schools.length === 1
+          ? "Open your school to start."
+          : `You belong to ${schools.length} schools. Choose one to open; you can switch later from the home page.`}
+      </p>
       <ul className="grid gap-3">
         {schools.map((school) => (
           <li key={school.id}>
             <button
               type="button"
-              className={`${secondaryButtonClass} w-full justify-between`}
-              onClick={() => onChoose(school.id)}
+              className="group flex w-full items-center gap-4 rounded-lg border border-rule-strong bg-surface p-4 text-left hover:border-action hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-60 sm:gap-5 sm:p-5"
+              onClick={() => {
+                setChosen(school);
+                onChoose(school.id);
+              }}
               disabled={pending}
             >
-              <span>{school.name}</span>
-              <span className="text-sm text-muted">{school.county_name}</span>
+              <SchoolCrest name={school.name} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg leading-snug font-semibold break-words">{school.name}</span>
+                <span className="block text-muted">{school.county_name} County</span>
+                <span className="mt-1 block text-sm">
+                  Your role: <strong className="font-semibold">{rolesAt(school.id).join(", ")}</strong>
+                </span>
+              </span>
+              <span className="hidden shrink-0 font-semibold text-link group-hover:underline sm:block">
+                {opening?.id === school.id ? "Opening..." : "Open"}
+              </span>
             </button>
           </li>
         ))}
       </ul>
+      <p role="status" className="mt-4 text-muted">
+        {opening ? `Opening ${opening.name}...` : ""}
+      </p>
     </section>
   );
 }
@@ -249,7 +322,7 @@ function SwitchSchool({
         >
           {schools.map((school) => (
             <option key={school.id} value={school.id}>
-              {school.name}
+              {school.name} ({school.county_name})
             </option>
           ))}
         </select>

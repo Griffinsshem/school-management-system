@@ -65,7 +65,7 @@ Colours have names, defined once in `src/app/globals.css` with a light,
 a dark and a printed value: `ink` (text), `muted` (secondary text), `paper`
 and `surface` (backgrounds), `rule` and `rule-strong` (lines), `field`
 (input borders), `band`, `action` (main buttons), `link`, `margin` (the
-thin red line), `ok`, `warn` and `danger`. Pages use these names
+thin red line), `crest` and `crest-ink` (the school crest), `ok`, `warn` and `danger`. Pages use these names
 (`text-muted`, `border-rule`, `bg-action`, ...), never Tailwind's own colours
 such as `text-zinc-600`, so a colour changes in one place and dark mode
 needs no `dark:` classes. Every text colour meets WCAG AA contrast on the
@@ -94,6 +94,12 @@ other server for fonts.
 
 Printed report cards keep dark text and the same greys on white paper, even
 when the screen is in dark mode.
+
+Each school has a crest (H1, `SchoolCrest` in `src/app/home.tsx`): a shield
+with the initials of the school name's first and last words, edged in the
+margin red. It is decoration only (`aria-hidden`); the name is always
+written beside it. People in more than one school see a card per school
+after logging in, with its county and their role there.
 
 ## Checks
 

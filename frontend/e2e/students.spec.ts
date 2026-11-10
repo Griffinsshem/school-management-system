@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PRINCIPAL_EMAIL, SCHOOL_A, errorMessage, logIn, logInToSchoolA } from "./helpers";
+import { PRINCIPAL_EMAIL, SCHOOL_A, SCHOOL_B_CHOICE, errorMessage, logIn, logInToSchoolA } from "./helpers";
 
 // Clearly fake students, created in the test database only. Each test uses
 // its own prefix so tests do not depend on each other's data.
@@ -183,7 +183,7 @@ test("a principal sees students but cannot change them", async ({ page }) => {
 
 test("a teacher has no access to students", async ({ page }) => {
   await logInToSchoolA(page);
-  await page.getByLabel("Switch school").selectOption({ label: "E2E School B" });
+  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B_CHOICE });
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "E2E School B" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Students" })).toHaveCount(0);

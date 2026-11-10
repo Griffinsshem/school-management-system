@@ -1,15 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import {
-  ADMIN_PASSWORD,
-  PRINCIPAL_EMAIL,
-  SCHOOL_A,
-  errorMessage,
-  invite,
-  logIn,
-  logInToSchoolA,
-  uniqueEmail,
-} from "./helpers";
+import { ADMIN_PASSWORD, PRINCIPAL_EMAIL, SCHOOL_A, SCHOOL_B_CHOICE, errorMessage, invite, logIn, logInToSchoolA, uniqueEmail } from "./helpers";
 
 async function openPeople(page: Page) {
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "People" }).click();
@@ -159,7 +150,7 @@ test("a principal sees people but cannot change them", async ({ page }) => {
 
 test("people without access are told so", async ({ page }) => {
   await logInToSchoolA(page);
-  await page.getByLabel("Switch school").selectOption({ label: "E2E School B" });
+  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B_CHOICE });
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "E2E School B" })).toBeVisible();
   await expect(page.getByRole("link", { name: "People" })).toHaveCount(0);

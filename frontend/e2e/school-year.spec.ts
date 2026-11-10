@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PRINCIPAL_EMAIL, SCHOOL_A, SCHOOL_B, errorMessage, logIn, logInToSchoolA, openRoleAllows } from "./helpers";
+import { PRINCIPAL_EMAIL, SCHOOL_A, SCHOOL_B, SCHOOL_B_CHOICE, errorMessage, logIn, logInToSchoolA, openRoleAllows } from "./helpers";
 
 // Today's date in Kenya, as the API works it out, moved by `days`.
 function kenyaDate(days = 0): string {
@@ -122,7 +122,7 @@ test("a principal sees the school year but cannot change it", async ({ page }) =
 
 test("a teacher sees the school year page of their school", async ({ page }) => {
   await logInToSchoolA(page);
-  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B });
+  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B_CHOICE });
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_B })).toBeVisible();
   await openSchoolYear(page);

@@ -1,15 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
-  SCHOOL_A,
-  SCHOOL_B,
-  errorMessage,
-  logIn,
-  logInToSchoolA,
-  openRoleAllows,
-} from "./helpers";
+import { ADMIN_EMAIL, ADMIN_PASSWORD, SCHOOL_A, SCHOOL_B, SCHOOL_B_CHOICE, errorMessage, logIn, logInToSchoolA, openRoleAllows } from "./helpers";
 
 test("a logged-out visitor is sent to the login page", async ({ page }) => {
   await page.goto("/");
@@ -41,7 +32,7 @@ test("logging in, choosing and switching school, and logging out", async ({ page
   ]);
   expect(await page.evaluate(() => document.cookie)).toBe("");
 
-  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B });
+  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B_CHOICE });
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_B })).toBeVisible();
   await expect(page.locator("dt:has-text('Your role') + dd")).toHaveText("Teacher");
@@ -200,7 +191,7 @@ test("the home page groups the pages a role can open, with its permissions folde
   await expect(allowed).toBeVisible();
 
   // A teacher (School B): only the pages a teacher can open.
-  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B });
+  await page.getByLabel("Switch school").selectOption({ label: SCHOOL_B_CHOICE });
   await page.getByRole("button", { name: "Switch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: SCHOOL_B })).toBeVisible();
   await expect(areas).toHaveText(["Classes and teaching", "Calendar and grading"]);

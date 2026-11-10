@@ -24,6 +24,9 @@
   --on-action: #ffffff;
   --link: #1f4fb8;
   --margin: #d9485f;
+  /* The school crest on the chooser and home page (H1): navy shield, white letters. */
+  --crest: #1b2a4a;
+  --crest-ink: #ffffff;
   --hover: #eef2f8;
   --readonly: #f1f4f8;
   --ok: #1e6b40;
@@ -53,6 +56,9 @@
     --on-action: #ffffff;
     --link: #93b4ff;
     --margin: #e2687b;
+    /* Lighter than the band, so the crest stands out on the dark page. */
+    --crest: #2c4372;
+    --crest-ink: #e7ecf5;
     --hover: #1f2940;
     --readonly: #1f2940;
     --ok: #8fd6a9;
@@ -95,6 +101,8 @@
   --color-on-action: var(--on-action);
   --color-link: var(--link);
   --color-margin: var(--margin);
+  --color-crest: var(--crest);
+  --color-crest-ink: var(--crest-ink);
   --color-hover: var(--hover);
   --color-readonly: var(--readonly);
   --color-ok: var(--ok);
